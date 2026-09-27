@@ -6419,14 +6419,15 @@ describe("a link that has to lose the theme's button shape (20260829.01, 2026082
     }
   });
 
-  it("keeps the column menu button at the size and fade its own rule asks for", () => {
+  it("keeps the column menu button's fade and leaves its size to the icon-button tier", () => {
     // Written above `.folia-icon-btn` it declared nothing the base rule did not already declare,
     // so the button drew at the base size and its opacity was switched without the fade. Scoped
-    // and moved below the base, every declaration lands; the state rules follow it, so the button
-    // still shows on hover, on focus and while its menu is open.
+    // and moved below the base, the opacity and transition declarations land; the state rules
+    // follow it, so the button still shows on hover, on focus and while its menu is open. Its size
+    // is the base rule's, like the card quick actions beside it.
     const own = rule(".folia-scope .folia-column-menu-btn");
-    expect(own).toContain("width: var(--folia-hit-sm)");
-    expect(own).toContain("height: var(--folia-hit-sm)");
+    expect(own).not.toContain("width:");
+    expect(own).not.toContain("height:");
     expect(own).toContain("opacity: var(--folia-opacity-hidden)");
     expect(own).toContain("transition: opacity");
     // The three state selectors share one rule, so `at` (which anchors on a rule's own line) does

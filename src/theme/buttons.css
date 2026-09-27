@@ -96,8 +96,7 @@
 }
 
 .folia-scope .folia-column-menu-btn {
-  width: var(--folia-hit-sm);
-  height: var(--folia-hit-sm);
+  /* Sized by `.folia-icon-btn`, the same tier as the card quick actions beside it. */
   opacity: var(--folia-opacity-hidden);
   transition: opacity var(--folia-dur-fast) ease, background var(--folia-dur-fast) ease, color var(--folia-dur-fast) ease;
 }
