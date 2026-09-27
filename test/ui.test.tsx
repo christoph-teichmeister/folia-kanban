@@ -2003,11 +2003,13 @@ describe("card context menu", () => {
 
     it("opens nothing while the card is lifted for a keyboard drag", async () => {
       const user = userEvent.setup();
-      await focusCard("First");
+      const main = await focusCard("First");
       await user.keyboard("{ }");
       expect(document.querySelector(".folia-card-overlay")).not.toBeNull();
 
       await user.keyboard("{Shift>}{F10}{/Shift}");
+      // Windows follows the Menu key with its own contextmenu on keyup, at the still-focused card.
+      fireEvent.contextMenu(main, { clientX: 0, clientY: 0 });
       expect(screen.queryByRole("menu")).toBeNull();
       await user.keyboard("{Escape}");
     });
@@ -2059,6 +2061,19 @@ describe("card context menu", () => {
       },
     );
 
+    it("gives focus back to the card after Copy path chosen with Enter", async () => {
+      const user = userEvent.setup();
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      const menu = await screen.findByRole("menu", { name: "Card actions" });
+      within(menu)
+        .getByRole("menuitem", { name: /^Copy path$/ })
+        .focus();
+      await user.keyboard("{Enter}");
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+      expect(document.activeElement).toBe(main);
+    });
+
     it.each([
       ["Open details", () => screen.getByTestId("card-detail")],
       ["Override card title", () => screen.getByTestId("card-detail")],
@@ -2078,6 +2093,26 @@ describe("card context menu", () => {
       await waitFor(() => expect(where().contains(document.activeElement)).toBe(true));
       expect(screen.queryByRole("menu")).toBeNull();
       expect(cardFocused).toBe(false);
+    });
+
+    it.each([
+      ["Tab", "steps on from the card", { shiftKey: false }],
+      ["Shift+Tab", "lands on the card", { shiftKey: true }],
+    ])("%s from the menu %s and closes it", async (_, __, mods) => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      const menu = await screen.findByRole("menu", { name: "Card actions" });
+
+      // The menu is portalled to the end of the body but belongs right after its card. Tab leaves
+      // the step to the browser, which starts from whatever holds focus when it runs (jsdom and
+      // user-event don't model that), so what is checked is that it starts from the card.
+      const notPrevented = fireEvent.keyDown(within(menu).getAllByRole("menuitem")[0]!, {
+        key: "Tab",
+        ...mods,
+      });
+      expect(notPrevented).toBe(!mods.shiftKey);
+      expect(document.activeElement).toBe(main);
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     });
 
     it("keeps the menu open when a label inside it is clicked", async () => {

@@ -132,9 +132,10 @@ export function CardContextMenu({
       return;
     }
     // The menu is portalled to the end of the body but belongs right after its card, so Tab moves
-    // on from the card: focusing it here lets the browser's own Tab step continue from there, and
-    // the focus leaving the menu closes it.
+    // on from the card — focusing it here lets the browser's own Tab step continue from there —
+    // and Shift+Tab lands on the card itself. Either way, focus leaving the menu closes it.
     if (e.key === "Tab") {
+      if (e.shiftKey) e.preventDefault();
       opener.current?.focus();
       return;
     }

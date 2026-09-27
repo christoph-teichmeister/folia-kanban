@@ -137,6 +137,9 @@ function CardItemInner({
     if (!isDragging) actions.open(notePath);
   };
   const openMenu = (x: number, y: number, todoEl: Element | null) => {
+    // Not while the card is lifted, whichever way the menu was asked for: it would take focus and
+    // act on a card still in flight.
+    if (isDragging) return;
     const rowIndex = todoEl ? Number(todoEl.getAttribute("data-todo-index")) : NaN;
     // Which checklist line the menu is for, read the moment it opens: this tile's own, for a todo
     // placed in a column, or the surfaced next-todo row a right-click landed on. The menu that
@@ -176,8 +179,6 @@ function CardItemInner({
     ) {
       e.preventDefault();
       e.stopPropagation();
-      // Not while the card is lifted: the menu would take focus and act on a card still in flight.
-      if (isDragging) return;
       const at = anchorBelow(e.currentTarget);
       openMenu(at.x, at.y, null);
       return;
