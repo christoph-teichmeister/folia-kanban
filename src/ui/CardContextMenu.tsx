@@ -102,7 +102,9 @@ export function CardContextMenu({
 
   // Focus the first item on open and restore focus to the originating card on close, so a keyboard
   // user who opens then Escapes the menu keeps their place on the board (mirrors CardDetail's opener
-  // capture/restore).
+  // capture/restore). This runs before the layout effect above has corrected `pos`, which is why
+  // that effect's placeholder must never be `visibility: hidden` (a hidden element can't take
+  // focus) — see the style prop below.
   useEffect(() => {
     const opener = doc.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLButtonElement>(FOCUSABLE_ROW_SELECTOR)?.focus();
@@ -182,7 +184,11 @@ export function CardContextMenu({
       tabIndex={-1}
       aria-label={target.kind === "todo" ? "Todo actions" : "Card actions"}
       onKeyDown={onKeyDown}
-      style={pos ? { top: pos.top, left: pos.left } : { visibility: "hidden" }}
+      // Starts at the origin, never hidden: a hidden element can't take focus (Chromium honors
+      // `visibility: hidden`; jsdom does not, which is why this slipped past the test suite), and
+      // the layout effect above corrects the position synchronously before the browser paints, so
+      // the unclamped origin frame is never actually seen.
+      style={pos ?? { top: 0, left: 0 }}
     >
       {target.kind === "todo" ? (
         <>

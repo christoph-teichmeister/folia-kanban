@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { readFileSync } from "node:fs";
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import { act, render, screen, within, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/ui/App";
@@ -2070,6 +2070,46 @@ describe("card context menu", () => {
     );
   });
 
+  // Chromium will not focus an element under `visibility: hidden`, and jsdom will; without this a
+  // menu that focuses its first item before it is shown looks fine here and traps nobody in the app.
+  const refuseFocusWhileHidden = () => {
+    const focus = HTMLElement.prototype.focus;
+    return vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest<HTMLElement>('[role="menu"]')?.style.visibility === "hidden") return;
+      focus.call(this, options);
+    });
+  };
+
+  it("hands focus to the first item of a right-click's menu (#73 follow-up)", async () => {
+    const hiddenFocus = refuseFocusWhileHidden();
+    try {
+      const { menu } = await openCardMenu("First");
+      expect(document.activeElement).toBe(within(menu).getAllByRole("menuitem")[0]);
+    } finally {
+      hiddenFocus.mockRestore();
+    }
+  });
+
+  it("hands focus to the first item of a todo's right-click menu (#73 follow-up)", async () => {
+    const hiddenFocus = refuseFocusWhileHidden();
+    try {
+      const repo = ctxRepo();
+      render_(repo, { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+      const card = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+      const todoRow = card.querySelector(
+        '.folia-card-next-todo[data-todo-index="1"]',
+      ) as HTMLElement;
+      fireEvent.contextMenu(todoRow);
+      const menu = await screen.findByRole("menu", { name: "Todo actions" });
+      expect(document.activeElement).toBe(within(menu).getAllByRole("menuitem")[0]);
+    } finally {
+      hiddenFocus.mockRestore();
+    }
+  });
+
   it("disables Move up at the top of the column and Move down at the bottom", async () => {
     const { menu } = await openCardMenu("First"); // First is at the top
     expect(within(menu).getByRole("menuitem", { name: /Move up/ })).toBeDisabled();
@@ -2781,54 +2821,66 @@ describe("card context menu", () => {
   });
 
   it("arrow keys reach the priority group, skipping the disabled Move up button (#73)", async () => {
-    const { menu } = await openCardMenu("First"); // top of the column: Move up is disabled
-    const rows = Array.from(
-      menu.querySelectorAll<HTMLButtonElement>(
-        ".folia-menu-item:not(:disabled), .folia-menu-prio:not(:disabled)",
-      ),
-    );
-    // Sanity: the priority group is actually part of what we are about to walk.
-    expect(rows.some((r) => r.classList.contains("folia-menu-prio"))).toBe(true);
-    rows[0]?.focus();
-    for (let i = 1; i < rows.length; i++) {
+    const hiddenFocus = refuseFocusWhileHidden();
+    try {
+      const { menu } = await openCardMenu("First"); // top of the column: Move up is disabled
+      const rows = Array.from(
+        menu.querySelectorAll<HTMLButtonElement>(
+          ".folia-menu-item:not(:disabled), .folia-menu-prio:not(:disabled)",
+        ),
+      );
+      // Sanity: the priority group is actually part of what we are about to walk.
+      expect(rows.some((r) => r.classList.contains("folia-menu-prio"))).toBe(true);
+      rows[0]?.focus();
+      for (let i = 1; i < rows.length; i++) {
+        fireEvent.keyDown(menu, { key: "ArrowDown" });
+        expect(document.activeElement).toBe(rows[i]);
+      }
+      // Wraps back to the top instead of stalling on the last row.
       fireEvent.keyDown(menu, { key: "ArrowDown" });
-      expect(document.activeElement).toBe(rows[i]);
-    }
-    // Wraps back to the top instead of stalling on the last row.
-    fireEvent.keyDown(menu, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(rows[0]);
-    expect(within(menu).getByRole("menuitem", { name: /Move up/ })).not.toHaveFocus();
+      expect(document.activeElement).toBe(rows[0]);
+      expect(within(menu).getByRole("menuitem", { name: /Move up/ })).not.toHaveFocus();
 
-    // ArrowUp walks the same rows backwards, including wrapping past the priority group.
-    for (let i = rows.length - 1; i >= 0; i--) {
-      fireEvent.keyDown(menu, { key: "ArrowUp" });
-      expect(document.activeElement).toBe(rows[i]);
+      // ArrowUp walks the same rows backwards, including wrapping past the priority group.
+      for (let i = rows.length - 1; i >= 0; i--) {
+        fireEvent.keyDown(menu, { key: "ArrowUp" });
+        expect(document.activeElement).toBe(rows[i]);
+      }
+    } finally {
+      hiddenFocus.mockRestore();
     }
   });
 
   it("arrow keys reach the move-to-column group in the todo menu (#73)", async () => {
-    const repo = ctxRepo();
-    render_(repo, { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
-    const card = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
-    const todoRow = card.querySelector('.folia-card-next-todo[data-todo-index="1"]') as HTMLElement;
-    fireEvent.contextMenu(todoRow);
-    const menu = await screen.findByRole("menu", { name: "Todo actions" });
-    const rows = Array.from(
-      menu.querySelectorAll<HTMLButtonElement>(
-        ".folia-menu-item:not(:disabled), .folia-menu-column:not(:disabled)",
-      ),
-    );
-    expect(rows.some((r) => r.classList.contains("folia-menu-column"))).toBe(true);
-    rows[0]?.focus();
-    for (let i = 1; i < rows.length; i++) {
-      fireEvent.keyDown(menu, { key: "ArrowDown" });
-      expect(document.activeElement).toBe(rows[i]);
-    }
+    const hiddenFocus = refuseFocusWhileHidden();
+    try {
+      const repo = ctxRepo();
+      render_(repo, { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+      const card = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+      const todoRow = card.querySelector(
+        '.folia-card-next-todo[data-todo-index="1"]',
+      ) as HTMLElement;
+      fireEvent.contextMenu(todoRow);
+      const menu = await screen.findByRole("menu", { name: "Todo actions" });
+      const rows = Array.from(
+        menu.querySelectorAll<HTMLButtonElement>(
+          ".folia-menu-item:not(:disabled), .folia-menu-column:not(:disabled)",
+        ),
+      );
+      expect(rows.some((r) => r.classList.contains("folia-menu-column"))).toBe(true);
+      rows[0]?.focus();
+      for (let i = 1; i < rows.length; i++) {
+        fireEvent.keyDown(menu, { key: "ArrowDown" });
+        expect(document.activeElement).toBe(rows[i]);
+      }
 
-    // ArrowUp walks the same rows backwards, including through the move-to-column group.
-    for (let i = rows.length - 2; i >= 0; i--) {
-      fireEvent.keyDown(menu, { key: "ArrowUp" });
-      expect(document.activeElement).toBe(rows[i]);
+      // ArrowUp walks the same rows backwards, including through the move-to-column group.
+      for (let i = rows.length - 2; i >= 0; i--) {
+        fireEvent.keyDown(menu, { key: "ArrowUp" });
+        expect(document.activeElement).toBe(rows[i]);
+      }
+    } finally {
+      hiddenFocus.mockRestore();
     }
   });
 
