@@ -963,6 +963,20 @@ describe("card detail", () => {
     expect(within(detail).getByText("No comments yet.")).toBeInTheDocument();
   });
 
+  // One labelling convention for the whole form: the fixed fields name themselves with the same
+  // key element as the custom property rows, so they share the property gutter.
+  it("labels the fixed fields the way it labels the custom properties", async () => {
+    const user = userEvent.setup();
+    render_(makeRepo());
+    await user.click(await screen.findByText("Alpha"));
+    const detail = await screen.findByTestId("card-detail");
+    for (const name of ["Status", "Priority", "Due", "Assignee"]) {
+      const key = within(detail).getByText(name, { selector: ".folia-prop-key" });
+      expect(key.closest("label")).toBe(within(detail).getByLabelText(name).closest("label"));
+    }
+    expect(within(detail).getByText("area", { selector: ".folia-prop-key" })).toBeInTheDocument();
+  });
+
   it("edits a custom property", async () => {
     const user = userEvent.setup();
     const repo = makeRepo();

@@ -21,8 +21,7 @@
 .folia-add-card textarea:focus,
 .folia-add-inline input:focus,
 .folia-add-inline textarea:focus,
-.folia-desc:focus,
-.folia-fields input:focus {
+.folia-desc:focus {
   outline: none;
   border-color: var(--folia-accent);
   box-shadow: var(--folia-ring);

@@ -118,11 +118,19 @@
     }
   },
   "prop-key-width": {
-    "$value": "calc(var(--size-4-1) * 22)",
+    "$value": "min(calc(var(--size-4-1) * 30), 40cqi)",
     "cssVar": "--folia-prop-key-w",
     "source": {
       "owned": true,
-      "reason": "Board layout dimension expressed in host grid units; no single documented spacing rung spans this component."
+      "reason": "The detail panel's property gutter, wide enough for its longest fixed label (\"Resulting display title\") on one line at the host's property label size, capped at 40% of the panel body so a narrow panel keeps its values readable. `--metadata-label-width` (9em) wraps that label, so the host value does not fit this object."
+    }
+  },
+  "assignee-input-min-width": {
+    "$value": "calc(var(--size-4-1) * 25)",
+    "cssVar": "--folia-assignee-input-w-min",
+    "source": {
+      "owned": true,
+      "reason": "How narrow the assignee input may get before its Assign-to-me button wraps under it instead; no host variable describes a minimum input width."
     }
   },
   "card-side-padding": {

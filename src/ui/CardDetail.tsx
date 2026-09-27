@@ -171,8 +171,9 @@ function PriorityField({
   const { draft, setDraft, commit } = useFieldDraft(value, onCommit, true);
   return (
     <label>
-      Priority
+      <span className="folia-prop-key">Priority</span>
       <input
+        className="folia-prop-input"
         list={listId}
         value={draft}
         placeholder="—"
@@ -235,8 +236,9 @@ function AssigneeField({
     // wrapping both would name the button "Assignee" too.
     <div className="folia-assignee-field">
       <label>
-        Assignee
+        <span className="folia-prop-key">Assignee</span>
         <input
+          className="folia-prop-input"
           list={listId}
           value={draft}
           placeholder="—"
@@ -1567,7 +1569,7 @@ export function CardDetail({
 
         <div className="folia-fields">
           <label>
-            Status
+            <span className="folia-prop-key">Status</span>
             <select
               value={String(fm.status ?? "")}
               onChange={(e) =>
@@ -1605,8 +1607,9 @@ export function CardDetail({
             }
           />
           <label>
-            Due
+            <span className="folia-prop-key">Due</span>
             <input
+              className="folia-prop-input"
               type="date"
               value={String(fm.due ?? "")}
               onChange={(e) =>

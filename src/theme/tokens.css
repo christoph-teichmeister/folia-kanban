@@ -67,7 +67,12 @@
   --folia-suggest-h-max: calc(var(--size-4-1) * 70);
   --folia-search-w: calc(var(--size-4-1) * 80);
   --folia-add-column-w: calc(var(--size-4-1) * 55);
-  --folia-prop-key-w: calc(var(--size-4-1) * 22);
+  /* Capped at 40% of the panel body, which is a size container (`.folia-detail-body`), so a narrow
+     panel keeps most of each row for the value and the longest names wrap instead. A percentage
+     would resolve against whatever box uses the width — the assignee label is narrower than the
+     row whenever its button sits beside it — and pull that row's values out of line. */
+  --folia-prop-key-w: min(calc(var(--size-4-1) * 30), 40cqi);
+  --folia-assignee-input-w-min: calc(var(--size-4-1) * 25);
   --folia-card-pad-x: var(--folia-pad); /* a card's own side padding; a nested card narrows it */
   /* One quick-action button and the hair beside it. A cluster of n buttons has n-1 gaps, and the
      title keeps one more hair of clearance, so n of these measure the buttons plus that clearance. */

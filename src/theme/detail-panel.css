@@ -43,9 +43,9 @@
   flex: 0 0 auto;
   width: min(var(--folia-detail-modal-w), var(--folia-detail-modal-w-max));
   max-height: var(--folia-detail-modal-h-max);
-  /* Chrome from the host's modal variables; the box stays Folia's, because this width is what the
-     panel's two-column field grid needs and the surface colour is the same panel the docked
-     presentation shows. */
+  /* Chrome from the host's modal variables; the box stays Folia's, because this width is a
+     balanced dialog rather than anything the host describes, and the surface colour is the same
+     panel the docked presentation shows. */
   border: var(--modal-border-width) solid var(--modal-border-color);
   border-radius: var(--modal-radius);
   box-shadow: var(--folia-shadow-overlay);
@@ -122,6 +122,8 @@
   border-bottom: var(--folia-border-width) solid var(--folia-border);
 }
 .folia-detail-body {
+  /* The property gutter is a share of this box (see `--folia-prop-key-w`). */
+  container-type: inline-size;
   padding: var(--folia-space-lg);
   /* last content (History) clears Obsidian's fixed status bar in side modes; modal is centered. */
   padding-bottom: calc(var(--folia-space-lg) + var(--folia-statusbar-clearance));
@@ -133,45 +135,39 @@
   padding-bottom: var(--folia-space-lg);
 }
 .folia-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--folia-gap);
-}
-.folia-fields label {
   display: flex;
   flex-direction: column;
-  gap: var(--folia-space-xs);
-  font-size: var(--folia-font-size-xs);
-  font-weight: var(--folia-font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--folia-tracking-label);
-  color: var(--text-muted);
+  gap: var(--folia-space-sm);
 }
-.folia-fields label:first-child {
-  grid-column: 1 / -1;
+/* Status, priority, due and assignee are frontmatter properties like the rows below them, so they
+   are laid out the same way: the name in the property gutter, the value beside it. The label stays
+   the element that wraps its control, so a click on the name still focuses the field. */
+.folia-fields label {
+  display: flex;
+  align-items: center;
+  gap: var(--folia-space-md);
 }
-.folia-fields input {
-  font: inherit;
-  background: var(--folia-field-bg);
-  color: var(--text-normal);
-  border: var(--folia-border-width) solid var(--folia-border);
-  border-radius: var(--folia-r-sm);
-  padding: var(--folia-space-sm) var(--folia-space-md);
-  text-transform: none;
-  letter-spacing: normal;
+/* The text and date values are `.folia-prop-input`s like every other value in the panel. The status
+   select keeps the host's dropdown dress (see base.css) and takes only the value's size and height,
+   so the four rows read as the same kind of row as the ones above and below them. */
+.folia-fields select {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--metadata-input-font-size);
 }
 
-/* The assignee field spans both columns: it carries a button beside its input, and half a row is
-   not enough for a name and "Assign to me" without either wrapping. */
+/* The assignee field carries a button beside its input. The label asks for enough room to keep the
+   input usable, so in a narrow panel the button wraps under it rather than squeezing it, and the
+   hint starts where the values do. */
 .folia-assignee-field {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: var(--folia-space-sm);
 }
 .folia-assignee-field label {
-  flex: 1;
+  flex: 1 1 calc(var(--folia-prop-key-w) + var(--folia-space-md) + var(--folia-assignee-input-w-min));
   min-width: 0;
 }
 .folia-assignee-me {
@@ -180,6 +176,7 @@
 }
 .folia-assignee-hint {
   flex: 1 0 100%;
+  padding-left: calc(var(--folia-prop-key-w) + var(--folia-space-md));
   font-size: var(--folia-font-size-xs);
   color: var(--text-muted);
 }
@@ -196,31 +193,33 @@
   gap: var(--folia-space-md);
 }
 /* The same object Obsidian's own property editor draws — a note's frontmatter, label and typed
-   value — so type and colour come from the metadata variables. The label WIDTH does not:
-   `--metadata-label-width` is `9em`, sized for an editor pane, and this panel is much narrower. The
-   uppercase and the tracking stay too; they are what tells a property row from a form field here. */
+   value — so the label's type and colour come from the metadata variables, in the sentence case
+   the host's Properties view uses. Every field of the panel wears this label, the ones in
+   `.folia-fields` too. The WIDTH does not come from the host: `--metadata-label-width` is `9em`,
+   which wraps "Resulting display title" onto two lines. A name longer than the gutter — any
+   frontmatter key a note can carry — wraps inside it, even without a space to break on; it is
+   never cut off. */
 .folia-prop-key {
   flex: 0 0 var(--folia-prop-key-w);
   color: var(--metadata-label-text-color);
-  /* The ellipsis below needs this: without it the label wraps inside its fixed column instead of
-     truncating, and `text-overflow` never fires. */
-  white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: var(--folia-tracking-key);
   font-size: var(--metadata-label-font-size);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: var(--metadata-label-font-weight);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 /* `--metadata-label-text-color-hover` resolves to its resting value in the default theme, so this
    rule paints nothing there. It is the theme's hook: a theme that lifts a property row on hover
    reaches the board's rows too, and without it that could not happen. */
+.folia-fields label:hover .folia-prop-key,
 .folia-prop-row:not(.folia-title-result):hover .folia-prop-key {
   color: var(--metadata-label-text-color-hover);
 }
 .folia-prop-add .folia-prop-input:first-child {
   flex: 0 0 var(--folia-prop-key-w);
 }
-.folia-prop-input {
+/* Scoped so it outweighs the host's `input[type='date']` rules, which would otherwise dress the Due
+   value in their own size and focus ring. */
+.folia-scope .folia-prop-input {
   flex: 1 1 auto;
   min-width: 0;
   font: inherit;
@@ -239,7 +238,19 @@
   padding: var(--folia-space-xs) var(--folia-space-sm-plus);
   transition: border-color var(--folia-dur-fast) ease, box-shadow var(--folia-dur-fast) ease;
 }
-.folia-prop-input:focus {
+/* One height for every value box, text, date or select: the host's own for a property value. */
+.folia-scope .folia-prop-input,
+.folia-fields select {
+  height: var(--metadata-input-height);
+}
+/* The host also gives a typed input a hover fill and border (`input[type='date']:not(:disabled):hover`)
+   that the untyped values beside it never get, so Due alone would react to the pointer. Held at rest
+   instead, leaving focus to the rule below. */
+.folia-scope .folia-prop-input:not(:disabled):not(:focus):hover {
+  background: var(--folia-field-bg);
+  border-color: var(--folia-border);
+}
+.folia-scope .folia-prop-input:focus {
   outline: none;
   border-color: var(--folia-accent);
   box-shadow: var(--folia-ring);
