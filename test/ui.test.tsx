@@ -6934,6 +6934,61 @@ describe("a title far wider than the panel (20260827.02)", () => {
   });
 });
 
+describe("the detail panel's resize edge on a scrolled panel (#65)", () => {
+  // A child of a scroll container is one viewport tall and scrolls away with the content, so the
+  // handle is the panel's child and the panel itself never scrolls; an inner box does. The scroll
+  // keys only move the focused element's scroll container or an ancestor's, so that box holds every
+  // control the panel has and takes focus on open. jsdom cannot scroll, so what is pinned is that
+  // structure, in both render paths, and the rules it rests on.
+  const expectHandleBesideScroller = (detail: HTMLElement) => {
+    const handle = within(detail).getByRole("separator", { name: "Resize panel" });
+    const scroller = detail.querySelector(".folia-detail-scroll");
+    expect(handle.parentElement).toBe(detail);
+    expect(scroller?.parentElement).toBe(detail);
+    expect(scroller?.contains(handle)).toBe(false);
+    for (const control of within(detail).getAllByRole("button")) {
+      expect(scroller?.contains(control)).toBe(true);
+    }
+  };
+
+  it("keeps the handle beside the scroller, and every control inside it, when editing a card", async () => {
+    const user = userEvent.setup();
+    render_(makeRepo());
+    await user.click(await screen.findByText("Alpha"));
+    expectHandleBesideScroller(await screen.findByTestId("card-detail"));
+  });
+
+  it("lands focus on the scroller when a card opens, so the scroll keys reach it", async () => {
+    const user = userEvent.setup();
+    render_(makeRepo());
+    await user.click(await screen.findByText("Alpha"));
+    const detail = await screen.findByTestId("card-detail");
+    expect(detail.querySelector(".folia-detail-scroll")).toHaveFocus();
+  });
+
+  it("keeps the handle beside the scroller, and every control inside it, when creating a card", async () => {
+    const user = userEvent.setup();
+    render_(makeRepo(), { ...DEFAULT_SETTINGS, addCardFlow: "detail" });
+    await screen.findByText("Alpha");
+    await user.click(screen.getByLabelText("Add card to Done"));
+    expectHandleBesideScroller(await screen.findByTestId("card-detail"));
+  });
+
+  it("scrolls an inner box instead of the panel, and draws the host's divider hover on the handle", () => {
+    expect(rule(".folia-detail")).not.toMatch(/overflow(-y)?:/);
+    expect(rule(".folia-detail-scroll")).toContain("overflow-y: auto");
+    expect(rule(".folia-detail-scroll")).toContain("min-height: 0");
+    // The sticky header's z-index stays inside the scroller, under the handle.
+    expect(rule(".folia-detail-scroll")).toContain("isolation: isolate");
+    expect(rule(".folia-detail-resize")).toContain(
+      "border-left: var(--divider-width-hover) solid transparent",
+    );
+    expect(rule(".folia-detail-resize:hover")).toContain(
+      "border-left-color: var(--divider-color-hover)",
+    );
+  });
+});
+
 describe("a link that has to lose the theme's button shape (20260829.01, 20260829.02)", () => {
   // Every one of these lives in the cascade, which jsdom cannot run: it loads no Obsidian theme,
   // so there `.folia-link` already computes what it declares and no arrangement of the stylesheet

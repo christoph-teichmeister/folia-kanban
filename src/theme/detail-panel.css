@@ -3,19 +3,26 @@
   position: relative; /* anchors the left-edge resize handle */
   flex: 0 0 var(--folia-detail-w);
   width: var(--folia-detail-w);
-  /* The left edge is a resize divider, so it is drawn with the app's divider variables. It has to
-     be THIS border and not something the handle draws: a border paints on the border box and is
-     immune to scrolling, while the handle is an absolutely positioned child of this scroll
-     container — one viewport tall, and it scrolls away with the content. `.folia-detail--modal`
-     resets `border` wholesale, keeping this to the side presentations, where the edge is draggable. */
+  /* The resting line of the resize divider. `.folia-detail--modal` resets `border` wholesale,
+     keeping this to the side presentations, where the edge is draggable. */
   border-left: var(--divider-width) solid var(--divider-color);
   background: var(--folia-col-bg);
   box-shadow: var(--folia-shadow-panel);
-  overflow-y: auto;
+  /* The panel itself never scrolls; `.folia-detail-scroll` does. The resize handle is a child of this
+     box, and a child of a scroll container is one viewport tall and scrolls away with the content. */
   display: flex;
   flex-direction: column;
-  scrollbar-width: thin;
   animation: folia-slide-in var(--folia-dur) var(--folia-ease);
+}
+.folia-detail-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  /* Keeps the sticky header's z-index in here, below the resize handle beside this box. */
+  isolation: isolate;
 }
 
 /* Float: panel overlays the columns; the board keeps full width underneath. */
@@ -49,23 +56,25 @@
   border: var(--modal-border-width) solid var(--modal-border-color);
   border-radius: var(--modal-radius);
   box-shadow: var(--folia-shadow-overlay);
+  overflow: hidden; /* the scroller stays inside the rounded corners */
 }
 
-/* Left-edge drag target (side modes only). It draws nothing: it is absolutely positioned inside the
-   panel's own scroll container, so it is exactly one viewport tall and travels with the content,
-   and anything it painted would slide off a scrolled panel and hide under the sticky header at the
-   top. `--divider-color-hover` and `--divider-width-hover` therefore have no home yet; the panel's
-   border above carries the resting line. `left: 0` rather than the old `-3px`: `overflow-y: auto`
-   makes the computed `overflow-x` `auto` too, so half the strip used to be clipped away — not
-   painted and not hit-testable — and the full width is now grabbable. */
+/* Left-edge drag target (side modes only), drawn the way the host draws a split handle: it sits on
+   the panel's border and, under the pointer, paints `--divider-width-hover` of `--divider-color-hover`
+   over it. It covers the panel's border, outside the padding box a scroll container would clip. */
 .folia-detail-resize {
   position: absolute;
-  left: 0;
+  left: calc(var(--divider-width) * -1);
   top: 0;
   bottom: 0;
   width: var(--folia-resize-w);
+  border-left: var(--divider-width-hover) solid transparent;
   cursor: var(--folia-cursor-resize);
   z-index: var(--folia-z-index-base);
+  transition: border-color var(--folia-dur) var(--folia-ease);
+}
+.folia-detail-resize:hover {
+  border-left-color: var(--divider-color-hover);
 }
 @keyframes folia-slide-in {
   from { transform: translateX(var(--folia-detail-slide)); opacity: var(--folia-opacity-hidden); }

@@ -823,6 +823,10 @@ export function CardDetail({
   const card = liveCard ?? lastCard.current;
   const isCreate = createColumn != null;
   const panelRef = useRef<HTMLDivElement | null>(null);
+  // The panel's scroller: everything in the panel but the resize handle. Focus lands here on open,
+  // and every control the panel has sits inside it, because the scroll keys only ever move the
+  // focused element's own scroll container or an ancestor's, never a descendant's.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const descRef = useRef<HTMLTextAreaElement | null>(null);
   const descViewRef = useRef<HTMLDivElement | null>(null);
@@ -1109,7 +1113,7 @@ export function CardDetail({
   // autofocuses its title input (a synchronous commit-phase focus), so don't steal it back here.
   useEffect(() => {
     openerRef.current = doc.activeElement as HTMLElement | null;
-    if (!isCreate) panelRef.current?.focus();
+    if (!isCreate) (scrollRef.current ?? panelRef.current)?.focus();
     return () => openerRef.current?.focus?.();
   }, []);
 
@@ -1341,57 +1345,59 @@ export function CardDetail({
             onPointerDown={onResizeStart}
           />
         )}
-        <div className="folia-detail-header">
-          <h2 className="folia-detail-title">New card in {columnTitle}</h2>
-          <div className="folia-row-actions">
-            <button
-              className="folia-icon-btn"
-              aria-label="Close"
-              title="Close (Esc)"
-              onClick={onClose}
-            >
-              <Icon name="close" />
-            </button>
-          </div>
-        </div>
-        <div className="folia-detail-body">
-          <section className="folia-section">
-            <label>
-              Title
-              <input
-                className="folia-create-title"
-                autoFocus
-                value={createTitle}
-                aria-label="New card title"
-                placeholder="What needs doing?"
-                aria-describedby={fillNote ? createFillId : undefined}
-                onChange={(e) => setCreateTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && createTitle.trim()) {
-                    e.preventDefault();
-                    submitCreate();
-                  }
-                }}
-              />
-            </label>
-            {fillNote && (
-              <p id={createFillId} className="folia-add-card-fill">
-                Added with {fillNote}
-              </p>
-            )}
+        <div className="folia-detail-scroll" ref={scrollRef} tabIndex={-1}>
+          <div className="folia-detail-header">
+            <h2 className="folia-detail-title">New card in {columnTitle}</h2>
             <div className="folia-row-actions">
               <button
-                className="folia-btn folia-btn-primary"
-                disabled={!createTitle.trim()}
-                onClick={submitCreate}
+                className="folia-icon-btn"
+                aria-label="Close"
+                title="Close (Esc)"
+                onClick={onClose}
               >
-                Create
-              </button>
-              <button className="folia-btn" onClick={onClose}>
-                Cancel
+                <Icon name="close" />
               </button>
             </div>
-          </section>
+          </div>
+          <div className="folia-detail-body">
+            <section className="folia-section">
+              <label>
+                Title
+                <input
+                  className="folia-create-title"
+                  autoFocus
+                  value={createTitle}
+                  aria-label="New card title"
+                  placeholder="What needs doing?"
+                  aria-describedby={fillNote ? createFillId : undefined}
+                  onChange={(e) => setCreateTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && createTitle.trim()) {
+                      e.preventDefault();
+                      submitCreate();
+                    }
+                  }}
+                />
+              </label>
+              {fillNote && (
+                <p id={createFillId} className="folia-add-card-fill">
+                  Added with {fillNote}
+                </p>
+              )}
+              <div className="folia-row-actions">
+                <button
+                  className="folia-btn folia-btn-primary"
+                  disabled={!createTitle.trim()}
+                  onClick={submitCreate}
+                >
+                  Create
+                </button>
+                <button className="folia-btn" onClick={onClose}>
+                  Cancel
+                </button>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     );
@@ -1494,606 +1500,610 @@ export function CardDetail({
           onPointerDown={onResizeStart}
         />
       )}
-      <div className="folia-detail-header">
-        {/* A label, not the place to read a long title: clamped to two lines (see
+      <div className="folia-detail-scroll" ref={scrollRef} tabIndex={-1}>
+        <div className="folia-detail-header">
+          {/* A label, not the place to read a long title: clamped to two lines (see
             `.folia-detail-title`) with the whole of it on hover, and the full, wrapping copy
             sitting in the "Resulting display title" row a few pixels below. */}
-        <h2 className="folia-detail-title" title={card.title}>
-          {card.title}
-        </h2>
-        <div className="folia-row-actions">
-          {actions.doneColumnId && fm.status !== actions.doneColumnId && (
-            <button
-              className="folia-icon-btn folia-action-done"
-              aria-label="Mark done"
-              title="Mark done"
-              onClick={() => actions.complete(card)}
-            >
-              <Icon name="check-circle" />
-            </button>
-          )}
-          <button
-            className="folia-icon-btn"
-            aria-label="Open note"
-            title="Open note in Obsidian"
-            onClick={(e) => void repo.openCard(path, e.nativeEvent)}
-            onAuxClick={(e) => {
-              if (e.button !== 1) return;
-              void repo.openCard(path, e.nativeEvent);
-            }}
-          >
-            <Icon name="external-link" />
-          </button>
-          <button
-            className="folia-icon-btn folia-action-delete"
-            aria-label="Delete card"
-            title="Delete card"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <Icon name="trash" />
-          </button>
-          <button
-            className="folia-icon-btn"
-            aria-label="Close"
-            title="Close (Esc)"
-            onClick={onClose}
-          >
-            <Icon name="close" />
-          </button>
-        </div>
-      </div>
-
-      {confirmDelete && (
-        <div className="folia-detail-confirm" role="alertdialog" aria-label="Confirm delete">
-          <span>Delete this card? The note moves to trash.</span>
+          <h2 className="folia-detail-title" title={card.title}>
+            {card.title}
+          </h2>
           <div className="folia-row-actions">
-            <button className="folia-btn folia-btn-danger" onClick={() => actions.remove(path)}>
-              Delete
+            {actions.doneColumnId && fm.status !== actions.doneColumnId && (
+              <button
+                className="folia-icon-btn folia-action-done"
+                aria-label="Mark done"
+                title="Mark done"
+                onClick={() => actions.complete(card)}
+              >
+                <Icon name="check-circle" />
+              </button>
+            )}
+            <button
+              className="folia-icon-btn"
+              aria-label="Open note"
+              title="Open note in Obsidian"
+              onClick={(e) => void repo.openCard(path, e.nativeEvent)}
+              onAuxClick={(e) => {
+                if (e.button !== 1) return;
+                void repo.openCard(path, e.nativeEvent);
+              }}
+            >
+              <Icon name="external-link" />
             </button>
-            <button className="folia-btn" autoFocus onClick={() => setConfirmDelete(false)}>
-              Cancel
+            <button
+              className="folia-icon-btn folia-action-delete"
+              aria-label="Delete card"
+              title="Delete card"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Icon name="trash" />
+            </button>
+            <button
+              className="folia-icon-btn"
+              aria-label="Close"
+              title="Close (Esc)"
+              onClick={onClose}
+            >
+              <Icon name="close" />
             </button>
           </div>
         </div>
-      )}
 
-      <div className="folia-detail-body">
-        <TitleFields
-          basename={card.basename}
-          override={typeof fm[TITLE_KEY] === "string" ? fm[TITLE_KEY] : ""}
-          overrideEditable={!titleRowIsGeneric}
-          text={noteText}
-          titleMode={board.config.titleMode}
-          boardTitle={card.title}
-          overrideRef={titleOverrideRef}
-          onRename={(val) => actions.renameFile(path, val)}
-          onCommitOverride={(val) =>
-            void mutate(() =>
-              val === ""
-                ? repo.unsetFrontmatterKey(path, TITLE_KEY)
-                : repo.setFrontmatter(path, { [TITLE_KEY]: val }),
-            )
-          }
-        />
+        {confirmDelete && (
+          <div className="folia-detail-confirm" role="alertdialog" aria-label="Confirm delete">
+            <span>Delete this card? The note moves to trash.</span>
+            <div className="folia-row-actions">
+              <button className="folia-btn folia-btn-danger" onClick={() => actions.remove(path)}>
+                Delete
+              </button>
+              <button className="folia-btn" autoFocus onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
-        <div className="folia-fields">
-          <label>
-            <span className="folia-prop-key">Status</span>
-            <select
-              value={String(fm.status ?? "")}
-              onChange={(e) =>
-                void mutate(async () => {
-                  const status = e.target.value;
-                  // The panel's Status field is a column change like any other, so a lane that
-                  // would not draw the card refuses it here too.
-                  if (card && actions.refusedByLane(status, card)) return;
-                  await repo.setFrontmatter(path, { status });
-                  // If this card is somebody's subcard, its `- [ ] [[link]]` lines follow the
-                  // column, as a dragged tile's would.
-                  const sync = syncSubcardLines(board, path, status);
-                  if (sync) await repo.applyMove(sync);
-                })
-              }
-            >
-              {board.config.columns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          {/* The one field that does not go through `mutate`: setting a priority also teaches the
-              board note its vocabulary, which lives in the shared action, and that action already
-              reloads the board. Going through `mutate` would reload it a second time. */}
-          <PriorityField
-            value={curPriority}
-            options={priorityOptions(actions.priorities, curPriority)}
-            onCommit={(value) =>
-              void (async () => {
-                await actions.setPriority(path, value);
-                await reload();
-              })()
+        <div className="folia-detail-body">
+          <TitleFields
+            basename={card.basename}
+            override={typeof fm[TITLE_KEY] === "string" ? fm[TITLE_KEY] : ""}
+            overrideEditable={!titleRowIsGeneric}
+            text={noteText}
+            titleMode={board.config.titleMode}
+            boardTitle={card.title}
+            overrideRef={titleOverrideRef}
+            onRename={(val) => actions.renameFile(path, val)}
+            onCommitOverride={(val) =>
+              void mutate(() =>
+                val === ""
+                  ? repo.unsetFrontmatterKey(path, TITLE_KEY)
+                  : repo.setFrontmatter(path, { [TITLE_KEY]: val }),
+              )
             }
           />
-          <label>
-            <span className="folia-prop-key">Due</span>
-            <input
-              className="folia-prop-input"
-              type="date"
-              value={String(fm.due ?? "")}
-              onChange={(e) =>
-                void mutate(() => repo.setFrontmatter(path, { due: e.target.value }))
+
+          <div className="folia-fields">
+            <label>
+              <span className="folia-prop-key">Status</span>
+              <select
+                value={String(fm.status ?? "")}
+                onChange={(e) =>
+                  void mutate(async () => {
+                    const status = e.target.value;
+                    // The panel's Status field is a column change like any other, so a lane that
+                    // would not draw the card refuses it here too.
+                    if (card && actions.refusedByLane(status, card)) return;
+                    await repo.setFrontmatter(path, { status });
+                    // If this card is somebody's subcard, its `- [ ] [[link]]` lines follow the
+                    // column, as a dragged tile's would.
+                    const sync = syncSubcardLines(board, path, status);
+                    if (sync) await repo.applyMove(sync);
+                  })
+                }
+              >
+                {board.config.columns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* The one field that does not go through `mutate`: setting a priority also teaches the
+              board note its vocabulary, which lives in the shared action, and that action already
+              reloads the board. Going through `mutate` would reload it a second time. */}
+            <PriorityField
+              value={curPriority}
+              options={priorityOptions(actions.priorities, curPriority)}
+              onCommit={(value) =>
+                void (async () => {
+                  await actions.setPriority(path, value);
+                  await reload();
+                })()
               }
             />
-          </label>
-          {/* Both of these go through the shared action rather than `mutate`, for the reason the
+            <label>
+              <span className="folia-prop-key">Due</span>
+              <input
+                className="folia-prop-input"
+                type="date"
+                value={String(fm.due ?? "")}
+                onChange={(e) =>
+                  void mutate(() => repo.setFrontmatter(path, { due: e.target.value }))
+                }
+              />
+            </label>
+            {/* Both of these go through the shared action rather than `mutate`, for the reason the
               priority field does: the context menu writes this key too, and one copy of "an empty
               value removes the key" is the only way the two surfaces cannot drift apart. The action
               reloads the board itself, so the panel only re-reads its own body afterwards. */}
-          <AssigneeField
-            names={curAssignees}
-            options={assigneeOptions}
-            me={settings.userName.trim()}
-            onCommit={(value) => void actions.setAssignee(path, value).then(() => reload())}
-            onToggleMine={() =>
-              void actions
-                .setAssignee(path, toggleAssignee(curAssignees, settings.userName.trim()))
-                .then(() => reload())
-            }
-          />
-        </div>
-
-        <div className="folia-props">
-          {extraProps.map(([k, v]) => (
-            <PropRow
-              key={k}
-              name={k}
-              value={String(v)}
-              onCommit={(val) => void mutate(() => repo.setFrontmatter(path, { [k]: val }))}
-              onRemove={() => void mutate(() => repo.unsetFrontmatterKey(path, k))}
-            />
-          ))}
-          <div className="folia-prop-add">
-            <input
-              ref={propKeyRef}
-              className="folia-prop-input"
-              value={newProp.key}
-              placeholder="property"
-              aria-label="New property name"
-              aria-describedby={ownFieldHint ? ownFieldHintId : undefined}
-              onChange={(e) => setNewProp({ ...newProp, key: e.target.value })}
-            />
-            <input
-              className="folia-prop-input"
-              value={newProp.val}
-              placeholder="value"
-              aria-label="New property value"
-              onChange={(e) => setNewProp({ ...newProp, val: e.target.value })}
-            />
-            <button
-              className="folia-btn"
-              aria-label="Add property"
-              disabled={!typedKey || refuseKey}
-              onClick={() => {
-                const key = typedKey;
-                if (!key || refuseKey) return;
-                const val = newProp.val;
-                setNewProp({ key: "", val: "" });
-                void mutate(() => repo.setFrontmatter(path, { [key]: val })).then((ok) => {
-                  // Handed back as a pair, and only into an empty form: an entry typed meanwhile stays.
-                  if (!ok && stillHere())
-                    setNewProp((cur) => (cur.key || cur.val ? cur : { key, val }));
-                });
-              }}
-            >
-              Add
-            </button>
-          </div>
-          {ownFieldHint && (
-            <p className="folia-prop-hint" id={ownFieldHintId}>
-              {ownFieldHint}
-            </p>
-          )}
-        </div>
-
-        <section className="folia-section">
-          <h3>Description</h3>
-          {editingDesc ? (
-            <>
-              <textarea
-                ref={descRef}
-                className="folia-desc"
-                value={descDraft}
-                aria-label="Edit description"
-                style={
-                  preservedDescHeight != null
-                    ? { minHeight: `${preservedDescHeight}px` }
-                    : undefined
-                }
-                onChange={(e) => {
-                  descDirty.current = true;
-                  descLatest.current = e.target.value;
-                  setDescDraft(e.target.value);
-                  setDescRefusal(null);
-                }}
-                placeholder="Add a description…"
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    // Stay inside the editor: don't let Escape bubble to the panel and close it.
-                    e.stopPropagation();
-                    revertDesc();
-                    setDescRefusal(null);
-                    setEditingDesc(false);
-                  }
-                }}
-              />
-              {descRefusal && (
-                <p className="folia-desc-refusal" role="alert">
-                  Not saved: <code>{descRefusal.line}</code>{" "}
-                  {descRefusal.kind === "heading"
-                    ? "would start a section the plugin owns (Subtasks, Comments, History), and everything below it would leave the description. Rename the heading, or quote it inside a code fence."
-                    : descRefusal.kind === "title"
-                      ? "is where the card's title is read from, so saving it would swallow the line and it would not come back. Use a smaller heading, or put it after a line of text."
-                      : "opens a code block that is never closed, so it would run to the end of the note and swallow the sections after it. Close the fence."}
-                </p>
-              )}
-              {body && body.description !== descBase.current && (
-                // The note moved on while this draft was being written. Neither side is thrown
-                // away on its own: Save writes the draft over it, Revert takes the note's version.
-                <p className="folia-desc-behind" role="status">
-                  The description changed in the note while you were editing. Save keeps your
-                  version; Revert loads the note's.
-                </p>
-              )}
-              <div className="folia-row-actions">
-                <button
-                  className="folia-btn folia-btn-primary"
-                  onClick={() => {
-                    const refusal = descriptionRefusal(descDraft);
-                    if (refusal !== null) {
-                      setDescRefusal(refusal);
-                      return;
-                    }
-                    // The draft stays dirty through the write and the reload it triggers, so a
-                    // failed save leaves it in place; only a success makes the saved text the base.
-                    // Words typed while the write was in flight keep the editor open, unsaved.
-                    const saved = descDraft;
-                    descLatest.current = saved;
-                    void mutate(() => repo.setDescription(path, saved)).then((ok) => {
-                      if (!ok || !stillHere()) return;
-                      // The note holds the description trimmed, and is read back that way.
-                      descBase.current = saved.trim();
-                      if (descLatest.current !== saved) return;
-                      descDirty.current = false;
-                      setEditingDesc(false);
-                    });
-                  }}
-                >
-                  Save
-                </button>
-                <button
-                  className="folia-btn"
-                  onClick={() => {
-                    revertDesc();
-                    setDescRefusal(null);
-                    setEditingDesc(false);
-                  }}
-                >
-                  Revert
-                </button>
-              </div>
-            </>
-          ) : body && body.description.trim() ? (
-            // a11y exception (no-static-element-interactions, click-events-have-key-events): click-to-edit is a convenience; the keyboard path is the dedicated "Edit description" pencil button rendered below
-            <div
-              ref={descViewRef}
-              className="folia-desc-view"
-              style={
-                descMaxHeight != null
-                  ? ({ "--folia-desc-max-h": `${descMaxHeight}px` } as CSSProperties)
-                  : undefined
+            <AssigneeField
+              names={curAssignees}
+              options={assigneeOptions}
+              me={settings.userName.trim()}
+              onCommit={(value) => void actions.setAssignee(path, value).then(() => reload())}
+              onToggleMine={() =>
+                void actions
+                  .setAssignee(path, toggleAssignee(curAssignees, settings.userName.trim()))
+                  .then(() => reload())
               }
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest("a")) return;
-                beginEditDesc();
-              }}
-            >
-              <Markdown
-                markdown={body.description}
-                sourcePath={path}
-                className="folia-desc-rendered"
+            />
+          </div>
+
+          <div className="folia-props">
+            {extraProps.map(([k, v]) => (
+              <PropRow
+                key={k}
+                name={k}
+                value={String(v)}
+                onCommit={(val) => void mutate(() => repo.setFrontmatter(path, { [k]: val }))}
+                onRemove={() => void mutate(() => repo.unsetFrontmatterKey(path, k))}
+              />
+            ))}
+            <div className="folia-prop-add">
+              <input
+                ref={propKeyRef}
+                className="folia-prop-input"
+                value={newProp.key}
+                placeholder="property"
+                aria-label="New property name"
+                aria-describedby={ownFieldHint ? ownFieldHintId : undefined}
+                onChange={(e) => setNewProp({ ...newProp, key: e.target.value })}
+              />
+              <input
+                className="folia-prop-input"
+                value={newProp.val}
+                placeholder="value"
+                aria-label="New property value"
+                onChange={(e) => setNewProp({ ...newProp, val: e.target.value })}
               />
               <button
-                className="folia-icon-btn folia-mini folia-desc-edit"
-                aria-label="Edit description"
-                title="Edit"
+                className="folia-btn"
+                aria-label="Add property"
+                disabled={!typedKey || refuseKey}
+                onClick={() => {
+                  const key = typedKey;
+                  if (!key || refuseKey) return;
+                  const val = newProp.val;
+                  setNewProp({ key: "", val: "" });
+                  void mutate(() => repo.setFrontmatter(path, { [key]: val })).then((ok) => {
+                    // Handed back as a pair, and only into an empty form: an entry typed meanwhile stays.
+                    if (!ok && stillHere())
+                      setNewProp((cur) => (cur.key || cur.val ? cur : { key, val }));
+                  });
+                }}
+              >
+                Add
+              </button>
+            </div>
+            {ownFieldHint && (
+              <p className="folia-prop-hint" id={ownFieldHintId}>
+                {ownFieldHint}
+              </p>
+            )}
+          </div>
+
+          <section className="folia-section">
+            <h3>Description</h3>
+            {editingDesc ? (
+              <>
+                <textarea
+                  ref={descRef}
+                  className="folia-desc"
+                  value={descDraft}
+                  aria-label="Edit description"
+                  style={
+                    preservedDescHeight != null
+                      ? { minHeight: `${preservedDescHeight}px` }
+                      : undefined
+                  }
+                  onChange={(e) => {
+                    descDirty.current = true;
+                    descLatest.current = e.target.value;
+                    setDescDraft(e.target.value);
+                    setDescRefusal(null);
+                  }}
+                  placeholder="Add a description…"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      // Stay inside the editor: don't let Escape bubble to the panel and close it.
+                      e.stopPropagation();
+                      revertDesc();
+                      setDescRefusal(null);
+                      setEditingDesc(false);
+                    }
+                  }}
+                />
+                {descRefusal && (
+                  <p className="folia-desc-refusal" role="alert">
+                    Not saved: <code>{descRefusal.line}</code>{" "}
+                    {descRefusal.kind === "heading"
+                      ? "would start a section the plugin owns (Subtasks, Comments, History), and everything below it would leave the description. Rename the heading, or quote it inside a code fence."
+                      : descRefusal.kind === "title"
+                        ? "is where the card's title is read from, so saving it would swallow the line and it would not come back. Use a smaller heading, or put it after a line of text."
+                        : "opens a code block that is never closed, so it would run to the end of the note and swallow the sections after it. Close the fence."}
+                  </p>
+                )}
+                {body && body.description !== descBase.current && (
+                  // The note moved on while this draft was being written. Neither side is thrown
+                  // away on its own: Save writes the draft over it, Revert takes the note's version.
+                  <p className="folia-desc-behind" role="status">
+                    The description changed in the note while you were editing. Save keeps your
+                    version; Revert loads the note's.
+                  </p>
+                )}
+                <div className="folia-row-actions">
+                  <button
+                    className="folia-btn folia-btn-primary"
+                    onClick={() => {
+                      const refusal = descriptionRefusal(descDraft);
+                      if (refusal !== null) {
+                        setDescRefusal(refusal);
+                        return;
+                      }
+                      // The draft stays dirty through the write and the reload it triggers, so a
+                      // failed save leaves it in place; only a success makes the saved text the base.
+                      // Words typed while the write was in flight keep the editor open, unsaved.
+                      const saved = descDraft;
+                      descLatest.current = saved;
+                      void mutate(() => repo.setDescription(path, saved)).then((ok) => {
+                        if (!ok || !stillHere()) return;
+                        // The note holds the description trimmed, and is read back that way.
+                        descBase.current = saved.trim();
+                        if (descLatest.current !== saved) return;
+                        descDirty.current = false;
+                        setEditingDesc(false);
+                      });
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="folia-btn"
+                    onClick={() => {
+                      revertDesc();
+                      setDescRefusal(null);
+                      setEditingDesc(false);
+                    }}
+                  >
+                    Revert
+                  </button>
+                </div>
+              </>
+            ) : body && body.description.trim() ? (
+              // a11y exception (no-static-element-interactions, click-events-have-key-events): click-to-edit is a convenience; the keyboard path is the dedicated "Edit description" pencil button rendered below
+              <div
+                ref={descViewRef}
+                className="folia-desc-view"
+                style={
+                  descMaxHeight != null
+                    ? ({ "--folia-desc-max-h": `${descMaxHeight}px` } as CSSProperties)
+                    : undefined
+                }
                 onClick={(e) => {
-                  e.stopPropagation();
+                  if ((e.target as HTMLElement).closest("a")) return;
                   beginEditDesc();
                 }}
               >
-                <Icon name="pencil" />
-              </button>
-            </div>
-          ) : (
-            <button
-              className="folia-desc-empty folia-muted"
-              aria-label="Edit description"
-              onClick={() => setEditingDesc(true)}
-            >
-              Add a description…
-            </button>
-          )}
-        </section>
-
-        <section className="folia-section">
-          <h3>Subtasks &amp; subcards</h3>
-          <ul className="folia-subtasks">
-            {body?.subtasks.map((s) => (
-              <li key={s.index} className="folia-subtask">
-                <input
-                  type="checkbox"
-                  checked={s.done}
-                  aria-label={`Toggle ${s.text}`}
-                  onChange={() =>
-                    void mutate(async () => {
-                      // The board's own toggle, called rather than copied: a line that claims a
-                      // column has its claim moved with its checkbox, so the two never tell
-                      // different stories, and a refusal of either half is worded there once.
-                      const refused = await setSubtaskDone(repo, board, {
-                        path,
-                        line: s,
-                        done: !s.done,
-                        ctx: matchCtx,
-                      });
-                      if (refused !== null) {
-                        actions.reportError(
-                          new Error(`${refused} The box is ticked; its column is unchanged.`),
-                        );
-                      }
-                    })
-                  }
+                <Markdown
+                  markdown={body.description}
+                  sourcePath={path}
+                  className="folia-desc-rendered"
                 />
-                {s.kind === "card" && s.link ? (
-                  (() => {
-                    const child = resolve(s.link);
-                    return child ? (
-                      // The link text is the child's basename (that is what wikilinks bind to);
-                      // show the child's displayed title, same as its tile on the board.
-                      <button className="folia-link" onClick={() => onNavigate?.(child)}>
-                        {board.cards[child]?.title ?? s.link}
-                      </button>
-                    ) : (
-                      <span
-                        className="folia-link-missing"
-                        title="No card with this name on the board"
-                      >
-                        {s.link}
-                      </span>
-                    );
-                  })()
-                ) : (
-                  <span className={s.done ? "folia-done" : ""}>{s.text}</span>
-                )}
-                {/* Where this subitem sits on the board. One control, both kinds: a todo claims a
+                <button
+                  className="folia-icon-btn folia-mini folia-desc-edit"
+                  aria-label="Edit description"
+                  title="Edit"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    beginEditDesc();
+                  }}
+                >
+                  <Icon name="pencil" />
+                </button>
+              </div>
+            ) : (
+              <button
+                className="folia-desc-empty folia-muted"
+                aria-label="Edit description"
+                onClick={() => setEditingDesc(true)}
+              >
+                Add a description…
+              </button>
+            )}
+          </section>
+
+          <section className="folia-section">
+            <h3>Subtasks &amp; subcards</h3>
+            <ul className="folia-subtasks">
+              {body?.subtasks.map((s) => (
+                <li key={s.index} className="folia-subtask">
+                  <input
+                    type="checkbox"
+                    checked={s.done}
+                    aria-label={`Toggle ${s.text}`}
+                    onChange={() =>
+                      void mutate(async () => {
+                        // The board's own toggle, called rather than copied: a line that claims a
+                        // column has its claim moved with its checkbox, so the two never tell
+                        // different stories, and a refusal of either half is worded there once.
+                        const refused = await setSubtaskDone(repo, board, {
+                          path,
+                          line: s,
+                          done: !s.done,
+                          ctx: matchCtx,
+                        });
+                        if (refused !== null) {
+                          actions.reportError(
+                            new Error(`${refused} The box is ticked; its column is unchanged.`),
+                          );
+                        }
+                      })
+                    }
+                  />
+                  {s.kind === "card" && s.link ? (
+                    (() => {
+                      const child = resolve(s.link);
+                      return child ? (
+                        // The link text is the child's basename (that is what wikilinks bind to);
+                        // show the child's displayed title, same as its tile on the board.
+                        <button className="folia-link" onClick={() => onNavigate?.(child)}>
+                          {board.cards[child]?.title ?? s.link}
+                        </button>
+                      ) : (
+                        <span
+                          className="folia-link-missing"
+                          title="No card with this name on the board"
+                        >
+                          {s.link}
+                        </span>
+                      );
+                    })()
+                  ) : (
+                    <span className={s.done ? "folia-done" : ""}>{s.text}</span>
+                  )}
+                  {/* Where this subitem sits on the board. One control, both kinds: a todo claims a
                     column on its own checklist line, a subcard through its note's own `status` —
                     and either way "With this card" means "wherever this card is". A subtask whose
                     link names no card on the board has nothing to write to, so the control says so
                     rather than accepting a choice it would drop. */}
-                {(() => {
-                  const child = s.kind === "card" && s.link ? resolve(s.link) : null;
-                  const orphanLink = s.kind === "card" && child === null;
-                  const claim = subtaskColumn(board, s, resolve);
-                  return (
-                    <select
-                      className="folia-subtask-column"
-                      aria-label={`Column for ${s.text}`}
-                      title={orphanLink ? "No card on the board to place" : "Column"}
-                      disabled={orphanLink}
-                      value={claim.value}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (!isTodoLine(s)) {
-                          if (!child) return;
-                          void mutate(async () => {
-                            // "With this card" places the child without saying whether the work
-                            // is over, so it leaves the checkbox as it is; a named column ticks or
-                            // unticks the line, as it does for an inline todo.
-                            if (value === "") return repo.unsetFrontmatterKey(child, "status");
-                            // Giving a subcard a column of its own is the same write, judged the
-                            // same way — a lane draws by its rule and takes no card by hand.
-                            const childCard = board.cards[child];
-                            if (childCard && actions.refusedByLane(value, childCard)) return;
-                            await repo.setFrontmatter(child, { status: value });
-                            const sync = syncSubcardLines(board, child, value);
-                            if (sync) await repo.applyMove(sync);
-                          });
-                          return;
-                        }
-                        // The line as this panel read it, not as the board did: what the column
-                        // replaces is the claim shown on this row, and the two readings can differ.
-                        actions.moveTodo(path, s, value === "" ? null : value);
-                      }}
-                    >
-                      <option value="">With this card</option>
-                      {board.config.columns.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.title}
-                        </option>
-                      ))}
-                      {/* The board has no such column, so nothing above can be showing — offer the
+                  {(() => {
+                    const child = s.kind === "card" && s.link ? resolve(s.link) : null;
+                    const orphanLink = s.kind === "card" && child === null;
+                    const claim = subtaskColumn(board, s, resolve);
+                    return (
+                      <select
+                        className="folia-subtask-column"
+                        aria-label={`Column for ${s.text}`}
+                        title={orphanLink ? "No card on the board to place" : "Column"}
+                        disabled={orphanLink}
+                        value={claim.value}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (!isTodoLine(s)) {
+                            if (!child) return;
+                            void mutate(async () => {
+                              // "With this card" places the child without saying whether the work
+                              // is over, so it leaves the checkbox as it is; a named column ticks or
+                              // unticks the line, as it does for an inline todo.
+                              if (value === "") return repo.unsetFrontmatterKey(child, "status");
+                              // Giving a subcard a column of its own is the same write, judged the
+                              // same way — a lane draws by its rule and takes no card by hand.
+                              const childCard = board.cards[child];
+                              if (childCard && actions.refusedByLane(value, childCard)) return;
+                              await repo.setFrontmatter(child, { status: value });
+                              const sync = syncSubcardLines(board, child, value);
+                              if (sync) await repo.applyMove(sync);
+                            });
+                            return;
+                          }
+                          // The line as this panel read it, not as the board did: what the column
+                          // replaces is the claim shown on this row, and the two readings can differ.
+                          actions.moveTodo(path, s, value === "" ? null : value);
+                        }}
+                      >
+                        <option value="">With this card</option>
+                        {board.config.columns.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
+                          </option>
+                        ))}
+                        {/* The board has no such column, so nothing above can be showing — offer the
                           written value itself, or there would be no way to select away from it. */}
-                      {!claim.known && (
-                        <option value={claim.value}>{claim.value} (no such column)</option>
-                      )}
-                    </select>
-                  );
-                })()}
-                <button
-                  className="folia-icon-btn folia-mini"
-                  aria-label="Remove"
-                  title="Remove"
-                  onClick={() => void mutate(() => repo.removeSubtask(path, s))}
-                >
-                  <Icon name="close" />
-                </button>
-              </li>
-            ))}
-            {body && body.subtasks.length === 0 && (
-              <li className="folia-muted">No subtasks yet.</li>
-            )}
-          </ul>
-          <div className="folia-add-inline">
-            <input
-              value={newTodo}
-              placeholder="Add a todo…"
-              aria-label="Add a todo"
-              onChange={(e) => setNewTodo(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newTodo.trim()) {
-                  const text = newTodo;
-                  setNewTodo("");
-                  void mutate(() => repo.addTodo(path, text.trim())).then((ok) => {
-                    if (!ok && stillHere()) setNewTodo((cur) => cur || text);
-                  });
-                }
-              }}
-            />
-          </div>
-          <div className="folia-add-inline">
-            <input
-              ref={subcardRef}
-              value={newSubcard}
-              placeholder="Add a subcard…"
-              aria-label="Add a subcard"
-              onChange={(e) => setNewSubcard(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newSubcard.trim()) {
-                  const text = newSubcard;
-                  setNewSubcard("");
-                  void mutate(() => repo.addSubcard(path, text.trim())).then((ok) => {
-                    if (!ok && stillHere()) setNewSubcard((cur) => cur || text);
-                  });
-                }
-              }}
-            />
-          </div>
-        </section>
+                        {!claim.known && (
+                          <option value={claim.value}>{claim.value} (no such column)</option>
+                        )}
+                      </select>
+                    );
+                  })()}
+                  <button
+                    className="folia-icon-btn folia-mini"
+                    aria-label="Remove"
+                    title="Remove"
+                    onClick={() => void mutate(() => repo.removeSubtask(path, s))}
+                  >
+                    <Icon name="close" />
+                  </button>
+                </li>
+              ))}
+              {body && body.subtasks.length === 0 && (
+                <li className="folia-muted">No subtasks yet.</li>
+              )}
+            </ul>
+            <div className="folia-add-inline">
+              <input
+                value={newTodo}
+                placeholder="Add a todo…"
+                aria-label="Add a todo"
+                onChange={(e) => setNewTodo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTodo.trim()) {
+                    const text = newTodo;
+                    setNewTodo("");
+                    void mutate(() => repo.addTodo(path, text.trim())).then((ok) => {
+                      if (!ok && stillHere()) setNewTodo((cur) => cur || text);
+                    });
+                  }
+                }}
+              />
+            </div>
+            <div className="folia-add-inline">
+              <input
+                ref={subcardRef}
+                value={newSubcard}
+                placeholder="Add a subcard…"
+                aria-label="Add a subcard"
+                onChange={(e) => setNewSubcard(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newSubcard.trim()) {
+                    const text = newSubcard;
+                    setNewSubcard("");
+                    void mutate(() => repo.addSubcard(path, text.trim())).then((ok) => {
+                      if (!ok && stillHere()) setNewSubcard((cur) => cur || text);
+                    });
+                  }
+                }}
+              />
+            </div>
+          </section>
 
-        {board.config.relations.map((type) => (
-          <RelationTypeSections
-            key={type.key}
-            type={type}
-            links={relations.filter((l) => l.type === type.key)}
-            board={board}
-            path={path}
-            choices={relationChoicesValue}
-            listId={relationListId}
-            onNavigate={onNavigate}
-            mutate={mutate}
-          />
-        ))}
-        <datalist id={relationListId}>
-          {[...relationChoicesValue.keys()].map((label) => (
-            <option key={label} value={label} />
+          {board.config.relations.map((type) => (
+            <RelationTypeSections
+              key={type.key}
+              type={type}
+              links={relations.filter((l) => l.type === type.key)}
+              board={board}
+              path={path}
+              choices={relationChoicesValue}
+              listId={relationListId}
+              onNavigate={onNavigate}
+              mutate={mutate}
+            />
           ))}
-        </datalist>
-
-        <section className="folia-section">
-          <h3>Comments</h3>
-          <ul className="folia-comments">
-            {body?.comments.flatMap((c, i) => {
-              // The divider is an extra <li> spliced in at the boundary, NOT a second list: `i`
-              // stays the comment's own position, which is the edit/delete handle the model walks.
-              const isFirstUnread = unread.indices[0] === i;
-              // Keyed by the line itself, not its position: a reload after a comment is removed
-              // above this one must keep an inline edit on the comment it was opened on. The text
-              // is part of the key on purpose — a comment rewritten from elsewhere while its editor
-              // is open is a different line, and the editor closes rather than write the old
-              // wording back over it. Identical lines are told apart by which of them this one is.
-              const key = commentKeys[i] ?? String(i);
-              // "reply" marks the comment that actually landed after one of yours, which need not be
-              // the first unread one — an older unread comment can sit before it.
-              const mark: false | "unread" | "reply" = !unread.indices.includes(i)
-                ? false
-                : unread.replyIndex === i
-                  ? "reply"
-                  : "unread";
-              const item = (
-                <CommentItem
-                  key={key}
-                  timestamp={c.timestamp}
-                  author={c.author}
-                  unread={mark}
-                  text={c.text}
-                  sourcePath={path}
-                  onSave={(val) =>
-                    void mutate(async () => {
-                      await repo.updateComment(path, { index: i, text: c.text }, val);
-                      postedHereEdited(i, val);
-                    })
-                  }
-                  onDelete={() =>
-                    void mutate(async () => {
-                      await repo.removeComment(path, { index: i, text: c.text });
-                      postedHereRemoved(i);
-                    })
-                  }
-                />
-              );
-              return isFirstUnread
-                ? [
-                    // A plain <li>: a `role="separator"` here would stop being a listitem and
-                    // break the <ul>'s list semantics (axe `list`). Hidden from assistive tech:
-                    // it would only add an item that says "New" and shift every count after it,
-                    // while each unread line already carries its own tag.
-                    <li key={`new-${key}`} className="folia-comments-divider" aria-hidden="true">
-                      <span>New</span>
-                    </li>,
-                    item,
-                  ]
-                : [item];
-            })}
-            {body && body.comments.length === 0 && (
-              <li className="folia-muted">No comments yet.</li>
-            )}
-          </ul>
-          <div className="folia-add-inline">
-            <textarea
-              value={newComment}
-              placeholder="Write a comment…"
-              aria-label="Write a comment"
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && newComment.trim()) {
-                  e.preventDefault();
-                  const text = newComment.trim();
-                  const floor = body?.comments.length ?? 0;
-                  setNewComment("");
-                  void mutate(async () => {
-                    await repo.addComment(path, text);
-                    if (stillHere()) postedHere.current.posts.push({ floor, text });
-                  }).then((ok) => {
-                    if (!ok && stillHere()) setNewComment((cur) => cur || text);
-                  });
-                }
-              }}
-            />
-          </div>
-        </section>
-
-        <section className="folia-section">
-          <h3>History</h3>
-          <ul className="folia-history">
-            {body?.history.map((h, i) => (
-              <li key={i}>
-                <span className="folia-ts">{h.timestamp}</span>
-                <span>{h.text}</span>
-              </li>
+          <datalist id={relationListId}>
+            {[...relationChoicesValue.keys()].map((label) => (
+              <option key={label} value={label} />
             ))}
-            {body && body.history.length === 0 && <li className="folia-muted">No history yet.</li>}
-          </ul>
-        </section>
+          </datalist>
+
+          <section className="folia-section">
+            <h3>Comments</h3>
+            <ul className="folia-comments">
+              {body?.comments.flatMap((c, i) => {
+                // The divider is an extra <li> spliced in at the boundary, NOT a second list: `i`
+                // stays the comment's own position, which is the edit/delete handle the model walks.
+                const isFirstUnread = unread.indices[0] === i;
+                // Keyed by the line itself, not its position: a reload after a comment is removed
+                // above this one must keep an inline edit on the comment it was opened on. The text
+                // is part of the key on purpose — a comment rewritten from elsewhere while its editor
+                // is open is a different line, and the editor closes rather than write the old
+                // wording back over it. Identical lines are told apart by which of them this one is.
+                const key = commentKeys[i] ?? String(i);
+                // "reply" marks the comment that actually landed after one of yours, which need not be
+                // the first unread one — an older unread comment can sit before it.
+                const mark: false | "unread" | "reply" = !unread.indices.includes(i)
+                  ? false
+                  : unread.replyIndex === i
+                    ? "reply"
+                    : "unread";
+                const item = (
+                  <CommentItem
+                    key={key}
+                    timestamp={c.timestamp}
+                    author={c.author}
+                    unread={mark}
+                    text={c.text}
+                    sourcePath={path}
+                    onSave={(val) =>
+                      void mutate(async () => {
+                        await repo.updateComment(path, { index: i, text: c.text }, val);
+                        postedHereEdited(i, val);
+                      })
+                    }
+                    onDelete={() =>
+                      void mutate(async () => {
+                        await repo.removeComment(path, { index: i, text: c.text });
+                        postedHereRemoved(i);
+                      })
+                    }
+                  />
+                );
+                return isFirstUnread
+                  ? [
+                      // A plain <li>: a `role="separator"` here would stop being a listitem and
+                      // break the <ul>'s list semantics (axe `list`). Hidden from assistive tech:
+                      // it would only add an item that says "New" and shift every count after it,
+                      // while each unread line already carries its own tag.
+                      <li key={`new-${key}`} className="folia-comments-divider" aria-hidden="true">
+                        <span>New</span>
+                      </li>,
+                      item,
+                    ]
+                  : [item];
+              })}
+              {body && body.comments.length === 0 && (
+                <li className="folia-muted">No comments yet.</li>
+              )}
+            </ul>
+            <div className="folia-add-inline">
+              <textarea
+                value={newComment}
+                placeholder="Write a comment…"
+                aria-label="Write a comment"
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && newComment.trim()) {
+                    e.preventDefault();
+                    const text = newComment.trim();
+                    const floor = body?.comments.length ?? 0;
+                    setNewComment("");
+                    void mutate(async () => {
+                      await repo.addComment(path, text);
+                      if (stillHere()) postedHere.current.posts.push({ floor, text });
+                    }).then((ok) => {
+                      if (!ok && stillHere()) setNewComment((cur) => cur || text);
+                    });
+                  }
+                }}
+              />
+            </div>
+          </section>
+
+          <section className="folia-section">
+            <h3>History</h3>
+            <ul className="folia-history">
+              {body?.history.map((h, i) => (
+                <li key={i}>
+                  <span className="folia-ts">{h.timestamp}</span>
+                  <span>{h.text}</span>
+                </li>
+              ))}
+              {body && body.history.length === 0 && (
+                <li className="folia-muted">No history yet.</li>
+              )}
+            </ul>
+          </section>
+        </div>
       </div>
     </div>
   );
