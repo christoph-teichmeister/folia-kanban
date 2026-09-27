@@ -1850,6 +1850,24 @@ describe("an edit that leaves the note as it was", () => {
     expectNoWrite();
   });
 
+  it("writes nothing when a card drawn inside its parent is sent to the column it stands in", async () => {
+    const { app, repo } = untouched();
+    app.vault.addFile(
+      "basic/Cards/Parent.md",
+      card("status: todo", "\n# Parent\n\n## Subtasks\n- [ ] [[Child]]\n"),
+    );
+    app.vault.addFile("basic/Cards/Child.md", card("status: todo"));
+    const before = app.vault.text("basic/Cards/Child.md");
+    const board = await repo.loadBoard();
+    const child = board.cards["basic/Cards/Child.md"];
+    if (!child) throw new Error("card not loaded");
+    expect(board.columns["todo"]).not.toContain("basic/Cards/Child.md");
+
+    await moveCardTo(repo, board, { card: child, columnId: "todo" });
+
+    expect(app.vault.text("basic/Cards/Child.md")).toBe(before);
+  });
+
   it("still writes, and records, a value that does change", async () => {
     const { app, repo } = untouched();
 

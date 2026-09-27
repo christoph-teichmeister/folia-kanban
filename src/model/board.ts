@@ -1387,9 +1387,12 @@ export function moveCard(
     mutation.history = `Reordered within ${columnTitle(board.config, toColumnId)}`;
   }
   // Dropped back on the slot it already holds, the card keeps the order it has: a fresh number for
-  // the same place would be a write that changes nothing anyone can see.
+  // the same place would be a write that changes nothing anyone can see. The same goes for a card
+  // drawn inside its parent in that column, which its parent orders rather than any number.
+  const slot = (board.columns[toColumnId] ?? []).indexOf(cardPath);
   const sameSlot =
-    fromStatus === toColumnId && (board.columns[toColumnId] ?? []).indexOf(cardPath) === dropIndex;
+    fromStatus === toColumnId &&
+    (slot === dropIndex || (slot < 0 && nestedCards(board).some((n) => n.path === cardPath)));
   if (!sameSlot)
     mutation.setFrontmatter = { status: toColumnId, order: computeDropOrder(colCards, dropIndex) };
   // The checkbox follows what the tile did: a card with no `status`, or one naming a column since
