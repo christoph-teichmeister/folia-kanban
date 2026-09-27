@@ -203,7 +203,7 @@ export const moveCard = tool({
   name: "move_card",
   title: "Move a card",
   description:
-    "Move a card to a column, optionally to a given slot in it (0 is the top; leave it out to append). Records the move in the card's history and keeps a parent's checklist box in step, the same way a drag does. A checklist line standing in a column of its own also needs its `line`, as get_board or get_card reported it.",
+    "Move a card to a column, optionally to a given slot in it (0 is the top; leave it out to append, or to leave a card already in that column where it is). A move to where the card already stands writes nothing. Records the move in the card's history and keeps a parent's checklist box in step, the same way a drag does. A checklist line standing in a column of its own also needs its `line`, as get_board or get_card reported it.",
   input,
   run: async (host, args) => {
     const { repo, board } = await openBoard(host, args.board);

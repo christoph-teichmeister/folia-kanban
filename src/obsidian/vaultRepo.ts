@@ -646,14 +646,8 @@ export class VaultRepository implements CardRepository, HoverParent {
     let failure: Error | undefined;
     for (const { path, links, done } of mutation.parentLines ?? []) {
       try {
-        // Looked up twice on purpose: once to skip a note that needs nothing (so an unchanged
-        // note is not rewritten at all), and again inside the atomic write, which is the text the
-        // history line must describe.
-        if (
-          pendingSubcardLinks(await this.app.vault.cachedRead(this.file(path)), links, done)
-            .length === 0
-        )
-          continue;
+        // `editBody` skips a note that needs nothing, deciding on a fresh read; the lines named
+        // below are the ones found inside the atomic write, which is the text the history describes.
         let pending: { link: string; text: string }[] = [];
         const edited = await this.editBody(path, (t) => {
           pending = pendingSubcardLinks(t, links, done);
