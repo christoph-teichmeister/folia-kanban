@@ -126,6 +126,13 @@
   font-style: italic;
 }
 
+.folia-column-rule {
+  margin: 0 var(--folia-space-md) var(--folia-space-md);
+  color: var(--text-faint);
+  font-size: var(--folia-font-size-sm);
+  text-align: center;
+}
+
 .folia-scope .folia-column-add {
   display: flex;
   align-items: center;

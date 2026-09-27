@@ -30,3 +30,12 @@
   display: flex;
   gap: var(--folia-space-sm);
 }
+.folia-add-card-fill {
+  margin: 0;
+  padding: 0 var(--folia-space-xxs);
+  color: var(--text-muted);
+  font-size: var(--folia-font-size-sm);
+}
+.folia-section > .folia-add-card-fill {
+  margin-block: var(--folia-space-sm);
+}

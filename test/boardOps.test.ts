@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { moveCardOver, moveCardTo, setCardPriority, setSubtaskDone } from "../src/model/boardOps";
+import {
+  addCard,
+  moveCardOver,
+  moveCardTo,
+  setCardPriority,
+  setSubtaskDone,
+} from "../src/model/boardOps";
 import { columnOf, makeTodoPath, moveSubtask } from "../src/model/board";
 import type { Board, BoardConfig, Card, TodoLine } from "../src/model/types";
 import { FakeRepo } from "./fakeRepo";
@@ -565,5 +571,35 @@ describe("setCardPriority", () => {
     });
     await setCardPriority(repo, { path: "Tasks/B.md", value: "now" });
     expect(repo.config.priorities).toEqual(["now"]);
+  });
+});
+
+describe("adding a card with what its column's rule names", () => {
+  it("writes the fill onto the new note, learning a priority as the panel would", async () => {
+    const repo = new FakeRepo(config, {});
+    const path = await addCard(repo, {
+      title: "Spike",
+      columnId: "todo",
+      fill: { area: "research", priority: "A" },
+    });
+    expect(repo.files.get(path)?.fm).toMatchObject({
+      status: "todo",
+      area: "research",
+      priority: "A",
+    });
+    expect((await repo.loadBoard()).config.priorities).toEqual(["A"]);
+  });
+
+  it("names the card it already made when the fill fails, so nobody adds it twice", async () => {
+    const repo = new FakeRepo(config, {});
+    repo.setFrontmatter = async () => {
+      throw new Error("disk is full");
+    };
+    await expect(
+      addCard(repo, { title: "Spike", columnId: "todo", fill: { area: "research" } }),
+    ).rejects.toThrow(
+      /"Spike" was added.*disk is full.*Tasks\/Spike\.md.*rather than adding it again/,
+    );
+    expect(repo.files.has("Tasks/Spike.md")).toBe(true);
   });
 });

@@ -9,11 +9,14 @@
 import {
   judgeCard,
   parseFilter,
+  writtenTokens,
   type Filter,
+  type FilterKey,
   type FilterVerdict,
   type MatchContext,
 } from "./filter";
 import { dateOnly } from "./dates";
+import { samePriority } from "./priorities";
 import type { Board, Card, CardFrontmatter, ColumnDef } from "./types";
 
 /** A column read as the rule it draws by: the rule as written, and the same rule parsed. */
@@ -242,6 +245,94 @@ export function prospectiveCard(
     frontmatter: { type: "task", status: columnId, created: dateOnly(), ...fields },
     childLinks: [],
   };
+}
+
+/** The board's own spelling of a priority a rule names, so `priority:a` writes the `A` it ranks. */
+function boardSpelling(board: Board, value: string): string {
+  const carried = Object.values(board.cards).map((c) => c.frontmatter.priority);
+  const known = [...board.config.priorities, ...carried].find(
+    (p): p is string => typeof p === "string" && samePriority(p, value),
+  );
+  return known ?? value;
+}
+
+/** A property a token writes, and whether a second token adds to it or replaces it. */
+interface Written {
+  key: "area" | "priority" | "tags" | "assignee" | "due";
+  value: string;
+  list?: true;
+}
+
+/**
+ * What one token of a rule writes onto an added card, or null when it names nothing a note can
+ * simply carry. `status:` is the column the write already names; `context:` is the folder a card
+ * lives in; `is:`, `unread:` and `due:soon` or `overdue` describe a state rather than a value; a
+ * `none` asks for nothing.
+ */
+const WRITES: Partial<
+  Record<FilterKey, (value: string, board: Board, ctx: MatchContext) => Written | null>
+> = {
+  area: (value) => ({ key: "area", value }),
+  priority: (value, board) => ({ key: "priority", value: boardSpelling(board, value) }),
+  tag: (value) => ({ key: "tags", value, list: true }),
+  assignee: (value, _board, ctx) => {
+    const word = value.toLowerCase();
+    const name = word === "none" ? "" : word === "me" ? (ctx.me ?? "").trim() : value;
+    return name ? { key: "assignee", value: name, list: true } : null;
+  },
+  due: (value, _board, ctx) => {
+    const word = value.toLowerCase();
+    if (word === "today") return { key: "due", value: ctx.today };
+    return /^\d{4}-\d{2}-\d{2}$/.test(word) ? { key: "due", value: word } : null;
+  },
+};
+
+/**
+ * What a card added straight into `columnId` is written with, so the lane there draws it: each
+ * value its rule names that a note can simply carry ({@link WRITES}), in the case the rule wrote it
+ * (a priority in the board's own spelling). Empty for a plain column. Tokens that write nothing —
+ * free text included, which is the title's business — are left for {@link takesNewCards} to judge
+ * as they stand.
+ */
+export function laneFill(
+  board: Board,
+  columnId: string,
+  ctx: MatchContext,
+): Partial<CardFrontmatter> {
+  const lane = laneOf(board, columnId);
+  if (!lane) return {};
+  const lists: Record<string, string[]> = {};
+  const fill: Partial<CardFrontmatter> = {};
+  for (const token of writtenTokens(lane.rule)) {
+    const written = WRITES[token.key]?.(token.value, board, ctx);
+    if (!written) continue;
+    if (written.list) (lists[written.key] ??= []).push(written.value);
+    else fill[written.key] = written.value;
+  }
+  // One tag is still a list, as Obsidian writes `tags`; one assignee is the plain name people type.
+  for (const [key, values] of Object.entries(lists)) {
+    fill[key] = key === "assignee" && values.length === 1 ? values[0] : values;
+  }
+  return fill;
+}
+
+/**
+ * Can a card added straight into `columnId` ever be drawn there? True for a plain column, and for
+ * a lane whose rule the added card — filled by {@link laneFill} — would not reject. False is a
+ * lane whose rule reads something an added card cannot carry (`is:blocked`, `due:overdue`, a
+ * `context:`, two different areas), where offering to add a card would only lead to a refusal.
+ *
+ * Judged before a title exists, so a rule with free text in it answers false: the title is the
+ * only thing free text could match, and nobody types a title to satisfy a column's rule.
+ */
+export function takesNewCards(board: Board, columnId: string, ctx: MatchContext): boolean {
+  const check = laneVerdict(
+    board,
+    columnId,
+    prospectiveCard("", columnId, laneFill(board, columnId, ctx)),
+    ctx,
+  );
+  return check?.verdict !== "rejects";
 }
 
 /**

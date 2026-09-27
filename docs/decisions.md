@@ -311,3 +311,13 @@ The board had taken the raised-button reading, and light mode is where it broke:
 Transparent at rest is not the board giving up a signal. It is the board stopping a promise it could not keep in both schemes, and it is the host's sentence: in an Obsidian menu the row is the pointer's, not the page's. The Folia-owned pointer outline recorded above still applies to these rows, so they retain an interaction cue that does not depend on a host colour pair.
 
 **What would change this:** Obsidian giving its desktop menu rows a resting fill, which would make `--interactive-normal` the right reading again.
+
+## A lane offers to add a card only where the card can be given what its rule asks for
+
+**Decided 2026-09-27 (#41). Adding a card to a lane writes the plain values its rule names; a lane whose rule a new card could never meet shows the rule instead of an add button.**
+
+Four shapes were built and compared live in both schemes: the button hidden on every lane, the button kept but disabled with the reason in a tooltip, the refusal toast reworded for the add case, and this one. Hiding it everywhere looked cleanest but took away a lane where adding plainly makes sense: someone adding to an `area:research` lane means a research card. A disabled button reads as broken chrome. The reworded toast still arrives after the title has been typed and throws the title away.
+
+The fill covers the tokens whose value a note can simply hold: `area`, `priority` (in the board's own spelling), `tag`, `assignee` (`me` through **Your name**), a literal due date and `due:today`. It leaves alone the tokens that describe a state (`is:`, `unread:`, `due:soon` and `overdue`), a place (`status:` is the column the write already names, `context:` is a folder), an absence (`none`), and free text, which only a title could match and nobody types a title to satisfy a rule. It does not have to decide which rules succeed: the filled card is put to the rule, and the control shows only where it would be drawn. Two values one property cannot hold at once (`area:a area:b`) therefore hide the control without a special case.
+
+**What would change this:** a create form that can set any property before the note exists, which would let the add flow ask for what a state-reading rule needs rather than hide the control.

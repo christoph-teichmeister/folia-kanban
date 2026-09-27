@@ -5,8 +5,10 @@ import {
   drawnPaths,
   fallbackColumnOf,
   isDrawnSomewhere,
+  laneFill,
   laneRefusal,
   prospectiveCard,
+  takesNewCards,
 } from "../src/model/lanes";
 import type { MatchContext } from "../src/model/filter";
 import { BLOCKS } from "../src/model/relationships";
@@ -257,5 +259,96 @@ describe("filing a card into a column", () => {
     expect(
       laneRefusal(board, "urgent", prospectiveCard("New", "urgent", { priority: "high" }), ctx),
     ).toBeNull();
+  });
+});
+
+describe("what a card added straight into a lane is written with", () => {
+  /** A board whose one lane is ruled by `rule`, beside a plain Todo. */
+  const ruled = (rule: string, priorities: string[] = [], cards: Card[] = []) =>
+    buildBoard(
+      {
+        ...base,
+        priorities,
+        columns: [
+          { id: "todo", title: "Todo" },
+          { id: "lane", title: "Lane", filter: rule },
+        ],
+      },
+      cards,
+    );
+
+  it("writes each plain value the rule names, in the case the rule wrote it", () => {
+    expect(laneFill(ruled("area:Research tag:bug tag:ui assignee:alex"), "lane", ctx)).toEqual({
+      area: "Research",
+      tags: ["bug", "ui"],
+      assignee: "alex",
+    });
+    expect(laneFill(ruled('assignee:alex assignee:"ana maria"'), "lane", ctx)).toEqual({
+      assignee: ["alex", "ana maria"],
+    });
+    expect(laneFill(ruled("due:2026-10-01"), "lane", ctx)).toEqual({ due: "2026-10-01" });
+    expect(laneFill(ruled("due:today"), "lane", ctx)).toEqual({ due: "2026-09-10" });
+  });
+
+  it("writes a priority in the board's own spelling, so `priority:a` ranks as the `A` it means", () => {
+    expect(laneFill(ruled("priority:a", ["A", "B"]), "lane", ctx)).toEqual({ priority: "A" });
+    // A spelling only a card carries still beats the rule's lower-cased one.
+    const carried = ruled("priority:high", [], [card("X", { status: "todo", priority: "High" })]);
+    expect(laneFill(carried, "lane", ctx)).toEqual({ priority: "High" });
+    expect(laneFill(ruled("priority:urgent"), "lane", ctx)).toEqual({ priority: "urgent" });
+  });
+
+  it("writes nothing for a token that names a state, a folder or an absence", () => {
+    for (const rule of [
+      "status:done",
+      "context:Engineering",
+      "is:blocked",
+      "unread:comments",
+      "due:overdue",
+      "due:soon",
+      "due:none",
+      "assignee:none",
+      "roadmap",
+    ]) {
+      expect(laneFill(ruled(rule), "lane", ctx), rule).toEqual({});
+    }
+    expect(laneFill(ruled("area:research"), "todo", ctx)).toEqual({});
+  });
+
+  it("fills `assignee:me` from Your name, and leaves it alone when no name is set", () => {
+    expect(laneFill(ruled("assignee:me"), "lane", { ...ctx, me: "Rafa" })).toEqual({
+      assignee: "Rafa",
+    });
+    expect(laneFill(ruled("assignee:me"), "lane", ctx)).toEqual({});
+  });
+
+  it("takes an added card only where the filled card would be drawn", () => {
+    const takes = (rule: string, c: MatchContext = ctx) => takesNewCards(ruled(rule), "lane", c);
+    // Plain columns always do; so does every rule the fill satisfies or a new card already meets.
+    expect(takesNewCards(ruled("is:blocked"), "todo", ctx)).toBe(true);
+    for (const rule of [
+      "area:research priority:a",
+      "status:lane",
+      "due:today",
+      "due:none",
+      "assignee:none",
+      "is:unblocked",
+    ]) {
+      expect(takes(rule), rule).toBe(true);
+    }
+    // A rule that reads what this caller cannot see is not refused over, so neither is the add.
+    expect(takes("assignee:me")).toBe(true);
+    expect(takes("unread:comments")).toBe(true);
+    // Everything an added card can never carry — or two values one property cannot hold at once.
+    for (const rule of [
+      "is:blocked",
+      "due:overdue",
+      "context:Engineering",
+      "status:todo",
+      "roadmap",
+      "area:a area:b",
+    ]) {
+      expect(takes(rule), rule).toBe(false);
+    }
   });
 });

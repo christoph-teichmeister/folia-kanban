@@ -8,7 +8,7 @@ import { matchCard, type Filter } from "../model/filter";
 import { dedupePriorities, priorityIndex } from "../model/priorities";
 import { BLOCKS } from "../model/relationships";
 import { frontmatterTagValues, tagValues } from "../model/tags";
-import type { Card, ColumnGroup, ColumnSort, RelationCount } from "../model/types";
+import type { Card, CardFrontmatter, ColumnGroup, ColumnSort, RelationCount } from "../model/types";
 import type { IconName } from "./icons";
 
 export type ChipTone =
@@ -481,4 +481,15 @@ export function cardChips(
   }
 
   return chips;
+}
+
+/**
+ * What a lane writes onto a card added to it (`laneFill`), said the way a person would read it
+ * back — `priority A · tags bug, ui` — or null when it writes nothing.
+ */
+export function describeFill(fill: Partial<CardFrontmatter>): string | null {
+  const parts = Object.entries(fill).map(
+    ([key, value]) => `${key} ${Array.isArray(value) ? value.join(", ") : String(value)}`,
+  );
+  return parts.length > 0 ? parts.join(" · ") : null;
 }

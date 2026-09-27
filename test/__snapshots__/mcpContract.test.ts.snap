@@ -71,7 +71,7 @@ exports[`the MCP contract > publishes this exact tool surface, annotations and a
       "openWorldHint": false,
       "readOnlyHint": false,
     },
-    "description": "Add a card to a column. It is written into the board's card folder as a new note, exactly as the board's own add-card button writes it.",
+    "description": "Add a card to a column. It is written into the board's card folder as a new note, exactly as the board's own add-card button writes it — in a column filled by a rule, with the values that rule names (its area, priority, tags, assignee or due date) already set.",
     "inputSchema": {
       "properties": {
         "board": {

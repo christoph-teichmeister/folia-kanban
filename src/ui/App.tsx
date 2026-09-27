@@ -15,8 +15,14 @@ import {
   subtaskRef,
   todoTile,
 } from "../model/board";
-import { moveCardOver, moveCardTo, setCardPriority, setSubtaskDone } from "../model/boardOps";
-import { laneRefusal, prospectiveCard } from "../model/lanes";
+import {
+  addCard,
+  moveCardOver,
+  moveCardTo,
+  setCardPriority,
+  setSubtaskDone,
+} from "../model/boardOps";
+import { laneFill, laneRefusal, prospectiveCard } from "../model/lanes";
 import { DEFAULT_PRIORITIES } from "../model/priorities";
 import type { CardRepository } from "../model/repo";
 import { isCollapsedIn, seenMarkerFor, type KanbanSettings, type SettingsPatch } from "../settings";
@@ -377,11 +383,16 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
 
   const onAddCard = useCallback(
     async (columnId: string, title: string) => {
-      // Judged before the note exists, on the card `createCard` is about to write: a lane asking
-      // for a field an added card has no way to carry is a lane the card would never appear in.
-      if (refusedByLane(columnId, prospectiveCard(title, columnId))) return;
+      const b = boardRef.current;
+      const ctx = matchCtxRef.current;
+      if (!b || !ctx) return;
+      // A lane's rule is written onto the card where it names a plain value, so adding to an
+      // `area:research` lane makes a research card. What is left is judged before the note exists:
+      // a rule asking for something an added card cannot carry is a lane it would never appear in.
+      const fill = laneFill(b, columnId, ctx);
+      if (refusedByLane(columnId, prospectiveCard(title, columnId, fill))) return;
       try {
-        const path = await repo.createCard(title, columnId);
+        const path = await addCard(repo, { title, columnId, fill });
         await load();
         // 'inline' (default): add-only — stay in the column, don't open the detail.
         // 'inline-edit': open the new card's detail and focus its description for editing.

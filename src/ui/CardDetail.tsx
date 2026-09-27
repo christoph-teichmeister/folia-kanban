@@ -21,17 +21,17 @@ import type {
   TitleMode,
 } from "../model/types";
 import { boardLinkResolver, isTodoLine, syncSubcardLines, type LinkResolver } from "../model/board";
-import { setSubtaskDone } from "../model/boardOps";
+import { addCard, setSubtaskDone } from "../model/boardOps";
 import { descriptionRefusal } from "../model/card";
 import type { PropertyNamesInUse, PropertySuggestSource } from "../model/repo";
 import { TITLE_KEY, TITLE_SOURCE_LABEL, resolveTitle, sanitizeFilename } from "../model/cardTitle";
 import { FOLIA_CARD_KEYS, PANEL_FIELD_KEYS, propertySuggestions } from "../model/properties";
-import { prospectiveCard } from "../model/lanes";
+import { laneFill, prospectiveCard } from "../model/lanes";
 import { relationKeys } from "../model/relationships";
 import { SELF, isMine, normalizeAuthor, seenMarker, unreadComments } from "../model/unread";
 import { DETAIL_WIDTH_MAX, DETAIL_WIDTH_MIN, seenMarkerFor } from "../settings";
 import { assigneeValues, boardAssignees, sameAssignee, toggleAssignee } from "../model/assignees";
-import { priorityOptions } from "./cardView";
+import { describeFill, priorityOptions } from "./cardView";
 import {
   useBoardActions,
   useMatchContext,
@@ -848,6 +848,7 @@ export function CardDetail({
   // Description defaults to a rendered view; clicking it (or the pencil) flips to the raw editor.
   const [editingDesc, setEditingDesc] = useState(false);
   const [createTitle, setCreateTitle] = useState("");
+  const createFillId = useId();
   const [newTodo, setNewTodo] = useState("");
   const [newSubcard, setNewSubcard] = useState("");
   const [newComment, setNewComment] = useState("");
@@ -1295,6 +1296,8 @@ export function CardDetail({
   if (isCreate) {
     const columnTitle =
       board.config.columns.find((c) => c.id === createColumn)?.title ?? createColumn;
+    const fill = laneFill(board, createColumn, matchCtx);
+    const fillNote = describeFill(fill);
     const submitCreate = () => {
       const t = createTitle.trim();
       if (!t || creatingRef.current) return;
@@ -1303,11 +1306,11 @@ export function CardDetail({
         try {
           // The same refusal the inline composer and a drag get: a lane draws by its rule, so a
           // card it would not draw is never written, whichever flow asked for it.
-          if (actions.refusedByLane(createColumn, prospectiveCard(t, createColumn))) {
+          if (actions.refusedByLane(createColumn, prospectiveCard(t, createColumn, fill))) {
             creatingRef.current = false;
             return;
           }
-          const newPath = await repo.createCard(t, createColumn);
+          const newPath = await addCard(repo, { title: t, columnId: createColumn, fill });
           onCreated?.(newPath);
           // On success this branch unmounts (createColumn→null), so no need to reset the guard.
         } catch (e) {
@@ -1361,6 +1364,7 @@ export function CardDetail({
                 value={createTitle}
                 aria-label="New card title"
                 placeholder="What needs doing?"
+                aria-describedby={fillNote ? createFillId : undefined}
                 onChange={(e) => setCreateTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && createTitle.trim()) {
@@ -1370,6 +1374,11 @@ export function CardDetail({
                 }}
               />
             </label>
+            {fillNote && (
+              <p id={createFillId} className="folia-add-card-fill">
+                Added with {fillNote}
+              </p>
+            )}
             <div className="folia-row-actions">
               <button
                 className="folia-btn folia-btn-primary"

@@ -28,6 +28,10 @@ columns:
     title: ⭐ A-priority lane
     color: red
     filter: "priority:a"
+  - id: blocked
+    title: Blocked lane
+    color: yellow
+    filter: "is:blocked"
   - id: parked
     title: Parked
     color: "#9aa0a6"

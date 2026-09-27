@@ -1265,11 +1265,28 @@ describe("a column filled by a rule rather than by status", () => {
     ]);
   });
 
+  it("creates a card in a lane with what the rule names, as the board's own add-card button does", async () => {
+    const { host, repo } = laned();
+    const made = (await call(host, "create_card", {
+      board: "Board.md",
+      title: "Spike",
+      column: "research",
+    })) as { path: string; warning?: string };
+    expect(repo.files.get(made.path)?.fm).toMatchObject({ status: "research", priority: "high" });
+    expect(made.warning).toBeUndefined();
+  });
+
   it("refuses a write that would claim a lane the card does not match, and writes nothing", async () => {
     const { host, repo } = laned();
     const before = JSON.stringify([...repo.files.entries()]);
+    // A field passed explicitly wins over the rule's, and here it contradicts it.
     await expect(
-      call(host, "create_card", { board: "Board.md", title: "Invisible", column: "research" }),
+      call(host, "create_card", {
+        board: "Board.md",
+        title: "Invisible",
+        column: "research",
+        priority: "low",
+      }),
     ).rejects.toThrow(/does not match it. No card was created/);
 
     await expect(

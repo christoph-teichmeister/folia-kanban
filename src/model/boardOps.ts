@@ -8,7 +8,7 @@
 
 import type { MatchContext } from "./filter";
 import { laneRefusal } from "./lanes";
-import type { Board, Card, SubItem } from "./types";
+import type { Board, Card, CardFrontmatter, SubItem } from "./types";
 import { moveCard, resolveDrop, syncSubtaskClaim } from "./board";
 import type { CardRepository } from "./repo";
 import { StaleLineError } from "./repo";
@@ -130,4 +130,41 @@ export async function setCardPriority(
   // `rememberPriorities` merges against the note itself, so handing it the one new value is
   // enough: whatever the note already holds keeps its place and its spelling.
   await repo.rememberPriorities([value]);
+}
+
+/**
+ * Write the fields a card was judged with onto the note just created for it: a priority through
+ * {@link setCardPriority}, so the board learns it as it would from the panel, and the rest as they
+ * are.
+ */
+export async function writeNewCardFields(
+  repo: CardRepository,
+  path: string,
+  fields: Partial<CardFrontmatter>,
+): Promise<void> {
+  const { priority, ...rest } = fields;
+  if (Object.keys(rest).length > 0) await repo.setFrontmatter(path, rest);
+  if (typeof priority === "string") await setCardPriority(repo, { path, value: priority });
+}
+
+/**
+ * Add a card to a column, carrying what the lane there asks for (`laneFill`) so the lane draws it.
+ * The fill is the caller's, worked out before it judged the card, so what is written is what was
+ * judged. A fill that fails to write names the card already made: a caller told only that adding
+ * failed adds it again, and the board ends up with two.
+ */
+export async function addCard(
+  repo: CardRepository,
+  target: { title: string; columnId: string; fill: Partial<CardFrontmatter> },
+): Promise<string> {
+  const path = await repo.createCard(target.title, target.columnId);
+  try {
+    await writeNewCardFields(repo, path, target.fill);
+  } catch (e) {
+    throw new Error(
+      `"${target.title}" was added, but giving it what its column's rule asks for failed: ${e instanceof Error ? e.message : String(e)}. The card is at ${path}; set the rest by hand rather than adding it again.`,
+      { cause: e },
+    );
+  }
+  return path;
 }

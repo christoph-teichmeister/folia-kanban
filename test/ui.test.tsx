@@ -5451,27 +5451,21 @@ describe("the detail panel reports a failed write", () => {
       { "Tasks/Alpha.md": { fm: { type: "task", status: "todo" }, body: "\n# Alpha\n" } },
     );
 
-  it("refuses the detail add-card flow into a lane too, not just the inline composer", async () => {
+  it("gives a card added through the detail flow what the lane's rule names, and says so first", async () => {
     const user = userEvent.setup();
     const repo = lanedRepo();
-    const created: string[] = [];
-    const realCreate = repo.createCard.bind(repo);
-    repo.createCard = async (title: string, status: string) => {
-      created.push(title);
-      return realCreate(title, status);
-    };
     render_(repo, { ...DEFAULT_SETTINGS, addCardFlow: "detail" });
     await screen.findByText("Alpha", { selector: ".folia-card-title" });
 
     await user.click(screen.getByLabelText("Add card to Research"));
     const detail = await screen.findByTestId("card-detail");
-    await user.type(within(detail).getByLabelText("New card title"), "Nowhere");
+    const title = within(detail).getByLabelText("New card title");
+    expect(title).toHaveAccessibleDescription("Added with area research");
+    await user.type(title, "Survey");
     await user.click(within(detail).getByRole("button", { name: "Create" }));
 
-    expect(await screen.findByText(/does not match it/)).toHaveClass("folia-toast-error");
-    expect(created).toEqual([]);
-    // The form stays put, exactly as it does after any other refused create.
-    expect(within(detail).getByLabelText("New card title")).toHaveValue("Nowhere");
+    await waitFor(() => expect(repo.files.get("Tasks/Survey.md")?.fm["area"]).toBe("research"));
+    expect(repo.files.get("Tasks/Survey.md")?.fm["status"]).toBe("research");
   });
 
   it("refuses the panel's own Status field when the target column is a lane", async () => {
@@ -5708,35 +5702,51 @@ describe("the detail panel reports a failed write", () => {
     await waitFor(() => expect(repo.files.get("Tasks/Alpha.md")?.fm["status"]).toBe("done"));
   });
 
-  it("refuses to add a card to a lane whose rule the new card cannot satisfy, and writes nothing", async () => {
+  it("adds a card to a lane already carrying what the lane's rule names, so the lane draws it", async () => {
     const user = userEvent.setup();
-    // Research is filled by `area:research`, and an added card carries no area — so the card would
-    // claim a column that will not draw it. The add is refused with the rule named, before any note
-    // is created.
+    // Research is filled by `area:research`. The added card is written with that area — the rule's
+    // own spelling — and the composer says so before anything is written.
+    const repo = lanedRepo();
+    render_(repo);
+    await screen.findByText("Alpha", { selector: ".folia-card-title" });
+
+    await user.click(screen.getByLabelText("Add card to Research"));
+    const title = screen.getByLabelText("New card title");
+    expect(title).toHaveAccessibleDescription("Added with area research");
+    await user.type(title, "Survey{Enter}");
+
+    await waitFor(() => expect(repo.files.get("Tasks/Survey.md")?.fm["area"]).toBe("research"));
+    const research = screen
+      .getAllByTestId("column")
+      .find((c) => c.getAttribute("data-column") === "research")!;
+    expect(
+      await within(research).findByText("Survey", { selector: ".folia-card-title" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/does not match it/)).not.toBeInTheDocument();
+  });
+
+  it("offers no add-card control on a lane an added card could never join, and names its rule", async () => {
+    // `is:blocked` reads a relationship, which nothing typed into a composer can give a card. The
+    // control would only ever end in a refusal, so the lane says how it fills instead.
     const repo = new FakeRepo(
       {
         ...config,
         columns: [
           { id: "todo", title: "Todo" },
-          { id: "research", title: "Research", filter: "area:research" },
+          { id: "stuck", title: "Stuck", filter: "is:blocked" },
         ],
       },
       { "Tasks/Alpha.md": { fm: { type: "task", status: "todo" }, body: "\n# Alpha\n" } },
     );
-    const created: string[] = [];
-    const realCreate = repo.createCard.bind(repo);
-    repo.createCard = async (title: string, status: string) => {
-      created.push(title);
-      return realCreate(title, status);
-    };
     render_(repo);
     await screen.findByText("Alpha", { selector: ".folia-card-title" });
 
-    await user.click(screen.getByLabelText("Add card to Research"));
-    await user.type(screen.getByLabelText("New card title"), "Nowhere{Enter}");
-
-    expect(await screen.findByText(/does not match it/)).toHaveClass("folia-toast-error");
-    expect(created).toEqual([]);
+    expect(screen.queryByLabelText("Add card to Stuck")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Add card to Todo")).toBeInTheDocument();
+    const stuck = screen
+      .getAllByTestId("column")
+      .find((c) => c.getAttribute("data-column") === "stuck")!;
+    expect(within(stuck).getByText("is:blocked", { selector: "code" })).toBeInTheDocument();
   });
 
   it("shows the error toast when the detail create flow fails, and keeps the form for a retry", async () => {

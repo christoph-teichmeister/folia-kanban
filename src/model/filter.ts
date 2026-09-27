@@ -46,7 +46,7 @@ const FILTER_KEYS: readonly FilterKey[] = [
 /** Recognized `due:` values. A bare YYYY-MM-DD date is also accepted (exact match). */
 interface FilterToken {
   key: FilterKey;
-  /** Lower-cased value as written after the colon. */
+  /** The value after the colon: lower-cased by `parseFilter`, as written by `writtenTokens`. */
   value: string;
 }
 
@@ -106,27 +106,40 @@ function tokenizeQuery(query: string): string[] {
   return out;
 }
 
+/** A term read as a `key:value` token, its value exactly as written, or null when it is free text. */
+function asToken(term: string): FilterToken | null {
+  const colon = term.indexOf(":");
+  if (colon <= 0) return null;
+  const key = term.slice(0, colon).toLowerCase();
+  const value = term.slice(colon + 1).trim();
+  return isFilterKey(key) && value !== "" ? { key, value } : null;
+}
+
 /** Parse a query string into a structured Filter. Never throws. */
 export function parseFilter(query: string): Filter {
   const text: string[] = [];
   const tokens: FilterToken[] = [];
   for (const term of tokenizeQuery(query)) {
-    const colon = term.indexOf(":");
-    if (colon > 0) {
-      const rawKey = term.slice(0, colon).toLowerCase();
-      const value = term
-        .slice(colon + 1)
-        .trim()
-        .toLowerCase();
-      if (isFilterKey(rawKey) && value !== "") {
-        tokens.push({ key: rawKey, value });
-        continue;
-      }
+    const token = asToken(term);
+    if (token) {
+      tokens.push({ key: token.key, value: token.value.toLowerCase() });
+      continue;
     }
     const t = term.trim().toLowerCase();
     if (t !== "") text.push(t);
   }
   return { text, tokens };
+}
+
+/**
+ * The query's `key:value` tokens with each value in the case it was written in — for a caller
+ * that writes a value back into a note, where `Research` and `research` are different words even
+ * though the matcher treats them as one.
+ */
+export function writtenTokens(query: string): FilterToken[] {
+  return tokenizeQuery(query)
+    .map(asToken)
+    .filter((t): t is FilterToken => t !== null);
 }
 
 /** True when the filter has no terms (matches everything). */

@@ -4,9 +4,9 @@
 
 import { z } from "zod";
 import { boardMatchContext } from "../model/board";
-import { prospectiveCard } from "../model/lanes";
+import { laneFill, prospectiveCard } from "../model/lanes";
 import type { Board } from "../model/types";
-import { setCardPriority, setSubtaskDone } from "../model/boardOps";
+import { setCardPriority, setSubtaskDone, writeNewCardFields } from "../model/boardOps";
 import { SCALAR_ONLY_KEYS, TOOL_REFUSALS } from "../model/properties";
 import { BLOCKS } from "../model/relationships";
 import type { CardRepository } from "../model/repo";
@@ -124,7 +124,7 @@ const createCard = tool({
   name: "create_card",
   title: "Create a card",
   description:
-    "Add a card to a column. It is written into the board's card folder as a new note, exactly as the board's own add-card button writes it.",
+    "Add a card to a column. It is written into the board's card folder as a new note, exactly as the board's own add-card button writes it — in a column filled by a rule, with the values that rule names (its area, priority, tags, assignee or due date) already set.",
   input: z.object({
     board: boardArg,
     title: z.string().min(1).describe("The card's title; it also names the file."),
@@ -146,14 +146,18 @@ const createCard = tool({
     // to set is a rule the new card cannot satisfy.
     if (args.description !== undefined) refuseUnsafeDescription(args.description);
     const laneCtx = boardMatchContext(board);
-    const willBe = prospectiveCard(args.title, args.column, {
+    // What the column's rule names is written onto the card, as the board's add-card button
+    // writes it; a field this call passes explicitly wins over the rule's.
+    const fields = {
+      ...laneFill(board, args.column, laneCtx),
       ...(args.priority === undefined ? {} : { priority: args.priority }),
       ...(args.due === undefined ? {} : { due: args.due }),
-    });
+    };
+    const willBe = prospectiveCard(args.title, args.column, fields);
     refuseLaneMismatch(
       board,
       { columnId: args.column, card: willBe, ctx: laneCtx },
-      "No card was created. Create it in a column with no rule of its own and give it what the rule asks for with update_card, or pass the fields the rule wants to this call.",
+      "No card was created. A card joins that column by carrying what its rule reads, and this one would not — the rule reads something a new card cannot be given, or a field passed here contradicts it. Create it in a column with no rule of its own, and the column will draw it once it carries what the rule reads.",
     );
     const path = await repo.createCard(args.title, args.column);
     // The note exists from here on. A field write that fails afterwards must not be reported as
@@ -161,10 +165,7 @@ const createCard = tool({
     // ends up with two. Name the card that is already there and what still needs doing to it.
     try {
       if (args.description !== undefined) await repo.setDescription(path, args.description);
-      if (args.priority !== undefined) {
-        await setCardPriority(repo, { path, value: args.priority });
-      }
-      if (args.due !== undefined) await writeField(repo, path, "due", args.due);
+      await writeNewCardFields(repo, path, fields);
     } catch (e) {
       throw new ToolError(
         `Card "${path}" was created in "${args.column}", but filling in its fields failed: ${e instanceof Error ? e.message : String(e)}. The card is on the board — finish it with update_card rather than creating it again.`,

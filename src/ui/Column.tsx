@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Board, ColumnDef } from "../model/types";
@@ -21,8 +21,8 @@ import {
   type Filter,
   type MatchContext,
 } from "../model/filter";
-import { drawnPaths, fallbackColumnOf } from "../model/lanes";
-import { groupAndSortCards } from "./cardView";
+import { drawnPaths, fallbackColumnOf, laneFill, takesNewCards } from "../model/lanes";
+import { describeFill, groupAndSortCards } from "./cardView";
 import { columnAccent, COLUMN_COLORS } from "./columnColors";
 
 // Render a card's subtree of genuinely-nested children as a bordered group. Recursive: each child
@@ -240,6 +240,11 @@ export function Column({
   const globalFiltering = !isEmptyFilter(filter);
   const columnFilter = column.filter ? parseFilter(column.filter) : null;
   const matchCtx = useMatchContext();
+  // A lane takes an added card only when the card can carry what its rule asks for; elsewhere the
+  // add control would only ever lead to a refusal, so the lane says how it fills instead.
+  const takesAdds = takesNewCards(board, column.id, matchCtx);
+  const fillNote = describeFill(laneFill(board, column.id, matchCtx));
+  const fillNoteId = useId();
 
   // What this column draws is `drawnPaths`, the model's one definition of column membership: a lane
   // pulls every card standing in a column that its rule matches, wherever that card lives, and
@@ -622,6 +627,7 @@ export function Column({
               value={title}
               placeholder="What needs doing?"
               aria-label="New card title"
+              aria-describedby={fillNote ? fillNoteId : undefined}
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -633,6 +639,11 @@ export function Column({
                 }
               }}
             />
+            {fillNote && (
+              <p id={fillNoteId} className="folia-add-card-fill">
+                Added with {fillNote}
+              </p>
+            )}
             <div className="folia-row-actions">
               <button
                 className="folia-btn folia-btn-primary"
@@ -654,16 +665,21 @@ export function Column({
           </div>
         )}
       </div>
-      {!adding && (
-        <button
-          className="folia-column-add"
-          aria-label={`Add card to ${column.title}`}
-          onClick={onAddClick}
-        >
-          <Icon name="plus" />
-          Add a card
-        </button>
-      )}
+      {!adding &&
+        (takesAdds ? (
+          <button
+            className="folia-column-add"
+            aria-label={`Add card to ${column.title}`}
+            onClick={onAddClick}
+          >
+            <Icon name="plus" />
+            Add a card
+          </button>
+        ) : (
+          <p className="folia-column-rule">
+            Cards matching <code>{column.filter}</code> appear here
+          </p>
+        ))}
       {editModalOpen && <ColumnEditModal column={column} onClose={() => setEditModalOpen(false)} />}
     </section>
   );
