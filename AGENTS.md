@@ -20,23 +20,19 @@
 6. Closeout: run `pnpm verify`, report each check's result, and explain any "not run".
 7. Committing: a change is breaking when a user would need to be told about it before upgrading. If the software itself tells them what to do at the moment it matters, it is a `fix`.
 
-### Driving the Obsidian UI via the Chrome DevTools MCP server
+### Driving the Obsidian UI
 
-1. Use the [`chrome-devtools-obsidian`](./.mcp.json) MCP server against the real Obsidian on the **host** — not the global chrome-devtools plugin (it spawns its own headless Chrome).
-2. Inside a container, testing needs a host bridge on the **container's default gateway** — the host side of the link, never a fixed `172.17.0.1`. `.mcp.json` derives that address itself (override with `OBSIDIAN_DEBUG_URL`); on the host it needs nothing, the default is `http://127.0.0.1:9222`. Derive the same value **from inside the container** with `ip route | awk '/^default/{print $3; exit}'` (run on the host it would print the LAN router, which is wrong), substitute it for `HOST_GATEWAY` below, and ask your human to run the snippet; if the bridge is missing, say so — you can't test without it. Confirm with `curl -s http://HOST_GATEWAY:9222/json/version`.
+1. Test in **your own** Obsidian instance on the host, never your human's (it is on `127.0.0.1:9222`, and other agents run theirs in parallel). You may start and stop your own instance on the host without asking. Launch `/opt/Obsidian/obsidian` from the host (inside a container, through the host tmux bridge) with:
+   - `--user-data-dir=<worktree>/tmp/obsidian-profile`. The single-instance lock is per profile, so without it the launch hands off to your human's Obsidian.
+   - `--remote-debugging-port=<port>`, a port nobody else uses (`ss -ltn` on the host). One port can't serve two instances.
+   - an `obsidian.json` seeded in that profile, so it opens your worktree's `examples/` vault directly: `{"vaults":{"<16 hex chars>":{"path":"<worktree>/examples","ts":<epoch ms>,"open":true}}}`. Keep the id stable, or you'll get the "Trust author" prompt again.
 
-   ```bash title="Run on the host, not the container - share this snippet with your human when needed"
-   pkill -f '[O]bsidian'
-   sleep 1
-   setsid -f /opt/Obsidian/obsidian --remote-debugging-port=9222 >"$(git rev-parse --show-toplevel)/tmp/obsidian-debug.log" 2>&1 </dev/null
-   sleep 3
-   socat TCP-LISTEN:9222,bind=HOST_GATEWAY,fork,reuseaddr TCP:127.0.0.1:9222
-   ```
-
-3. Use Obsidian only in the `examples/` vault — never touch others unless asked. Confirm it's open with `app.vault.getName()`.
-   - 3.1. If not our `examples/` vault and this is the devcontainer, then use the `$HOST_REPO_ROOT_REAL_PATH` environment variable and open it via `evaluate_script` — `require('electron').shell.openExternal('obsidian://open?path=' + encodeURIComponent('$HOST_REPO_ROOT_REAL_PATH/examples'))` — then `list_pages` → `select_page`.
-   - 3.2. If the host path is unknown or this is not the devcontainer, ask your human to open it.
-   - 3.3. If this is the host system, you can easily open the vault using instructions from 3.1. using the current repo root path instead of `$HOST_REPO_ROOT_REAL_PATH`.
+   Start it with `nohup … & echo $!` so you have its PID, and stop only that PID. Never `pkill` Obsidian, and never open `obsidian://` URLs (`shell.openExternal` included): both reach your human's instance. A fresh profile runs the bundled 1.12.x first and downloads the current version into itself, so restart it once. The window title shows the real version; the User-Agent doesn't. Every instance is a visible window on your human's desktop, so stop it when you are done.
+2. Inside a container, forward the port on the host with `socat TCP-LISTEN:<port>,bind=HOST_GATEWAY,fork,reuseaddr TCP:127.0.0.1:<port>`. `HOST_GATEWAY` is `ip route | awk '/^default/{print $3; exit}'`, run **inside the container**. Confirm with `curl -s http://HOST_GATEWAY:<port>/json/version`. The [`chrome-devtools-obsidian`](./.mcp.json) MCP server (not the global chrome-devtools plugin, which spawns its own headless Chrome) reads its URL from `OBSIDIAN_DEBUG_URL` at session start. A running session can't retarget it, so drive your instance with Playwright's `chromium.connectOverCDP('http://HOST_GATEWAY:<port>')` instead.
+   - 2.1. CDP `Page.captureScreenshot` hangs on Obsidian. Screenshot from inside the page instead: `(await require('@electron/remote').getCurrentWebContents().capturePage()).toPNG()`.
+   - 2.2. Playwright's focus emulation, plus Wayland refusing `BrowserWindow.focus()`, means real window blur can't be driven.
+   - 2.3. Menu actions can rewrite tracked notes in `examples/`. Run `git checkout -- examples` after testing.
+3. Use Obsidian only in your worktree's `examples/` vault. Confirm with `app.vault.getName()`. Several open board tabs put several copies of the board in the DOM, so scope queries to `app.workspace.activeLeaf.view.containerEl`.
 4. Watch and rebuild the plugin into the `examples/` vault on every change: `pnpm run dev:examplesVault` (watch mode — keeps running).
    - 4.1. A build does not reach the running app. Obsidian keeps the stylesheet it loaded, so reload the plugin — `await app.plugins.disablePlugin('folia-kanban')` then `enablePlugin` — and confirm the live sheet's byte length equals the built `styles.css` before trusting any reading of it. Skipping this reports missing variables as missing features.
 5. `take_snapshot` hides the file tree — pass `verbose: true` for folder/file nodes.
