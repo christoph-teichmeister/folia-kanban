@@ -242,8 +242,13 @@ export function Column({
   const matchCtx = useMatchContext();
   // A lane takes an added card only when the card can carry what its rule asks for; elsewhere the
   // add control would only ever lead to a refusal, so the lane says how it fills instead.
-  const takesAdds = takesNewCards(board, column.id, matchCtx);
-  const fillNote = describeFill(laneFill(board, column.id, matchCtx));
+  const { takesAdds, fillNote } = useMemo(
+    () => ({
+      takesAdds: takesNewCards(board, column.id, matchCtx),
+      fillNote: describeFill(laneFill(board, column.id, matchCtx)),
+    }),
+    [board, column.id, matchCtx],
+  );
   const fillNoteId = useId();
 
   // What this column draws is `drawnPaths`, the model's one definition of column membership: a lane
@@ -609,6 +614,9 @@ export function Column({
         </SortableContext>
         {paths.length === 0 &&
           !adding &&
+          // An empty lane that names its rule below already says why it is empty; "No matches" is
+          // left for a search, which the rule line does not explain.
+          (takesAdds || globalFiltering) &&
           (filtering ? (
             <div className="folia-column-empty is-filtered">
               <span>No matches</span>

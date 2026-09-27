@@ -5725,6 +5725,37 @@ describe("the detail panel reports a failed write", () => {
     expect(screen.queryByText(/does not match it/)).not.toBeInTheDocument();
   });
 
+  it("judges lanes that read the reader or Your name without tripping over a card that has no note yet", async () => {
+    const repo = new FakeRepo(
+      {
+        ...config,
+        columns: [
+          { id: "todo", title: "Todo" },
+          { id: "unseen", title: "Unseen", filter: "unread:comments" },
+          { id: "seen", title: "Seen", filter: "unread:none" },
+          { id: "mine", title: "Mine", filter: "assignee:me" },
+        ],
+      },
+      { "Tasks/Alpha.md": { fm: { type: "task", status: "todo" }, body: "\n# Alpha\n" } },
+    );
+    const { unmount } = render_(repo);
+    await screen.findAllByText("Alpha", { selector: ".folia-card-title" });
+    // A new card has nothing unread, so it can join `unread:none` and never `unread:comments`.
+    expect(screen.queryByLabelText("Add card to Unseen")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Add card to Seen")).toBeInTheDocument();
+    // With no name set, `assignee:me` cannot be judged, and what cannot be judged is not refused.
+    expect(screen.getByLabelText("Add card to Mine")).toBeInTheDocument();
+    unmount();
+
+    const user = userEvent.setup();
+    render_(repo, { ...DEFAULT_SETTINGS, userName: "Rafa" });
+    await screen.findAllByText("Alpha", { selector: ".folia-card-title" });
+    await user.click(screen.getByLabelText("Add card to Mine"));
+    expect(screen.getByLabelText("New card title")).toHaveAccessibleDescription(
+      "Added with assignee Rafa",
+    );
+  });
+
   it("offers no add-card control on a lane an added card could never join, and names its rule", async () => {
     // `is:blocked` reads a relationship, which nothing typed into a composer can give a card. The
     // control would only ever end in a refusal, so the lane says how it fills instead.
@@ -5747,6 +5778,8 @@ describe("the detail panel reports a failed write", () => {
       .getAllByTestId("column")
       .find((c) => c.getAttribute("data-column") === "stuck")!;
     expect(within(stuck).getByText("is:blocked", { selector: "code" })).toBeInTheDocument();
+    // Empty, it says so once: the rule line, not a "No matches" above it as well.
+    expect(within(stuck).queryByText("No matches")).not.toBeInTheDocument();
   });
 
   it("shows the error toast when the detail create flow fails, and keeps the form for a retry", async () => {
