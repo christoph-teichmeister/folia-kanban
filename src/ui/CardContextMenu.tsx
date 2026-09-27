@@ -26,6 +26,13 @@ export type ContextTarget = { x: number; y: number } & (
   | { kind: "todo"; todoLine: TodoLine }
 );
 
+// Every focusable row the menu's roving focus (arrow keys, initial focus) has to reach: the plain
+// action rows plus the priority and move-to-column radio groups, which are buttons of their own
+// class rather than `folia-menu-item` since they render as a grid, not a stacked list.
+const FOCUSABLE_ROW_SELECTOR = [".folia-menu-item", ".folia-menu-prio", ".folia-menu-column"]
+  .map((c) => `${c}:not(:disabled)`)
+  .join(", ");
+
 interface Props {
   target: ContextTarget;
   /** The card the menu was raised on, as it was drawn. */
@@ -98,7 +105,7 @@ export function CardContextMenu({
   // capture/restore).
   useEffect(() => {
     const opener = doc.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLButtonElement>(".folia-menu-item:not(:disabled)")?.focus();
+    ref.current?.querySelector<HTMLButtonElement>(FOCUSABLE_ROW_SELECTOR)?.focus();
     return () => {
       if (!actioned.current) opener?.focus?.();
     };
@@ -122,7 +129,7 @@ export function CardContextMenu({
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     e.preventDefault();
     const items = Array.from(
-      ref.current?.querySelectorAll<HTMLButtonElement>(".folia-menu-item:not(:disabled)") ?? [],
+      ref.current?.querySelectorAll<HTMLButtonElement>(FOCUSABLE_ROW_SELECTOR) ?? [],
     );
     if (items.length === 0) return;
     const cur = items.indexOf(doc.activeElement as HTMLButtonElement);

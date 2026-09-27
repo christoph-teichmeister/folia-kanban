@@ -2780,6 +2780,46 @@ describe("card context menu", () => {
     await waitFor(() => expect(repo.files.get("Tasks/First.md")!.body).not.toContain("real two"));
   });
 
+  it("arrow keys reach the priority group, skipping the disabled Move up button (#73)", async () => {
+    const { menu } = await openCardMenu("First"); // top of the column: Move up is disabled
+    const rows = Array.from(
+      menu.querySelectorAll<HTMLButtonElement>(
+        ".folia-menu-item:not(:disabled), .folia-menu-prio:not(:disabled)",
+      ),
+    );
+    // Sanity: the priority group is actually part of what we are about to walk.
+    expect(rows.some((r) => r.classList.contains("folia-menu-prio"))).toBe(true);
+    rows[0]?.focus();
+    for (let i = 1; i < rows.length; i++) {
+      fireEvent.keyDown(menu, { key: "ArrowDown" });
+      expect(document.activeElement).toBe(rows[i]);
+    }
+    // Wraps back to the top instead of stalling on the last row.
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(rows[0]);
+    expect(within(menu).getByRole("menuitem", { name: /Move up/ })).not.toHaveFocus();
+  });
+
+  it("arrow keys reach the move-to-column group in the todo menu (#73)", async () => {
+    const repo = ctxRepo();
+    render_(repo, { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+    const card = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+    const todoRow = card.querySelector('.folia-card-next-todo[data-todo-index="1"]') as HTMLElement;
+    fireEvent.contextMenu(todoRow);
+    const menu = await screen.findByRole("menu", { name: "Todo actions" });
+    const rows = Array.from(
+      menu.querySelectorAll<HTMLButtonElement>(
+        ".folia-menu-item:not(:disabled), .folia-menu-column:not(:disabled)",
+      ),
+    );
+    expect(rows.some((r) => r.classList.contains("folia-menu-column"))).toBe(true);
+    rows[0]?.focus();
+    for (let i = 1; i < rows.length; i++) {
+      fireEvent.keyDown(menu, { key: "ArrowDown" });
+      expect(document.activeElement).toBe(rows[i]);
+    }
+  });
+
   it("closes on Escape", async () => {
     const { menu } = await openCardMenu("First");
     fireEvent.keyDown(menu, { key: "Escape" });
