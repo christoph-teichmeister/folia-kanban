@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.2](https://github.com/stavarengo/folia-kanban/compare/0.4.1...0.4.2) (2026-09-27)
+
+### Bug Fixes
+
+* keep the board's today current past midnight ([54e8f10](https://github.com/stavarengo/folia-kanban/commit/54e8f10f512d1ab7e9d2c547759cb66f4a912d3b)), closes [#2](https://github.com/stavarengo/folia-kanban/issues/2)
+* **lint:** enforce the obsidian import ban for src/mcp and restore it for model and ui ([dc308fb](https://github.com/stavarengo/folia-kanban/commit/dc308fb5d3b5569b09342da015ab3347ff55b85a))
+
+### Documentation
+
+* record the backlog's issue tracker ([bc45d64](https://github.com/stavarengo/folia-kanban/commit/bc45d645112c783afce6240bcfb95f7141b5ae74))
+
+### Tests
+
+* **lint:** fail the allowed-path cases on a parse error, and name src/ui in the dependency-cruiser sentence ([e441275](https://github.com/stavarengo/folia-kanban/commit/e44127556d175d8e4f48b49094313b7cf2230289))
+* **lint:** lint a real obsidian import instead of reading the resolved config, and refresh eslint.config.mjs line references in the report ([42c2f19](https://github.com/stavarengo/folia-kanban/commit/42c2f1965e6f302c2bd55dd6d9b04f52eec4a6ae))
+
 ## [0.4.1](https://github.com/stavarengo/folia-kanban/compare/0.4.0...0.4.1) (2026-09-23)
 
 ### Features
