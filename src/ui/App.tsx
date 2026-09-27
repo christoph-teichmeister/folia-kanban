@@ -475,7 +475,12 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
       // Whitespace-only is no priority at all, the way every other priority path reads it.
       const value = raw.trim();
       try {
-        await setCardPriority(repo, { path, value });
+        const shown = boardRef.current?.cards[path]?.frontmatter.priority;
+        await setCardPriority(repo, {
+          path,
+          value,
+          ...(typeof shown === "string" ? { current: shown } : {}),
+        });
       } catch (e) {
         reportError(e);
       } finally {

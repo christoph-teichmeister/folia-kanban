@@ -85,6 +85,10 @@ export interface PropertySuggestSource {
   onOpenChange(open: boolean): void;
 }
 
+/**
+ * Every write below leaves a note byte for byte as it was, history included, when what it would
+ * store is what the note already holds. A history line records a change, so no change, no line.
+ */
 export interface CardRepository {
   /**
    * Read the board config note + all cards, return the assembled board. When the card folder is

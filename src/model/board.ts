@@ -1377,10 +1377,8 @@ export function moveCard(
       const c = board.cards[p];
       return c !== undefined ? [c] : [];
     });
-  const order = computeDropOrder(colCards, dropIndex);
   const mutation: CardMutation = {
     path: cardPath,
-    setFrontmatter: { status: toColumnId, order },
     history: `Moved from ${columnTitle(board.config, fromStatus || "—")} to ${columnTitle(board.config, toColumnId)}`,
   };
   // The history line records what the note said: a `status` naming no column of this board is a
@@ -1388,6 +1386,12 @@ export function moveCard(
   if (fromStatus === toColumnId) {
     mutation.history = `Reordered within ${columnTitle(board.config, toColumnId)}`;
   }
+  // Dropped back on the slot it already holds, the card keeps the order it has: a fresh number for
+  // the same place would be a write that changes nothing anyone can see.
+  const sameSlot =
+    fromStatus === toColumnId && (board.columns[toColumnId] ?? []).indexOf(cardPath) === dropIndex;
+  if (!sameSlot)
+    mutation.setFrontmatter = { status: toColumnId, order: computeDropOrder(colCards, dropIndex) };
   // The checkbox follows what the tile did: a card with no `status`, or one naming a column since
   // removed, renders in the first column, and a drop there says nothing about finishing — unless
   // that column is Done, where landing is the statement whatever the tile did before.

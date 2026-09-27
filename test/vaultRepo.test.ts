@@ -7,6 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { App, FileManager, MetadataCache, Vault } from "obsidian";
 import { VaultRepository } from "../src/obsidian/vaultRepo";
+import { moveCardTo, setCardPriority } from "../src/model/boardOps";
 import { DataCorruptionError } from "../src/model/schemas";
 import { parseBody } from "../src/model/card";
 import { isMine, unreadComments } from "../src/model/unread";
@@ -51,6 +52,7 @@ const MIRRORED: {
     "getAbstractFileByPath",
     "getMarkdownFiles",
     "cachedRead",
+    "read",
     "process",
     "create",
     "createFolder",
@@ -1765,5 +1767,120 @@ describe("the suggester attached to a text input", () => {
       .renderSuggestion({ key: "status", group: "folia", editedInPanel: true }, el);
 
     expect(el.querySelector(".suggestion-note")?.textContent).toBe("edited in this panel");
+  });
+});
+
+describe("an edit that leaves the note as it was", () => {
+  const PATH = "basic/Cards/One.md";
+  // A flow list, which `processFrontMatter` hands back as a block list: any write shows in the bytes.
+  const FRONTMATTER = "status: todo\npriority: High\ntags: [a, b]\nblocks:\n  - Two";
+  const BODY = "\n# One\n\nSome words.\n\n## Subtasks\n- [x] Write the docs\n";
+
+  function untouched(board = DEFAULT_CONFIG) {
+    const app = new FakeApp();
+    app.vault.addFile("basic/Board.md", note(board));
+    app.vault.addFile(PATH, card(FRONTMATTER, BODY));
+    app.vault.addFile("basic/Cards/Two.md", card("status: todo"));
+    const repo = new VaultRepository(app as unknown as App, "basic/Board.md", () => "all");
+    const before = app.vault.text(PATH);
+    const boardBefore = app.vault.text("basic/Board.md");
+    let writes = 0;
+    app.vault.on("modify", () => writes++);
+    return {
+      app,
+      repo,
+      expectNoWrite: () => {
+        expect(app.vault.text(PATH)).toBe(before);
+        expect(app.vault.text("basic/Board.md")).toBe(boardBefore);
+        expect(writes).toBe(0);
+      },
+    };
+  }
+
+  const done = { index: 0, text: "Write the docs", occurrence: 0 };
+
+  it.each<[string, (repo: VaultRepository) => Promise<unknown>]>([
+    ["a key set to the value it holds", (r) => r.setFrontmatter(PATH, { priority: "High" })],
+    ["a list set to the list it holds", (r) => r.setFrontmatter(PATH, { tags: ["a", "b"] })],
+    ["a key removed that is not there", (r) => r.unsetFrontmatterKey(PATH, "due")],
+    ["a box ticked that is ticked", (r) => r.toggleSubtask(PATH, done, true)],
+    ["the description it already has", (r) => r.setDescription(PATH, "Some words.")],
+    ["a relationship it already declares", (r) => r.addRelation(PATH, "blocks", "Two")],
+    ["a relationship it does not declare, removed", (r) => r.removeRelation(PATH, "blocks", ["X"])],
+    [
+      "a move to the placement it has",
+      (r) =>
+        r.applyMove({
+          path: PATH,
+          setFrontmatter: { status: "todo" },
+          history: "Reordered within Todo",
+        }),
+    ],
+    [
+      "the board's columns as they are",
+      (r) =>
+        r.setColumns([
+          { id: "todo", title: "Todo" },
+          { id: "done", title: "Done" },
+        ]),
+    ],
+  ])("writes nothing, history included, for %s", async (_, act) => {
+    const { repo, expectNoWrite } = untouched();
+    await act(repo);
+    expectNoWrite();
+  });
+
+  it("writes nothing when the priority picked is the card's own, however the vocabulary spells it", async () => {
+    const { repo, expectNoWrite } = untouched(`${DEFAULT_CONFIG}\npriorities:\n  - high\n  - low`);
+    await setCardPriority(repo, { path: PATH, value: "high", current: "High" });
+    expectNoWrite();
+  });
+
+  it("writes nothing when a card is sent to the column it stands in, or dropped on its own slot", async () => {
+    const { app, repo, expectNoWrite } = untouched();
+    app.vault.addFile("basic/Cards/Three.md", card("status: todo\norder: 9"));
+    const board = await repo.loadBoard();
+    const one = board.cards[PATH];
+    if (!one) throw new Error("card not loaded");
+    const slot = (board.columns["todo"] ?? []).indexOf(PATH);
+
+    await moveCardTo(repo, board, { card: one, columnId: "todo" });
+    await moveCardTo(repo, board, { card: one, columnId: "todo", index: slot });
+
+    expectNoWrite();
+  });
+
+  it("still writes, and records, a value that does change", async () => {
+    const { app, repo } = untouched();
+
+    await setCardPriority(repo, { path: PATH, value: "low", current: "High" });
+    await repo.toggleSubtask(PATH, done, false);
+
+    const text = app.vault.text(PATH) ?? "";
+    expect(app.vault.frontmatter(PATH)["priority"]).toBe("low");
+    expect(text).toContain("Priority → low");
+    expect(text).toContain("Subtask reopened: Write the docs");
+  });
+
+  it("records only the keys of a patch that changed", async () => {
+    const { app, repo } = untouched();
+
+    await repo.setFrontmatter(PATH, { priority: "High", due: "2026-10-01" });
+
+    const text = app.vault.text(PATH) ?? "";
+    expect(text).toContain("Due → 2026-10-01");
+    expect(text).not.toContain("Priority →");
+  });
+
+  it("still moves, and records, a card sent somewhere new", async () => {
+    const { app, repo } = untouched();
+    const board = await repo.loadBoard();
+    const one = board.cards[PATH];
+    if (!one) throw new Error("card not loaded");
+
+    await moveCardTo(repo, board, { card: one, columnId: "done" });
+
+    expect(app.vault.frontmatter(PATH)["status"]).toBe("done");
+    expect(app.vault.text(PATH)).toContain("Moved from Todo to Done");
   });
 });

@@ -164,7 +164,7 @@ exports[`the MCP contract > publishes this exact tool surface, annotations and a
           "type": "object",
         },
         "position": {
-          "description": "Slot in the target column, counted with this card taken out. Omit to append.",
+          "description": "Slot in the target column, counted with this card taken out. Omit to append, or, for a card already in that column, to leave it where it is.",
           "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer",

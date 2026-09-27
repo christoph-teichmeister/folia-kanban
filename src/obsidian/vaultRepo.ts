@@ -95,6 +95,24 @@ import {
 /** The per-context config note (#14). Lives inside a context subfolder; read-only for the plugin. */
 const CONTEXT_NOTE = "_context.md";
 
+/** Whether two parsed YAML values say the same thing. Key order in a mapping is not a difference. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((x, i) => sameValue(x, b[i]))
+    );
+  }
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  const ka = Object.keys(a);
+  const rb = b as Record<string, unknown>;
+  const ra = a as Record<string, unknown>;
+  return ka.length === Object.keys(b).length && ka.every((k) => k in rb && sameValue(ra[k], rb[k]));
+}
+
 /**
  * `BoardConfig` plus what resolving `card-folder` learned on the way, so `loadBoard` can report a
  * missing or ambiguous folder without repeating the vault lookups. Repo-internal: `BoardConfig`
@@ -150,7 +168,11 @@ export class VaultRepository implements CardRepository, HoverParent {
     public getUserName: () => string = () => "",
   ) {}
 
-  /** Append a history line for `kind` only when the current scope allows it. */
+  /**
+   * Append a history line for `kind` only when the current scope allows it. Called only after a
+   * write that changed the note: a history line records a change, so an edit that left the note as
+   * it was has nothing to record.
+   */
   private async maybeHistory(
     path: string,
     kind: Parameters<typeof historyAllows>[1],
@@ -429,9 +451,37 @@ export class VaultRepository implements CardRepository, HoverParent {
     return parseBody(await this.app.vault.cachedRead(this.file(path)));
   }
 
-  // Raw frontmatter write — NO history. The move path (applyMove) uses this so it never
-  // double-emits a structural line on top of its own "Moved …" entry.
-  private async writeFrontmatter(path: string, patch: Partial<CardFrontmatter>): Promise<void> {
+  /**
+   * The note's frontmatter as the file holds it right now, or null when it cannot be read as YAML.
+   *
+   * Every frontmatter write asks this first, because `processFrontMatter` re-serializes the whole
+   * block whether or not anything in it changes: a flow list like `tags: [a, b]` comes back as a
+   * block list, quotes come and go. So a write that would store what is already there must not be
+   * made at all. `read`, not `cachedRead`, since this decides whether a write happens. The look and
+   * the write are two steps, so a change landing between them is written over by the value the
+   * caller asked for — which is the value it would have written anyway.
+   */
+  private async currentFrontmatter(path: string): Promise<Record<string, unknown> | null> {
+    try {
+      return parseFrontmatter(await this.app.vault.read(this.file(path)));
+    } catch (e) {
+      // Unparseable YAML is the frontmatter write's to report, exactly as it was before this look.
+      if (e instanceof DataCorruptionError) return null;
+      throw e;
+    }
+  }
+
+  /**
+   * Raw frontmatter write — NO history. The move path (applyMove) uses this so it never
+   * double-emits a structural line on top of its own "Moved …" entry. Returns the keys whose stored
+   * value actually changed; when none would, the note is not touched.
+   */
+  private async writeFrontmatter(path: string, patch: Record<string, unknown>): Promise<string[]> {
+    const fm = await this.currentFrontmatter(path);
+    const changed = Object.keys(patch).filter(
+      (k) => fm === null || !(k in fm) || !sameValue(fm[k], patch[k]),
+    );
+    if (changed.length === 0) return [];
     this.markWrite(path);
     await this.app.fileManager.processFrontMatter(
       this.file(path),
@@ -439,20 +489,29 @@ export class VaultRepository implements CardRepository, HoverParent {
         for (const [k, v] of Object.entries(patch)) fm[k] = v;
       },
     );
+    return changed;
   }
 
   async setFrontmatter(path: string, patch: Partial<CardFrontmatter>): Promise<void> {
-    await this.writeFrontmatter(path, patch);
-    // One concise line per meaningful changed key the policy recognizes. `order` is move-managed
-    // and has no field-edit history string, so it's skipped here.
-    for (const [k, v] of Object.entries(patch)) {
-      if (k === "priority") await this.maybeHistory(path, "priority", priorityLine(String(v)));
-      else if (k === "due") await this.maybeHistory(path, "due", dueLine(String(v)));
-      else if (k === "status") await this.maybeHistory(path, "status", statusLine(String(v)));
+    const changed = await this.writeFrontmatter(path, patch);
+    // One concise line per changed key the policy recognizes. `order` is move-managed and has no
+    // field-edit history string, so it's skipped here.
+    for (const k of changed) {
+      const v = String(patch[k]);
+      if (k === "priority") await this.maybeHistory(path, "priority", priorityLine(v));
+      else if (k === "due") await this.maybeHistory(path, "due", dueLine(v));
+      else if (k === "status") await this.maybeHistory(path, "status", statusLine(v));
     }
   }
 
   async unsetFrontmatterKey(path: string, key: string): Promise<void> {
+    await this.unsetKey(path, key);
+  }
+
+  /** Remove one key; false, with the note untouched, when it does not carry that key. */
+  private async unsetKey(path: string, key: string): Promise<boolean> {
+    const fm = await this.currentFrontmatter(path);
+    if (fm !== null && !(key in fm)) return false;
     this.markWrite(path);
     await this.app.fileManager.processFrontMatter(
       this.file(path),
@@ -460,11 +519,27 @@ export class VaultRepository implements CardRepository, HoverParent {
         delete fm[key];
       },
     );
+    return true;
   }
 
-  private async editBody(path: string, fn: (text: string) => string): Promise<void> {
+  /**
+   * Rewrite a note's text through `fn`. Returns whether it changed; when `fn` would hand the text
+   * back as it is, nothing is written. `fn` is run once on a fresh read to decide that, and again
+   * inside `process`, on the text the write is actually made on — so it must be a pure function of
+   * the text it is given.
+   */
+  private async editBody(path: string, fn: (text: string) => string): Promise<boolean> {
+    const file = this.file(path);
+    const now = await this.app.vault.read(file);
+    if (fn(now) === now) return false;
+    let changed = false;
     this.markWrite(path);
-    await this.app.vault.process(this.file(path), fn);
+    await this.app.vault.process(file, (t) => {
+      const next = fn(t);
+      changed = next !== t;
+      return next;
+    });
+    return changed;
   }
 
   /**
@@ -479,13 +554,13 @@ export class VaultRepository implements CardRepository, HoverParent {
     path: string,
     line: { kind: "subtask"; at: SubtaskRef } | { kind: "comment"; at: LineRef },
     write: (text: string) => string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     let drift: LineDrift | null = null;
-    await this.editBody(path, (t) => {
+    const changed = await this.editBody(path, (t) => {
       drift = line.kind === "subtask" ? subtaskDrift(t, line.at) : commentDrift(t, line.at);
       return drift ? t : write(t);
     });
-    if (drift === null) return;
+    if (drift === null) return changed;
     // Nothing was written, so the echo guard this call set on the way in is guarding nothing:
     // dropping it keeps the next change from elsewhere — the very change that made this one
     // refuse — from being swallowed as ours. At worst it costs one extra reload, when an earlier
@@ -495,10 +570,14 @@ export class VaultRepository implements CardRepository, HoverParent {
   }
 
   async applyMove(mutation: CardMutation): Promise<void> {
+    // Whether the moved note itself changed, which is what its history line describes: a move that
+    // leaves it as it was (dropped back on its own slot, sent to the column it already stands in)
+    // records nothing. The parent notes below keep their own count.
+    let changed = false;
     if (mutation.setFrontmatter)
-      await this.writeFrontmatter(mutation.path, mutation.setFrontmatter);
+      changed = (await this.writeFrontmatter(mutation.path, mutation.setFrontmatter)).length > 0;
     for (const key of mutation.unsetFrontmatter ?? []) {
-      await this.unsetFrontmatterKey(mutation.path, key);
+      if (await this.unsetKey(mutation.path, key)) changed = true;
     }
     if (mutation.setSubtaskStatus) {
       // One edit for the whole line: the checkbox and the `[status:: …]` field are two halves of
@@ -506,13 +585,14 @@ export class VaultRepository implements CardRepository, HoverParent {
       // reloads on a line that says two different things.
       const { status, done, ...at } = mutation.setSubtaskStatus;
       const { index } = at;
-      await this.editLine(mutation.path, { kind: "subtask", at }, (t) =>
+      const edited = await this.editLine(mutation.path, { kind: "subtask", at }, (t) =>
         setSubtaskStatusText(
           done === undefined ? t : setSubtaskDone(t, index, done),
           index,
           status,
         ),
       );
+      if (edited) changed = true;
     }
     if (mutation.syncClaim) {
       // Where the claim belongs is worked out HERE, from the claim AND the box the note carries as
@@ -544,15 +624,16 @@ export class VaultRepository implements CardRepository, HoverParent {
         seen.occurrence === at.occurrence &&
         nextFor(seen) === (seen.status ?? null);
       if (!settled) {
-        await this.editLine(mutation.path, { kind: "subtask", at }, (t) => {
+        const edited = await this.editLine(mutation.path, { kind: "subtask", at }, (t) => {
           const item = parseSubtasks(t)[index];
           const was = item?.status ?? null;
           const next = nextFor(item);
           return next === undefined || next === was ? t : setSubtaskStatusText(t, index, next);
         });
+        if (edited) changed = true;
       }
     }
-    if (mutation.history) {
+    if (changed && mutation.history) {
       const historyLine = mutation.history;
       await this.editBody(mutation.path, (t) => appendHistory(t, historyLine, stamp()));
     }
@@ -574,7 +655,7 @@ export class VaultRepository implements CardRepository, HoverParent {
         )
           continue;
         let pending: { link: string; text: string }[] = [];
-        await this.editBody(path, (t) => {
+        const edited = await this.editBody(path, (t) => {
           pending = pendingSubcardLinks(t, links, done);
           return setSubcardDone(
             t,
@@ -582,7 +663,7 @@ export class VaultRepository implements CardRepository, HoverParent {
             done,
           );
         });
-        for (const { text } of pending) {
+        for (const { text } of edited ? pending : []) {
           await this.maybeHistory(
             path,
             "subtask",
@@ -596,35 +677,41 @@ export class VaultRepository implements CardRepository, HoverParent {
     if (failure !== undefined) throw failure;
   }
 
-  setDescription(path: string, description: string): Promise<void> {
+  async setDescription(path: string, description: string): Promise<void> {
     // No history kind maps to a description edit, so this stays ungated.
-    return this.editBody(path, (t) => setDescriptionText(t, description));
+    await this.editBody(path, (t) => setDescriptionText(t, description));
   }
   async addComment(path: string, text: string, author?: string): Promise<void> {
     const signature = author || this.getUserName();
-    await this.editBody(path, (t) => appendComment(t, text, stamp(), signature));
-    await this.maybeHistory(path, "comment", commentAddedLine());
+    // One stamp for both runs of the edit, so they agree on the line they add.
+    const at = stamp();
+    if (await this.editBody(path, (t) => appendComment(t, text, at, signature)))
+      await this.maybeHistory(path, "comment", commentAddedLine());
   }
   async updateComment(path: string, at: LineRef, text: string): Promise<void> {
-    await this.editLine(path, { kind: "comment", at }, (t) =>
+    const changed = await this.editLine(path, { kind: "comment", at }, (t) =>
       updateTimestampedLine(t, SECTION.comments, at.index, text),
     );
-    await this.maybeHistory(path, "comment", commentEditedLine());
+    if (changed) await this.maybeHistory(path, "comment", commentEditedLine());
   }
   async removeComment(path: string, at: LineRef): Promise<void> {
-    await this.editLine(path, { kind: "comment", at }, (t) =>
+    const changed = await this.editLine(path, { kind: "comment", at }, (t) =>
       removeTimestampedLine(t, SECTION.comments, at.index),
     );
-    await this.maybeHistory(path, "comment", commentRemovedLine());
+    if (changed) await this.maybeHistory(path, "comment", commentRemovedLine());
   }
   async addTodo(path: string, text: string): Promise<void> {
-    await this.editBody(path, (t) => addTodoText(t, text));
-    await this.maybeHistory(path, "subtask", subtaskAddedLine(text));
+    if (await this.editBody(path, (t) => addTodoText(t, text)))
+      await this.maybeHistory(path, "subtask", subtaskAddedLine(text));
   }
   async toggleSubtask(path: string, at: SubtaskRef, done: boolean): Promise<void> {
     // The history line names `at.text`, and the write only lands while the note still reads that
     // way — so the record and the tick are the same line, with nothing read separately to disagree.
-    await this.editLine(path, { kind: "subtask", at }, (t) => setSubtaskDone(t, at.index, done));
+    // A box already standing where it was sent is left alone, and so is its record.
+    const changed = await this.editLine(path, { kind: "subtask", at }, (t) =>
+      setSubtaskDone(t, at.index, done),
+    );
+    if (!changed) return;
     await this.maybeHistory(
       path,
       "subtask",
@@ -632,8 +719,10 @@ export class VaultRepository implements CardRepository, HoverParent {
     );
   }
   async removeSubtask(path: string, at: SubtaskRef): Promise<void> {
-    await this.editLine(path, { kind: "subtask", at }, (t) => removeSubtaskText(t, at.index));
-    await this.maybeHistory(path, "subtask", subtaskRemovedLine(at.text));
+    const changed = await this.editLine(path, { kind: "subtask", at }, (t) =>
+      removeSubtaskText(t, at.index),
+    );
+    if (changed) await this.maybeHistory(path, "subtask", subtaskRemovedLine(at.text));
   }
 
   /**
@@ -649,6 +738,10 @@ export class VaultRepository implements CardRepository, HoverParent {
     type: RelationType,
     rewrite: (fm: Record<string, unknown>) => string[] | null,
   ): Promise<boolean> {
+    // Asked of the note as it is first: a callback that bails out still has the whole block
+    // re-serialized (see `currentFrontmatter`), so a list that stays as it is must not be written.
+    const fm = await this.currentFrontmatter(path);
+    if (fm !== null && rewrite(fm) === null) return false;
     let changed = false;
     this.markWrite(path);
     await this.app.fileManager.processFrontMatter(
@@ -759,13 +852,12 @@ export class VaultRepository implements CardRepository, HoverParent {
   }
 
   async setColumns(columns: ColumnDef[]): Promise<void> {
-    this.markWrite(this.boardPath);
-    await this.app.fileManager.processFrontMatter(
-      this.file(this.boardPath),
-      (fm: Record<string, unknown>) => {
-        fm["columns"] = serializeColumns(columns);
-      },
-    );
+    const value = serializeColumns(columns);
+    // Compared as the board reads them, so a hand-written `columns: [todo, done]` saved unchanged
+    // is not expanded into the long form behind the person's back.
+    const fm = await this.currentFrontmatter(this.boardPath);
+    if (fm !== null && sameValue(serializeColumns(normalizeColumns(fm["columns"])), value)) return;
+    await this.writeFrontmatter(this.boardPath, { columns: value });
   }
 
   async rememberPriorities(values: string[]): Promise<void> {

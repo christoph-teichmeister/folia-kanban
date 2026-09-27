@@ -10,6 +10,7 @@ import type { MatchContext } from "./filter";
 import { laneRefusal } from "./lanes";
 import type { Board, Card, CardFrontmatter, SubItem } from "./types";
 import { moveCard, resolveDrop, syncSubtaskClaim } from "./board";
+import { samePriority } from "./priorities";
 import type { CardRepository } from "./repo";
 import { StaleLineError } from "./repo";
 
@@ -31,8 +32,9 @@ export interface DropTarget {
 
 /**
  * Move or reorder a card. `index` counts slots in the target column with the moved card taken out,
- * so 0 is the top and an absent value appends. Returns false when nothing was written: the board
- * knows no such note, or a checklist line's reading already stands where it was sent.
+ * so 0 is the top and an absent value appends — except for a card already standing in that column,
+ * which an absent value leaves where it is. Returns false when there was nothing to move: the
+ * board knows no such note, or a checklist line's reading already stands where it was sent.
  */
 export async function moveCardTo(
   repo: CardRepository,
@@ -40,8 +42,12 @@ export async function moveCardTo(
   target: MoveTarget,
 ): Promise<boolean> {
   const { card, columnId } = target;
-  const index =
-    target.index ?? (board.columns[columnId] ?? []).filter((p) => p !== card.path).length;
+  // "Send it to its own column" asks for no change, so it must not come out as a trip to the
+  // bottom of that column.
+  const list = board.columns[columnId] ?? [];
+  const at = list.indexOf(card.path);
+  const stays = at >= 0 && String(card.frontmatter.status ?? "") === columnId;
+  const index = target.index ?? (stays ? at : list.filter((p) => p !== card.path).length);
   const mutation = moveCard(board, card, columnId, index);
   if (!mutation) return false;
   await repo.applyMove(mutation);
@@ -117,9 +123,14 @@ export async function setSubtaskDone(
  */
 export async function setCardPriority(
   repo: CardRepository,
-  target: { path: string; value: string },
+  target: { path: string; value: string; current?: string },
 ): Promise<void> {
-  const value = target.value.trim();
+  // Priorities compare without regard to case, so picking the one a card already has — which a
+  // picker marks as current even when the board's vocabulary spells it differently — keeps the
+  // note's own spelling, and the write finds nothing to change. `current` is the value the caller
+  // showed as the card's; a caller writing on purpose (an agent fixing the case) leaves it out.
+  const current = target.current?.trim();
+  const value = current && samePriority(current, target.value) ? current : target.value.trim();
   // An empty value clears the key cleanly (the `priority:` line goes away) rather than writing a
   // stray empty value and a misleading `Priority → ` history line.
   if (value === "") {

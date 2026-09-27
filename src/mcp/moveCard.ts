@@ -53,7 +53,9 @@ const input = z.object({
     .int()
     .min(0)
     .optional()
-    .describe("Slot in the target column, counted with this card taken out. Omit to append."),
+    .describe(
+      "Slot in the target column, counted with this card taken out. Omit to append, or, for a card already in that column, to leave it where it is.",
+    ),
   line: lineArg.optional(),
 });
 
