@@ -488,8 +488,11 @@ export function cardChips(
  * back — `priority A · tags bug, ui` — or null when it writes nothing.
  */
 export function describeFill(fill: Partial<CardFrontmatter>): string | null {
-  const parts = Object.entries(fill).map(
-    ([key, value]) => `${key} ${Array.isArray(value) ? value.join(", ") : String(value)}`,
-  );
+  const parts = Object.entries(fill).map(([key, value]) => {
+    const values = Array.isArray(value) ? value.map(String) : [String(value)];
+    // `tags` is the property's name; one of them is a tag.
+    const name = key === "tags" && values.length === 1 ? "tag" : key;
+    return `${name} ${values.join(", ")}`;
+  });
   return parts.length > 0 ? parts.join(" · ") : null;
 }

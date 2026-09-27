@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { boardMatchContext } from "../model/board";
-import { laneFill, prospectiveCard } from "../model/lanes";
+import { laneFill, prospectiveCard, rejectedBeyondTitle } from "../model/lanes";
 import type { Board } from "../model/types";
 import { setCardPriority, setSubtaskDone, writeNewCardFields } from "../model/boardOps";
 import { SCALAR_ONLY_KEYS, TOOL_REFUSALS } from "../model/properties";
@@ -157,7 +157,9 @@ const createCard = tool({
     refuseLaneMismatch(
       board,
       { columnId: args.column, card: willBe, ctx: laneCtx },
-      "No card was created. A card joins that column by carrying what its rule reads, and this one would not — the rule reads something a new card cannot be given, or a field passed here contradicts it. Create it in a column with no rule of its own, and the column will draw it once it carries what the rule reads.",
+      rejectedBeyondTitle(board, args.column, willBe, laneCtx)
+        ? "No card was created. A card joins that column by carrying what its rule reads, and this one would not — the rule reads something a new card cannot be given, or a field passed here contradicts it. Create it in a column with no rule of its own, and the column will draw it once it carries what the rule reads."
+        : "No card was created. The rule's words are matched against the title, and this title does not contain them: create it again with a title that does.",
     );
     const path = await repo.createCard(args.title, args.column);
     // The note exists from here on. A field write that fails afterwards must not be reported as

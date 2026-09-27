@@ -327,10 +327,29 @@ export function laneFill(
  * and whether this one does is the add's own question once it has been typed.
  */
 export function takesNewCards(board: Board, columnId: string, ctx: MatchContext): boolean {
+  return !rejectedBeyondTitle(
+    board,
+    columnId,
+    prospectiveCard("", columnId, laneFill(board, columnId, ctx)),
+    ctx,
+  );
+}
+
+/**
+ * Does the lane `columnId` reject `card` over something other than its words? False for a plain
+ * column, and for a card whose only miss is free text in the rule — the one a new title can fix,
+ * which is worth telling apart from a rule the card could never meet.
+ */
+export function rejectedBeyondTitle(
+  board: Board,
+  columnId: string,
+  card: Card,
+  ctx: MatchContext,
+): boolean {
   const lane = laneOf(board, columnId);
-  if (!lane) return true;
-  const card = prospectiveCard("", columnId, laneFill(board, columnId, ctx));
-  return judgeCard(card, { text: [], tokens: lane.filter.tokens }, ctx) !== "rejects";
+  if (!lane) return false;
+  const filed = { ...card, frontmatter: { ...card.frontmatter, status: columnId } };
+  return judgeCard(filed, { text: [], tokens: lane.filter.tokens }, ctx) === "rejects";
 }
 
 /**

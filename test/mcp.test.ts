@@ -1276,6 +1276,32 @@ describe("a column filled by a rule rather than by status", () => {
     expect(made.warning).toBeUndefined();
   });
 
+  it("names the title as the miss when a lane's words are all a new card lacks", async () => {
+    const repo = new FakeRepo(
+      {
+        ...config,
+        columns: [
+          { id: "todo", title: "Todo" },
+          { id: "plans", title: "Plans", filter: "roadmap" },
+        ],
+      },
+      {},
+    );
+    const host: BoardHost = {
+      listBoards: () => [{ path: "Board.md", name: "Board" }],
+      repoFor: (path) => (path === "Board.md" ? repo : null),
+    };
+    await expect(
+      call(host, "create_card", { board: "Board.md", title: "Fix login", column: "plans" }),
+    ).rejects.toThrow(/this title does not contain them/);
+    const made = (await call(host, "create_card", {
+      board: "Board.md",
+      title: "Roadmap review",
+      column: "plans",
+    })) as { path: string };
+    expect(repo.files.has(made.path)).toBe(true);
+  });
+
   it("refuses a write that would claim a lane the card does not match, and writes nothing", async () => {
     const { host, repo } = laned();
     const before = JSON.stringify([...repo.files.entries()]);

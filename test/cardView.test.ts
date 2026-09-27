@@ -7,6 +7,7 @@ import {
   boardPriorities,
   priorityOptions,
   cardChips,
+  describeFill,
 } from "../src/ui/cardView";
 import {
   assigneeValues,
@@ -827,5 +828,15 @@ describe("is: and unread: tokens (state beyond the card's own note)", () => {
     ]);
     expect(toggleToken("", "unread", "comments")).toBe("unread:comments");
     expect(hasToken("is:Blocked", "is", "blocked")).toBe(true);
+  });
+});
+
+describe("what a lane's fill is called in the add form", () => {
+  it("reads each property back in plain words, a single tag as a tag", () => {
+    expect(describeFill({})).toBeNull();
+    expect(describeFill({ priority: "A", tags: ["bug"] })).toBe("priority A · tag bug");
+    expect(describeFill({ tags: ["bug", "ui"], assignee: ["alex", "ana"] })).toBe(
+      "tags bug, ui · assignee alex, ana",
+    );
   });
 });
