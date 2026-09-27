@@ -2006,9 +2006,12 @@ describe("card context menu", () => {
       await user.keyboard("{Escape}");
     });
 
-    it("leaves F10 without Shift alone", async () => {
+    it.each([
+      ["F10 without Shift", { key: "F10" }],
+      ["Ctrl+Shift+F10", { key: "F10", shiftKey: true, ctrlKey: true }],
+    ])("leaves %s alone", async (_, keys) => {
       const main = await focusCard("First");
-      fireEvent.keyDown(main, { key: "F10" });
+      fireEvent.keyDown(main, keys);
       expect(screen.queryByRole("menu")).toBeNull();
     });
 

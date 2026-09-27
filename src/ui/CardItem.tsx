@@ -138,10 +138,10 @@ function CardItemInner({
   };
   const openMenu = (x: number, y: number, todoEl: Element | null) => {
     const rowIndex = todoEl ? Number(todoEl.getAttribute("data-todo-index")) : NaN;
-    // Which checklist line was right-clicked, read here, while the person is still pointing at it:
-    // this tile's own, for a todo placed in a column, or the surfaced next-todo row the click
-    // landed on. The menu that opens outlives board reloads, and a line removed above this one
-    // moves every index below it — so its actions carry the line rather than the place it sat.
+    // Which checklist line the menu is for, read the moment it opens: this tile's own, for a todo
+    // placed in a column, or the surfaced next-todo row a right-click landed on. The menu that
+    // opens outlives board reloads, and a line removed above this one moves every index below
+    // it — so its actions carry the line rather than the place it sat.
     const line = todoRef
       ? todoRef.line
       : todoEl && Number.isFinite(rowIndex)
@@ -170,7 +170,10 @@ function CardItemInner({
   // Merge dnd-kit keyboard handling (Space = pick up) with Enter = open and the platform's
   // context-menu keys = the card menu, anchored to the card since there is no pointer to follow.
   const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+    if (
+      e.key === "ContextMenu" ||
+      (e.key === "F10" && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey)
+    ) {
       e.preventDefault();
       e.stopPropagation();
       // Not while the card is lifted: the menu would take focus and act on a card still in flight.

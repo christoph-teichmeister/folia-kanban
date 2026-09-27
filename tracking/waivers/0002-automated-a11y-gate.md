@@ -15,7 +15,7 @@ The a11y *contracts* were always real and documented — the per-component / per
 
 ## Risk
 
-**Reduced, not eliminated.** The baseline is now enforced by an automated gate, so a change that regresses an a11y contract is caught rather than landing silently, and `0 serious/critical` axe violations are confirmed in the unit-test environment. The residual risk is concentrated in the three items below: modal dialogs (`ColumnEditModal`, modal `CardDetail`) declare a modal role without a real focus trap or background `inert`, so focus can escape behind the dialog; the card context menu is pointer-only, leaving keyboard users without a path to it; and color-contrast can't be measured here. Each is a targeted, manually-tested interaction fix rather than a systemic gap.
+**Reduced, not eliminated.** The baseline is now enforced by an automated gate, so a change that regresses an a11y contract is caught rather than landing silently, and `0 serious/critical` axe violations are confirmed in the unit-test environment. The residual risk is concentrated in the three items below: modal dialogs (`ColumnEditModal`, modal `CardDetail`) declare a modal role without a real focus trap or background `inert`, so focus can escape behind the dialog; the card context menu's new keyboard path (#72) is unconfirmed in the running app; and color-contrast can't be measured here. Each is a targeted, manually-tested interaction fix rather than a systemic gap.
 
 ## Resolution
 
@@ -42,7 +42,7 @@ Both layers run under `ds:check` and `pnpm verify`, which CI runs on every push 
 **Remaining (why this waiver stays `active`):**
 
 1. **Modal focus-trap + background `inert` not implemented** (`ColumnEditModal`, modal `CardDetail`) — focus can leave the open dialog into the page behind it.
-2. **`CardItem` context menu has no keyboard path** — it opens via `onContextMenu` / right-click only, so keyboard users cannot reach it.
+2. **`CardItem` context menu keyboard path awaits a running-app check** — #72 opens it from a focused card with the Menu key or Shift+F10, anchored under the card, and unit tests cover it; close this item once Obsidian confirms the keys reach the board and focus lands in the menu.
 3. **`color-contrast` unmeasurable in jsdom** — axe cannot compute rendered colors in the unit-test environment; this needs a real-browser / Lighthouse audit.
 
 These are careful, manually-tested interaction changes and are tracked under this waiver until each is delivered.
