@@ -1332,7 +1332,8 @@ export function columnOf(board: Board, path: string): string | null {
  * Translate a dnd-kit drop (active card id, the id it was dropped over) into a target
  * column + insertion index among that column's cards with the active card removed.
  * `overId` may be a column id (dropped on the column body) or a card path (dropped on a card,
- * inserting before it). Pure and testable.
+ * inserting before it). Dropped over itself, as the keyboard's pick-up and put-down in place reports
+ * it, the card resolves to the slot it holds. Pure and testable.
  */
 export function resolveDrop(
   board: Board,
@@ -1345,7 +1346,9 @@ export function resolveDrop(
   }
   const columnId = columnOf(board, overId);
   if (!columnId) return null;
-  const list = (board.columns[columnId] ?? []).filter((p) => p !== activeId);
+  const column = board.columns[columnId] ?? [];
+  if (overId === activeId) return { columnId, index: column.indexOf(activeId) };
+  const list = column.filter((p) => p !== activeId);
   const idx = list.indexOf(overId);
   return { columnId, index: idx === -1 ? list.length : idx };
 }

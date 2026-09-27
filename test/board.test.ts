@@ -982,6 +982,22 @@ describe("planDrop (drag routing — #2 namespacing + #3 computed-order guard)",
   });
 });
 
+describe("resolveDrop", () => {
+  const b = buildBoard(config, [
+    card("A", { status: "todo", order: 1 }),
+    card("B", { status: "todo", order: 2 }),
+    card("C", { status: "todo", order: 3 }),
+  ]);
+
+  it.each([
+    ["itself, which is the slot it holds", "Tasks/B.md", 1],
+    ["a neighbour, before which it goes", "Tasks/A.md", 0],
+    ["its own column's body, the end of it", "todo", 2],
+  ])("puts a card dropped on %s", (_, over, index) => {
+    expect(resolveDrop(b, "Tasks/B.md", over)).toEqual({ columnId: "todo", index });
+  });
+});
+
 describe("applyReloc (live cross-column make-room reducer)", () => {
   // A bare columns map keyed by column id → ordered card paths (what buildBoard produces).
   const cols = (): Record<string, string[]> => ({

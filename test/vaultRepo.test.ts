@@ -7,7 +7,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { App, FileManager, MetadataCache, Vault } from "obsidian";
 import { VaultRepository } from "../src/obsidian/vaultRepo";
-import { moveCardTo, setCardPriority } from "../src/model/boardOps";
+import { moveCardOver, moveCardTo, setCardPriority } from "../src/model/boardOps";
+import { planDrop } from "../src/model/board";
 import { DataCorruptionError } from "../src/model/schemas";
 import { parseBody } from "../src/model/card";
 import { isMine, unreadComments } from "../src/model/unread";
@@ -1846,6 +1847,23 @@ describe("an edit that leaves the note as it was", () => {
 
     await moveCardTo(repo, board, { card: one, columnId: "todo" });
     await moveCardTo(repo, board, { card: one, columnId: "todo", index: slot });
+
+    expectNoWrite();
+  });
+
+  // The keyboard's pick-up and put-down in place: dnd-kit reports the card over its own sortable.
+  it("writes nothing when a card is dropped on itself, as the board hands that drop over", async () => {
+    const { app, repo, expectNoWrite } = untouched();
+    app.vault.addFile("basic/Cards/Three.md", card("status: todo\norder: 9"));
+    const board = await repo.loadBoard();
+    const one = board.cards[PATH];
+    if (!one) throw new Error("card not loaded");
+    expect(board.columns["todo"]?.at(-1)).not.toBe(PATH);
+    const self = `todo::${PATH}`;
+    const plan = planDrop(board, self, self, ["todo", "done"]);
+    if (plan.kind !== "moveCard") throw new Error(`planned ${plan.kind}`);
+
+    await moveCardOver(repo, board, { card: one, overId: plan.overId });
 
     expectNoWrite();
   });
