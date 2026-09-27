@@ -15,7 +15,7 @@
 1. Before changing code: `pnpm doctor:check`,
 2. While changing code (TypeScript only): put files in the documented folders; validate vault input with the Zod schemas;
 3. Respect the linters and guards. Don't just disable or ignore the violations. Fix them for real. Only ignore a violation if it's really technically impossible to fix or if the fix would not be worth.
-4. No task is complete until `pnpm verify` passes (`pnpm verify:ui` for UI changes).
+4. No task is complete until `pnpm verify` passes (`pnpm verify:ui` for UI changes). A UI/UX change is done only after you have tested it in the live Obsidian (see below) and attached screenshots as proof of work in the chat with your human, never on GitHub.
 5. Track exceptions with a waiver under `tracking/waivers/` and surface it in the closeout report.
 6. Closeout: run `pnpm verify`, report each check's result, and explain any "not run".
 7. Committing: a change is breaking when a user would need to be told about it before upgrading. If the software itself tells them what to do at the moment it matters, it is a `fix`.
