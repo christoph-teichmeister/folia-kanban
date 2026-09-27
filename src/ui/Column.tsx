@@ -136,7 +136,8 @@ interface Props {
    *  id (`dragReloc.activeId`) instead of this column's namespaced id, or dnd-kit unmounts the active
    *  sortable mid-drag and the make-room/drop tween breaks. */
   dragReloc?: DragReloc;
-  onAddCard: (columnId: string, title: string) => void;
+  /** False when the card was refused, which leaves the title in the composer to be fixed. */
+  onAddCard: (columnId: string, title: string) => boolean;
 }
 
 export function Column({
@@ -231,7 +232,7 @@ export function Column({
 
   const submit = (keepOpen: boolean) => {
     const t = title.trim();
-    if (t) onAddCard(column.id, t);
+    if (t && !onAddCard(column.id, t)) return;
     setTitle("");
     if (!keepOpen) setAdding(false);
   };

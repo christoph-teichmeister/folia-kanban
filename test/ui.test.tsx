@@ -5756,6 +5756,34 @@ describe("the detail panel reports a failed write", () => {
     );
   });
 
+  it("keeps a lane's add control when only the title can meet its rule, and a refused title typed", async () => {
+    const user = userEvent.setup();
+    const repo = new FakeRepo(
+      {
+        ...config,
+        columns: [
+          { id: "todo", title: "Todo" },
+          { id: "plans", title: "Plans", filter: "roadmap" },
+        ],
+      },
+      { "Tasks/Alpha.md": { fm: { type: "task", status: "todo" }, body: "\n# Alpha\n" } },
+    );
+    render_(repo);
+    await screen.findByText("Alpha", { selector: ".folia-card-title" });
+
+    await user.click(screen.getByLabelText("Add card to Plans"));
+    await user.type(screen.getByLabelText("New card title"), "Groceries{Enter}");
+    expect(await screen.findByText(/does not match it/)).toHaveClass("folia-toast-error");
+    expect(repo.files.has("Tasks/Groceries.md")).toBe(false);
+    // The composer stays open with what was typed, so the title can be fixed rather than retyped.
+    const title = screen.getByLabelText("New card title");
+    expect(title).toHaveValue("Groceries");
+
+    await user.clear(title);
+    await user.type(title, "Roadmap launch{Enter}");
+    await waitFor(() => expect(repo.files.has("Tasks/Roadmap launch.md")).toBe(true));
+  });
+
   it("offers no add-card control on a lane an added card could never join, and names its rule", async () => {
     // `is:blocked` reads a relationship, which nothing typed into a composer can give a card. The
     // control would only ever end in a refusal, so the lane says how it fills instead.

@@ -333,6 +333,8 @@ describe("what a card added straight into a lane is written with", () => {
       "due:none",
       "assignee:none",
       "is:unblocked",
+      // Free text is the title's to match, and the title is not typed yet: the add judges it.
+      "roadmap priority:a",
     ]) {
       expect(takes(rule), rule).toBe(true);
     }
@@ -345,7 +347,7 @@ describe("what a card added straight into a lane is written with", () => {
       "due:overdue",
       "context:Engineering",
       "status:todo",
-      "roadmap",
+      "roadmap is:blocked",
       "area:a area:b",
     ]) {
       expect(takes(rule), rule).toBe(false);

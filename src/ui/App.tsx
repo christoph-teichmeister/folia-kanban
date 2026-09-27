@@ -381,30 +381,34 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
     [repo, load, reportError, refusedByLane],
   );
 
+  /** Adds the card, answering at once whether it was taken, so a refused title stays typed. */
   const onAddCard = useCallback(
-    async (columnId: string, title: string) => {
+    (columnId: string, title: string): boolean => {
       const b = boardRef.current;
       const ctx = matchCtxRef.current;
-      if (!b || !ctx) return;
+      if (!b || !ctx) return false;
       // A lane's rule is written onto the card where it names a plain value, so adding to an
       // `area:research` lane makes a research card. What is left is judged before the note exists:
-      // a rule asking for something an added card cannot carry is a lane it would never appear in.
+      // a title that misses a lane's words, say, is a card that lane would never draw.
       const fill = laneFill(b, columnId, ctx);
-      if (refusedByLane(columnId, prospectiveCard(title, columnId, fill))) return;
-      try {
-        const path = await addCard(repo, { title, columnId, fill });
-        await load();
-        // 'inline' (default): add-only — stay in the column, don't open the detail.
-        // 'inline-edit': open the new card's detail and focus its description for editing.
-        if (settings.addCardFlow === "inline-edit") {
-          setOpenOverride(mapOpenMode(settings.addCardOpenMode));
-          setFocusNew(true);
-          setOpenId((n) => n + 1);
-          setSelected(path);
+      if (refusedByLane(columnId, prospectiveCard(title, columnId, fill))) return false;
+      void (async () => {
+        try {
+          const path = await addCard(repo, { title, columnId, fill });
+          await load();
+          // 'inline' (default): add-only — stay in the column, don't open the detail.
+          // 'inline-edit': open the new card's detail and focus its description for editing.
+          if (settings.addCardFlow === "inline-edit") {
+            setOpenOverride(mapOpenMode(settings.addCardOpenMode));
+            setFocusNew(true);
+            setOpenId((n) => n + 1);
+            setSelected(path);
+          }
+        } catch (e) {
+          reportError(e);
         }
-      } catch (e) {
-        reportError(e);
-      }
+      })();
+      return true;
     },
     [repo, load, settings.addCardFlow, settings.addCardOpenMode, reportError, refusedByLane],
   );
@@ -1117,7 +1121,7 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
                         filter={filter}
                         doneColumnId={doneColumnId}
                         onMove={(card, overId) => void onMove(card, overId)}
-                        onAddCard={(columnId, title) => void onAddCard(columnId, title)}
+                        onAddCard={onAddCard}
                       />
                       {/* Side modes (split/float) render the panel as a sibling; split shrinks the board,
                     float overlays it. Modal renders via a portal into the root, over a backdrop. */}

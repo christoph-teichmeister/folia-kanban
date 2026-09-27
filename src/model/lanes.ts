@@ -320,19 +320,17 @@ export function laneFill(
  * Can a card added straight into `columnId` ever be drawn there? True for a plain column, and for
  * a lane whose rule the added card — filled by {@link laneFill} — would not reject. False is a
  * lane whose rule reads something an added card cannot carry (`is:blocked`, `due:overdue`, a
- * `context:`, two different areas), where offering to add a card would only lead to a refusal.
+ * `context:` — a new note sits in the card folder itself, which is no context — or two different
+ * areas), where offering to add a card would only lead to a refusal.
  *
- * Judged before a title exists, so a rule with free text in it answers false: the title is the
- * only thing free text could match, and nobody types a title to satisfy a column's rule.
+ * Asked before a title exists, so free text in the rule is set aside: a title can still match it,
+ * and whether this one does is the add's own question once it has been typed.
  */
 export function takesNewCards(board: Board, columnId: string, ctx: MatchContext): boolean {
-  const check = laneVerdict(
-    board,
-    columnId,
-    prospectiveCard("", columnId, laneFill(board, columnId, ctx)),
-    ctx,
-  );
-  return check?.verdict !== "rejects";
+  const lane = laneOf(board, columnId);
+  if (!lane) return true;
+  const card = prospectiveCard("", columnId, laneFill(board, columnId, ctx));
+  return judgeCard(card, { text: [], tokens: lane.filter.tokens }, ctx) !== "rejects";
 }
 
 /**
