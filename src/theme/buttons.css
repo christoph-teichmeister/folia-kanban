@@ -113,7 +113,8 @@
 .folia-scope .folia-menu-item:hover:where(:not(:disabled, :focus-visible)),
 .folia-scope .folia-filter-suggest-item:hover:where(:not(:disabled, :focus-visible)),
 .folia-scope .folia-menu-column:hover:where(:not(:disabled, :focus-visible)),
-.folia-scope .folia-menu-prio:hover:where(:not(:disabled, :focus-visible)) {
+.folia-scope .folia-menu-prio:hover:where(:not(:disabled, :focus-visible)),
+.folia-scope .folia-swatch-none:hover:where(:not(:disabled, :focus-visible)) {
   outline: var(--folia-control-outline);
   outline-offset: calc(-1 * var(--folia-border-width-thick));
 }
@@ -125,7 +126,8 @@
 .folia-scope .folia-menu-item:active:where(:not(:disabled, :focus-visible)),
 .folia-scope .folia-filter-suggest-item:active:where(:not(:disabled, :focus-visible)),
 .folia-scope .folia-menu-column:active:where(:not(:disabled, :focus-visible)),
-.folia-scope .folia-menu-prio:active:where(:not(:disabled, :focus-visible)) {
+.folia-scope .folia-menu-prio:active:where(:not(:disabled, :focus-visible)),
+.folia-scope .folia-swatch-none:active:where(:not(:disabled, :focus-visible)) {
   /* Hovered and pressed used to differ by outline width alone — one pixel of line at dpr 1, and
      under `.mod-macos`, where the host fill pair collapses and `--input-shadow` is `none`, the only
      difference the two states had. The ring now also MOVES, and it moves INWARD: hovered it sits
@@ -147,7 +149,11 @@
    it overwhelms it: at the moment the pointer arrives the tile reads as an ordinary bordered button.
    The pointer cue stays; it takes the tile's own line style so the tile stays a tile. */
 .folia-scope .folia-add-column:hover:where(:not(:disabled, :focus-visible, .is-editing)),
-.folia-scope .folia-add-column:active:where(:not(:disabled, :focus-visible, .is-editing)) {
+.folia-scope .folia-add-column:active:where(:not(:disabled, :focus-visible, .is-editing)),
+.folia-scope .folia-menu-prio-none:hover:where(:not(:disabled, :focus-visible)),
+.folia-scope .folia-menu-prio-none:active:where(:not(:disabled, :focus-visible)),
+.folia-scope .folia-swatch-none:hover:where(:not(:disabled, :focus-visible)),
+.folia-scope .folia-swatch-none:active:where(:not(:disabled, :focus-visible)) {
   outline-style: dashed;
 }
 

@@ -306,15 +306,13 @@ export function CardContextMenu({
               role="menuitemradio"
               // Whitespace-only reads as absent here too, the way every other priority path treats it.
               aria-checked={samePriority(priority, "")}
-              aria-label="No priority"
-              title="No priority"
               onClick={() => {
                 restoreOnClose.current = target.byKeyboard;
                 void a.setPriority(path, "");
                 onClose();
               }}
             >
-              <Icon name="close" />
+              No priority
             </button>
           </div>
 

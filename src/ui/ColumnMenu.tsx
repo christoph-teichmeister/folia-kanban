@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -41,6 +42,7 @@ export function ColumnMenu({
   onExpandAll,
 }: Props) {
   const a = useBoardActions();
+  const colorLabelId = useId();
   // The board can live in a pop-out window, so every reach outside the React tree — the portal, the
   // outside-click listener, the viewport clamp — has to name the board's own document and window,
   // not the globals that follow whichever window has focus.
@@ -123,8 +125,12 @@ export function ColumnMenu({
       </div>
 
       <div className="folia-menu-field">
-        <span className="folia-menu-label">Color</span>
-        <div className="folia-swatches">
+        {/* Named by the visible label, not an `aria-label`: Obsidian turns every `aria-label` into a
+            hover tooltip, and one saying "Color" over the whole row would only repeat the heading. */}
+        <span className="folia-menu-label" id={colorLabelId}>
+          Color
+        </span>
+        <div className="folia-swatches" role="group" aria-labelledby={colorLabelId}>
           {COLUMN_COLORS.map((c) => (
             <button
               key={c}
@@ -150,12 +156,10 @@ export function ColumnMenu({
               ringing whichever of the eight it resolves to would claim a pick nobody made. */}
           <button
             className={"folia-swatch folia-swatch-none" + (column.color ? "" : " is-active")}
-            aria-label="No color"
-            title="No color"
             aria-pressed={!column.color}
             onClick={() => a.setColumnColor(column.id, null)}
           >
-            <Icon name="close" />
+            No color
           </button>
         </div>
       </div>

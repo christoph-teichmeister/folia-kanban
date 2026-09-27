@@ -2440,7 +2440,7 @@ describe("card context menu", () => {
       within(group)
         .getAllByRole("menuitemradio")
         .map((b) => b.textContent),
-    ).toEqual(["urgent", "low", ""]);
+    ).toEqual(["urgent", "low", "No priority"]);
   });
 
   it("marks the current priority selected even when the note spells it differently", async () => {
@@ -2521,6 +2521,26 @@ describe("card context menu", () => {
     expect(within(menu).getByRole("menuitemradio", { name: "No priority" })).toHaveAttribute(
       "aria-checked",
       "true",
+    );
+  });
+
+  it("keeps a card's own `priority: none` apart from the choice that removes the priority", async () => {
+    // "none" is a value like any other word here: offered, checked, and not to be confused with the
+    // removal choice beside it, which is why that one is not called "None".
+    const repo = new FakeRepo(config, {
+      "Tasks/First.md": {
+        fm: { type: "task", status: "todo", order: 1, priority: "none" },
+        body: "\n# First\n",
+      },
+    });
+    const { menu } = await openCardMenu("First", repo);
+    expect(within(menu).getByRole("menuitemradio", { name: "none" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(within(menu).getByRole("menuitemradio", { name: "No priority" })).toHaveAttribute(
+      "aria-checked",
+      "false",
     );
   });
 
@@ -7318,6 +7338,29 @@ describe("column colour — what the picker writes and what a legacy note still 
     await screen.findByText("Alpha");
     const column = document.querySelector('[data-column="todo"]') as HTMLElement;
     expect(column.style.getPropertyValue("--folia-col-accent")).toBe("var(--color-pink)");
+  });
+
+  it("names the no-colour choice in words, pressed while the note stores no colour", async () => {
+    const repo = repoWith("cyan");
+    render_(repo);
+    await screen.findByText("Alpha");
+    await user.click(screen.getByLabelText("Column options for Todo"));
+    const colors = screen.getByRole("group", { name: "Color" });
+    const none = within(colors).getByRole("button", { name: "No color" });
+    expect(none).toHaveAttribute("aria-pressed", "false");
+    await user.click(none);
+    await waitFor(() =>
+      expect(repo.config.columns.find((c) => c.id === "todo")?.color).toBeUndefined(),
+    );
+    await waitFor(() => expect(none).toHaveAttribute("aria-pressed", "true"));
+
+    await user.click(screen.getByText("Edit column…"));
+    const dialog = await screen.findByRole("dialog", { name: /Edit column/ });
+    expect(
+      within(within(dialog).getByRole("group", { name: "Color" })).getByRole("button", {
+        name: "No color",
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("replaces a legacy hex when one of the eight is picked", async () => {

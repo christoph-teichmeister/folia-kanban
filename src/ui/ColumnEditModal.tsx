@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { ColumnDef, ColumnGroup, ColumnSort } from "../model/types";
 import { useBoardActions, useBoardDocument, type ColumnPatch } from "./context";
@@ -48,6 +48,7 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
  */
 export function ColumnEditModal({ column, onClose }: Props) {
   const a = useBoardActions();
+  const colorLabelId = useId();
   // Portalled to the board's OWN document body: `activeDocument` is whichever window has focus,
   // which for a board in a pop-out window is not the one the modal belongs to.
   const doc = useBoardDocument();
@@ -143,8 +144,11 @@ export function ColumnEditModal({ column, onClose }: Props) {
           </label>
 
           <div className="folia-field">
-            <span className="folia-field-label">Color</span>
-            <div className="folia-swatches">
+            {/* Labelled by the heading rather than an `aria-label`, which Obsidian shows as a tooltip. */}
+            <span className="folia-field-label" id={colorLabelId}>
+              Color
+            </span>
+            <div className="folia-swatches" role="group" aria-labelledby={colorLabelId}>
               {COLUMN_COLORS.map((c) => (
                 <button
                   key={c}
@@ -177,12 +181,10 @@ export function ColumnEditModal({ column, onClose }: Props) {
               <button
                 type="button"
                 className={"folia-swatch folia-swatch-none" + (draft.color ? "" : " is-active")}
-                aria-label="No color"
-                title="No color"
                 aria-pressed={!draft.color}
                 onClick={() => set("color", undefined)}
               >
-                <Icon name="close" />
+                No color
               </button>
             </div>
           </div>

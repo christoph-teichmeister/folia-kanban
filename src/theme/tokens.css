@@ -329,9 +329,10 @@
   /* The swatch's fill, written inline by the two palette rows because there is one rule and nine
      possible colours. `initial` is the guaranteed-invalid value, so on the "no colour" swatch —
      the same class with nothing written onto it — the declaration that reads this token is thrown
-     away entirely. What then paints that swatch is `.folia-swatch-none`, which
-     carries equal specificity and sits LATER in column-menu.css; move it above and the swatch goes
-     transparent. The `initial` makes the token safe to read, the source order is what fills it. */
+     away entirely and the swatch is left transparent, which is the empty slot it is meant to be.
+     Its face is `.folia-swatch-none`, of equal specificity and LATER in column-menu.css; move it
+     above and the base rule's thick transparent border, fixed width and zero padding win back, and
+     the dashed pill around "No color" collapses into a circle. */
   --folia-swatch-color: initial;
   --folia-desc-max-h: calc(var(--folia-viewport-h) - var(--folia-desc-h-max-offset));
   --folia-statusbar-clearance: 32px;
