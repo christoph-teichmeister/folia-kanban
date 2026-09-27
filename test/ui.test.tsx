@@ -2824,10 +2824,11 @@ describe("card context menu", () => {
     const hiddenFocus = refuseFocusWhileHidden();
     try {
       const { menu } = await openCardMenu("First"); // top of the column: Move up is disabled
+      // Built from the ARIA contract every row already has to carry (checked by the a11y gate),
+      // not from the implementation's own list of CSS classes — the bug this guards against is
+      // exactly a row missing from that list.
       const rows = Array.from(
-        menu.querySelectorAll<HTMLButtonElement>(
-          ".folia-menu-item:not(:disabled), .folia-menu-prio:not(:disabled)",
-        ),
+        menu.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)'),
       );
       // Sanity: the priority group is actually part of what we are about to walk.
       expect(rows.some((r) => r.classList.contains("folia-menu-prio"))).toBe(true);
@@ -2863,9 +2864,7 @@ describe("card context menu", () => {
       fireEvent.contextMenu(todoRow);
       const menu = await screen.findByRole("menu", { name: "Todo actions" });
       const rows = Array.from(
-        menu.querySelectorAll<HTMLButtonElement>(
-          ".folia-menu-item:not(:disabled), .folia-menu-column:not(:disabled)",
-        ),
+        menu.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)'),
       );
       expect(rows.some((r) => r.classList.contains("folia-menu-column"))).toBe(true);
       rows[0]?.focus();
@@ -2882,6 +2881,23 @@ describe("card context menu", () => {
     } finally {
       hiddenFocus.mockRestore();
     }
+  });
+
+  it("arrow keys from the menu container itself (nothing row-level focused) land on the first/last row (#73)", async () => {
+    const { menu } = await openCardMenu("First");
+    // The container itself can hold focus (e.g. after a click on a label or a divider), where
+    // nothing in the row list is the active element.
+    menu.focus();
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(
+      within(menu).getByRole("menuitem", { name: /Open details/ }),
+    );
+
+    menu.focus();
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(
+      within(menu).getByRole("menuitem", { name: /Delete card/ }),
+    );
   });
 
   it("closes on Escape", async () => {

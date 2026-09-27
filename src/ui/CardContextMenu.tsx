@@ -26,12 +26,11 @@ export type ContextTarget = { x: number; y: number } & (
   | { kind: "todo"; todoLine: TodoLine }
 );
 
-// Every focusable row the menu's roving focus (arrow keys, initial focus) has to reach: the plain
-// action rows plus the priority and move-to-column radio groups, which are buttons of their own
-// class rather than `folia-menu-item` since they render as a grid, not a stacked list.
-const FOCUSABLE_ROW_SELECTOR = [".folia-menu-item", ".folia-menu-prio", ".folia-menu-column"]
-  .map((c) => `${c}:not(:disabled)`)
-  .join(", ");
+// Every focusable row the menu's roving focus (arrow keys, initial focus) has to reach — every
+// `menuitem`/`menuitemradio`/`menuitemcheckbox` row, whatever CSS class it renders with. Matching
+// on role instead of a class list means a future row type is reachable without this selector
+// needing to be kept in sync with it.
+const FOCUSABLE_ROW_SELECTOR = '[role^="menuitem"]:not(:disabled)';
 
 interface Props {
   target: ContextTarget;
@@ -136,7 +135,11 @@ export function CardContextMenu({
     if (items.length === 0) return;
     const cur = items.indexOf(doc.activeElement as HTMLButtonElement);
     const dir = e.key === "ArrowDown" ? 1 : -1;
-    const next = (cur + dir + items.length) % items.length;
+    // Focus can sit on the menu container itself (e.g. after clicking a label or a divider), where
+    // `cur` is -1: land on the first row going down, the last row going up, rather than the
+    // one-before-last that `(cur + dir) % length` would give.
+    const next =
+      cur === -1 ? (dir === 1 ? 0 : items.length - 1) : (cur + dir + items.length) % items.length;
     items[next]?.focus();
   };
 
