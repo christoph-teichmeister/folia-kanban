@@ -119,6 +119,14 @@
      substitutes its own var()s where it is declared. */
   padding-right: calc(var(--folia-card-actions-reach) - var(--folia-card-pad-x));
 }
+/* A card that cannot be marked done renders no "mark done" button, so its cluster is one step
+   narrower. Keyed to the same condition CardItem renders that button on, not to the button itself,
+   so hiding the cluster while confirming or renaming cannot reflow the title. */
+.folia-card--no-complete .folia-card-title {
+  padding-right: calc(
+    var(--folia-card-actions-reach) - var(--folia-card-action-step) - var(--folia-card-pad-x)
+  );
+}
 
 /* #12 inline title edit — the <input> that replaces the title in place. Inherits the title's
    metrics so swapping in/out doesn't shift the card; keeps the same right gutter as the title. */

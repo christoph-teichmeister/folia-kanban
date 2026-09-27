@@ -154,6 +154,11 @@ export function cardUrgency(
   return u === "overdue" || u === "today" || u === "soon" ? u : null;
 }
 
+/** Whether a card can still be marked done: the board names a done column and the card is not in it. */
+export function isCompletable(card: Card, doneColumnId: string | null): boolean {
+  return doneColumnId != null && card.frontmatter.status !== doneColumnId;
+}
+
 type DueFilter = "" | "overdue" | "soon";
 
 export interface BoardFilters {

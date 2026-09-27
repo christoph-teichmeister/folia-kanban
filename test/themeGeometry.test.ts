@@ -72,6 +72,29 @@ describe("composite dimensions", () => {
     );
   });
 
+  it("reserves a card title's clearance from the cluster's own step, one step less without Mark done", () => {
+    const tokens = declarations(".folia-scope");
+    const flat = (value: string | undefined) => value?.replace(/\s+/g, " ");
+    expect(declarations(".folia-card-actions")).toMatchObject({
+      top: "var(--folia-space-sm)",
+      right: "var(--folia-space-sm)",
+      gap: "var(--folia-space-hair)",
+      padding: "var(--folia-space-xxs)",
+    });
+    expect(tokens["--folia-card-action-step"]).toBe(
+      "calc(var(--folia-hit-md) + var(--folia-space-hair))",
+    );
+    expect(flat(tokens["--folia-card-actions-reach"])).toBe(
+      "calc( var(--folia-space-sm) + 2 * var(--folia-space-xxs) + 3 * var(--folia-card-action-step) )",
+    );
+    expect(declarations(".folia-card-title")["padding-right"]).toBe(
+      "calc(var(--folia-card-actions-reach) - var(--folia-card-pad-x))",
+    );
+    expect(flat(declarations(".folia-card--no-complete .folia-card-title")["padding-right"])).toBe(
+      "calc( var(--folia-card-actions-reach) - var(--folia-card-action-step) - var(--folia-card-pad-x) )",
+    );
+  });
+
   it("keeps small text independent of spacing and targets above their fixed floor", () => {
     const tokens = declarations(".folia-scope");
     expect(tokens["--folia-font-size-xxs"]).toBe("calc(var(--font-ui-smaller) * 5 / 6)");

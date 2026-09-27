@@ -5,7 +5,7 @@ import type { Card, CardStats, TodoLine } from "../model/types";
 import { sameLine } from "../model/board";
 import type { UnreadState } from "../model/unread";
 import { assigneeValues } from "../model/assignees";
-import { cardChips, cardUrgency, priorityTone, relationChips } from "./cardView";
+import { cardChips, cardUrgency, isCompletable, priorityTone, relationChips } from "./cardView";
 import { CardContextMenu, type ContextTarget } from "./CardContextMenu";
 import {
   useBoardActions,
@@ -126,7 +126,7 @@ function CardItemInner({
   // Hide the hover-action cluster while renaming: focus-within would otherwise reveal it over the
   // full-width title <input> (which has no right gutter), letting buttons cover the caret/text.
   const showActions = !confirming && editing == null;
-  const canComplete = actions.doneColumnId != null && fm.status !== actions.doneColumnId;
+  const canComplete = isCompletable(card, actions.doneColumnId);
 
   // An inline todo has no note of its own: its checklist line lives in its parent, so every action
   // that needs a file addresses the parent, and the tile's own actions are the todo actions.
@@ -229,6 +229,7 @@ function CardItemInner({
       className={
         "folia-card" +
         (draggable ? "" : " folia-card--static") +
+        (canComplete ? "" : " folia-card--no-complete") +
         (nested ? " folia-card--nested" : "") +
         (parentPath ? " folia-card--subitem" : "") +
         (todoRef ? " folia-card--todo" : "") +

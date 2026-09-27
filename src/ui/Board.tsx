@@ -33,7 +33,7 @@ import { columnAccent } from "./columnColors";
 import { AddColumn } from "./AddColumn";
 import { useBoardActions, useSettings } from "./context";
 import type { Filter } from "../model/filter";
-import { cardChips, priorityTone } from "./cardView";
+import { cardChips, isCompletable, priorityTone } from "./cardView";
 
 // The pan gesture and the card-drag sensor share the same pointer, so exactly one must claim a given
 // press. The live pan mode (settings.boardPan) decides which — but dnd-kit instantiates the sensor
@@ -445,7 +445,10 @@ export function Board({
               </div>
             ) : activeCard ? (
               <div
-                className="folia-card folia-card-overlay"
+                className={
+                  "folia-card folia-card-overlay" +
+                  (isCompletable(activeCard, doneColumnId) ? "" : " folia-card--no-complete")
+                }
                 data-prio={
                   typeof activeCard.frontmatter.priority === "string" &&
                   activeCard.frontmatter.priority
