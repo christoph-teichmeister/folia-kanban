@@ -42,7 +42,7 @@ Both layers run under `ds:check` and `pnpm verify`, which CI runs on every push 
 **Remaining (why this waiver stays `active`):**
 
 1. **Modal focus-trap + background `inert` not implemented** (`ColumnEditModal`, modal `CardDetail`) — focus can leave the open dialog into the page behind it.
-2. **`CardItem` context menu keyboard path awaits a running-app check** — #72 opens it from a focused card with the Menu key or Shift+F10, anchored under the card, and unit tests cover it; close this item once Obsidian confirms the keys reach the board and focus lands in the menu.
+2. **`CardItem` context menu keyboard path awaits a running-app check** — #72 opens it from a focused card with the Menu key or Shift+F10, anchored under the card, and unit tests cover it; close this item once Obsidian confirms the keys reach the board, focus lands in the menu, and Tab out of the menu steps on from the card.
 3. **`color-contrast` unmeasurable in jsdom** — axe cannot compute rendered colors in the unit-test environment; this needs a real-browser / Lighthouse audit.
 
 These are careful, manually-tested interaction changes and are tracked under this waiver until each is delivered.

@@ -1973,6 +1973,12 @@ describe("card context menu", () => {
       .mockReturnValue(DOMRect.fromRect({ x: 40, y: 100, width: 200, height: 60 }));
 
   describe("from the keyboard", () => {
+    let hiddenFocus: ReturnType<typeof refuseFocusWhileHidden>;
+    beforeEach(() => {
+      hiddenFocus = refuseFocusWhileHidden();
+    });
+    afterEach(() => hiddenFocus.mockRestore());
+
     const focusCard = async (cardName: string, repo = ctxRepo()) => {
       render_(repo, { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
       const tile = (await screen.findByText(cardName)).closest(".folia-card") as HTMLElement;
@@ -2036,6 +2042,87 @@ describe("card context menu", () => {
       fireEvent.keyDown(menu, { key: "Escape" });
       await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
       expect(document.activeElement).toBe(main);
+    });
+
+    it.each([
+      ["Copy path", "menuitem", /^Copy path$/],
+      ["a priority", "menuitemradio", /^urgent$/],
+    ])(
+      "gives focus back to the card after %s, which has nowhere else to send it",
+      async (_, role, name) => {
+        const main = await focusCard("First");
+        fireEvent.keyDown(main, { key: "ContextMenu" });
+        const menu = await screen.findByRole("menu", { name: "Card actions" });
+        await userEvent.setup().click(within(menu).getByRole(role, { name }));
+        await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+        expect(document.activeElement).toBe(main);
+      },
+    );
+
+    it.each([
+      ["Open details", () => screen.getByTestId("card-detail")],
+      ["Override card title", () => screen.getByTestId("card-detail")],
+      ["Add subcard", () => screen.getByTestId("card-detail")],
+      ["Rename", () => screen.getByLabelText("Card title")],
+    ])("hands focus straight to where %s sends it, never through the card", async (name, where) => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      const menu = await screen.findByRole("menu", { name: "Card actions" });
+      // A later focus() would win anyway; a stop on the card on the way can still scroll or fire
+      // its focus handlers, so the card is not focused at all.
+      let cardFocused = false;
+      main.addEventListener("focus", () => (cardFocused = true));
+      await userEvent
+        .setup()
+        .click(within(menu).getByRole("menuitem", { name: new RegExp(`^${name}$`) }));
+      await waitFor(() => expect(where().contains(document.activeElement)).toBe(true));
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(cardFocused).toBe(false);
+    });
+
+    it("keeps the menu open when a label inside it is clicked", async () => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      const menu = await screen.findByRole("menu", { name: "Card actions" });
+      await userEvent.setup().click(within(menu).getByText("Priority"));
+      expect(screen.getByRole("menu", { name: "Card actions" })).toBe(menu);
+      expect(menu.contains(document.activeElement)).toBe(true);
+    });
+
+    it("closes when focus leaves it for nowhere, as when the window loses focus", async () => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      await screen.findByRole("menu", { name: "Card actions" });
+      (document.activeElement as HTMLElement).blur();
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    });
+
+    it("closes when focus is moved straight to another card, leaving one menu", async () => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      await screen.findByRole("menu", { name: "Card actions" });
+      const second = (await screen.findByText("Second"))
+        .closest(".folia-card")!
+        .querySelector<HTMLElement>(".folia-card-main")!;
+      act(() => second.focus());
+      fireEvent.keyDown(second, { key: "F10", shiftKey: true });
+      await screen.findByRole("menu", { name: "Card actions" });
+      expect(screen.getAllByRole("menu")).toHaveLength(1);
+    });
+
+    it("leaves one menu open when another card's opens after tabbing away", async () => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      await screen.findByRole("menu", { name: "Card actions" });
+      await userEvent.setup().keyboard("{Tab}");
+
+      const second = (await screen.findByText("Second"))
+        .closest(".folia-card")!
+        .querySelector<HTMLElement>(".folia-card-main")!;
+      second.focus();
+      fireEvent.keyDown(second, { key: "F10", shiftKey: true });
+      await screen.findByRole("menu", { name: "Card actions" });
+      expect(screen.getAllByRole("menu")).toHaveLength(1);
     });
 
     it("opens a placed todo's own menu", async () => {

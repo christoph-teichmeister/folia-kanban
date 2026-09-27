@@ -81,10 +81,12 @@ export function CardContextMenu({
   const doc = useBoardDocument();
   const win = useBoardWindow();
   const ref = useRef<HTMLDivElement>(null);
-  // True once an item was activated. On dismissal (Escape / outside-click) we restore focus to the
-  // opener; when an action ran we must NOT, since the action may have moved focus elsewhere on
-  // purpose (e.g. "Add subcard"/"Open details" focus the detail panel).
-  const actioned = useRef(false);
+  // Whether closing hands focus back to the card, decided by why the menu closed: Escape and the
+  // actions that stay on the board do, since nothing else claims focus after them. Actions that
+  // move focus on purpose ("Open details", "Rename" …), Tab, and a click or focus elsewhere don't,
+  // because focus already went where the person sent it.
+  const restoreOnClose = useRef(false);
+  const opener = useRef<HTMLElement | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   // Fixed-position + portalled to <body> so the menu is never clipped by a column's
@@ -99,16 +101,17 @@ export function CardContextMenu({
     setPos({ top: Math.round(top), left: Math.round(left) });
   }, [target.x, target.y, win]);
 
-  // Focus the first item on open and restore focus to the originating card on close, so a keyboard
-  // user who opens then Escapes the menu keeps their place on the board (mirrors CardDetail's opener
+  // Focus the first item on open and, when the close calls for it (`restoreOnClose`), give focus
+  // back to the originating card, so a keyboard user who opens then Escapes the menu keeps their
+  // place on the board (mirrors CardDetail's opener
   // capture/restore). This runs before the layout effect above has corrected `pos`, which is why
   // that effect's placeholder must never be `visibility: hidden` (a hidden element can't take
   // focus) — see the style prop below.
   useEffect(() => {
-    const opener = doc.activeElement as HTMLElement | null;
+    opener.current = doc.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLButtonElement>(FOCUSABLE_ROW_SELECTOR)?.focus();
     return () => {
-      if (!actioned.current) opener?.focus?.();
+      if (restoreOnClose.current) opener.current?.focus?.();
     };
   }, []);
 
@@ -124,7 +127,15 @@ export function CardContextMenu({
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
       e.stopPropagation();
+      restoreOnClose.current = true;
       onClose();
+      return;
+    }
+    // The menu is portalled to the end of the body but belongs right after its card, so Tab moves
+    // on from the card: focusing it here lets the browser's own Tab step continue from there, and
+    // the focus leaving the menu closes it.
+    if (e.key === "Tab") {
+      opener.current?.focus();
       return;
     }
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -150,10 +161,10 @@ export function CardContextMenu({
     label: string,
     icon: IconName,
     onClick: (evt: MouseEvent) => void,
-    opts?: { disabled?: boolean; danger?: boolean; navigates?: boolean },
+    opts?: { disabled?: boolean; danger?: boolean; navigates?: boolean; movesFocus?: boolean },
   ) => {
     const run = (e: ReactMouseEvent) => {
-      actioned.current = true;
+      restoreOnClose.current = !opts?.movesFocus;
       onClick(e.nativeEvent);
       onClose();
     };
@@ -187,6 +198,11 @@ export function CardContextMenu({
       tabIndex={-1}
       aria-label={target.kind === "todo" ? "Todo actions" : "Card actions"}
       onKeyDown={onKeyDown}
+      // Focus leaving for anywhere outside, nowhere included, closes the menu, so it never stays
+      // open behind another card's. A click on a label or a divider focuses the menu itself.
+      onBlur={(e) => {
+        if (!ref.current?.contains(e.relatedTarget)) onClose();
+      }}
       // Starts at the origin, never hidden: a hidden element can't take focus (Chromium honors
       // `visibility: hidden`; jsdom does not, which is why this slipped past the test suite), and
       // the layout effect above corrects the position synchronously before the browser paints, so
@@ -209,7 +225,7 @@ export function CardContextMenu({
                 role="menuitemradio"
                 aria-checked={c.id === todoColumn}
                 onClick={() => {
-                  actioned.current = true;
+                  restoreOnClose.current = true;
                   a.moveTodo(path, target.todoLine, c.id);
                   onClose();
                 }}
@@ -223,7 +239,7 @@ export function CardContextMenu({
               aria-checked={todoColumn === ""}
               title="Show it inside its card again"
               onClick={() => {
-                actioned.current = true;
+                restoreOnClose.current = true;
                 a.moveTodo(path, target.todoLine, null);
                 onClose();
               }}
@@ -233,13 +249,15 @@ export function CardContextMenu({
           </div>
 
           <div className="folia-menu-divider" />
-          {item("Open card", "external-link", () => a.open(path))}
+          {item("Open card", "external-link", () => a.open(path), { movesFocus: true })}
         </>
       ) : (
         <>
-          {item("Open details", "external-link", () => a.open(path))}
-          {item("Rename", "pencil", onRename)}
-          {item("Override card title", "type", () => a.editTitleOverride(path))}
+          {item("Open details", "external-link", () => a.open(path), { movesFocus: true })}
+          {item("Rename", "pencil", onRename, { movesFocus: true })}
+          {item("Override card title", "type", () => a.editTitleOverride(path), {
+            movesFocus: true,
+          })}
           {!isDone && item("Mark done", "check-circle", () => a.complete(card))}
           {me !== "" &&
             item(
@@ -247,7 +265,10 @@ export function CardContextMenu({
               "user",
               () => void a.setAssignee(path, toggleAssignee(assignees, me)),
             )}
-          {item("Open note", "external-link", (evt) => a.openNote(path, evt), { navigates: true })}
+          {item("Open note", "external-link", (evt) => a.openNote(path, evt), {
+            navigates: true,
+            movesFocus: true,
+          })}
 
           <div className="folia-menu-divider" />
           <span className="folia-menu-label">Priority</span>
@@ -263,7 +284,7 @@ export function CardContextMenu({
                 role="menuitemradio"
                 aria-checked={samePriority(p, priority)}
                 onClick={() => {
-                  actioned.current = true;
+                  restoreOnClose.current = true;
                   void a.setPriority(path, p);
                   onClose();
                 }}
@@ -282,7 +303,7 @@ export function CardContextMenu({
               aria-label="No priority"
               title="No priority"
               onClick={() => {
-                actioned.current = true;
+                restoreOnClose.current = true;
                 void a.setPriority(path, "");
                 onClose();
               }}
@@ -307,7 +328,7 @@ export function CardContextMenu({
           {item("Copy base name", "copy", () => a.copyPath(path, "name"))}
 
           <div className="folia-menu-divider" />
-          {item("Add subcard", "git-branch", () => a.addSubcard(path))}
+          {item("Add subcard", "git-branch", () => a.addSubcard(path), { movesFocus: true })}
           {item("Delete card", "trash", () => a.remove(path), { danger: true })}
         </>
       )}
