@@ -136,7 +136,7 @@ function CardItemInner({
   const open = () => {
     if (!isDragging) actions.open(notePath);
   };
-  const openMenu = (x: number, y: number, todoEl: Element | null) => {
+  const openMenu = (x: number, y: number, byKeyboard: boolean, todoEl: Element | null) => {
     // Not while the card is lifted, whichever way the menu was asked for: it would take focus and
     // act on a card still in flight.
     if (isDragging) return;
@@ -153,7 +153,11 @@ function CardItemInner({
     // A row the board no longer holds a todo at gets no menu: the card's own would offer to finish
     // the whole card from a click aimed at one line.
     if (todoEl && !line) return;
-    setMenu(line ? { x, y, kind: "todo", todoLine: line } : { x, y, kind: "card" });
+    setMenu(
+      line
+        ? { x, y, byKeyboard, kind: "todo", todoLine: line }
+        : { x, y, byKeyboard, kind: "card" },
+    );
   };
   // Right-click opens a context-aware menu. preventDefault stops Obsidian's own context menu;
   // dnd-kit's PointerSensor only activates on the left button, so this never starts a drag.
@@ -164,11 +168,9 @@ function CardItemInner({
     // fires at the focused menu item (the trailing one after the keyboard opened it) lands here.
     if (!e.currentTarget.contains(e.target as Node)) return;
     // A contextmenu fired from the keyboard can report (0, 0) rather than a point on the card.
-    const at =
-      e.clientX === 0 && e.clientY === 0
-        ? anchorBelow(e.currentTarget)
-        : { x: e.clientX, y: e.clientY };
-    openMenu(at.x, at.y, (e.target as HTMLElement).closest(".folia-card-next-todo"));
+    const byKeyboard = e.clientX === 0 && e.clientY === 0;
+    const at = byKeyboard ? anchorBelow(e.currentTarget) : { x: e.clientX, y: e.clientY };
+    openMenu(at.x, at.y, byKeyboard, (e.target as HTMLElement).closest(".folia-card-next-todo"));
   };
   // Merge dnd-kit keyboard handling (Space = pick up) with Enter = open and the platform's
   // context-menu keys = the card menu, anchored to the card since there is no pointer to follow.
@@ -180,7 +182,7 @@ function CardItemInner({
       e.preventDefault();
       e.stopPropagation();
       const at = anchorBelow(e.currentTarget);
-      openMenu(at.x, at.y, null);
+      openMenu(at.x, at.y, true, null);
       return;
     }
     if (e.key === "Enter") {

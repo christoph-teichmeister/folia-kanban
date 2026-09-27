@@ -2184,6 +2184,52 @@ describe("card context menu", () => {
     expect(menu.style.top).toBe("160px");
   });
 
+  it.each([
+    ["a priority", "menuitemradio", /^urgent$/],
+    ["Copy path", "menuitem", /^Copy path$/],
+  ])("leaves a right-click's card unfocused after %s, as before", async (_, role, name) => {
+    render_(ctxRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+    const tile = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+    const main = tile.querySelector<HTMLElement>(".folia-card-main")!;
+    // Chromium focuses the card on the right button's mousedown; jsdom doesn't, so do it here.
+    main.focus();
+    fireEvent.contextMenu(tile.querySelector(".folia-card-title")!, { clientX: 300, clientY: 200 });
+    const menu = await screen.findByRole("menu", { name: "Card actions" });
+
+    // Focus back on the card would pin its hover actions (they show on :focus-within) after the
+    // pointer has left; a mouse user never asked for focus there.
+    await userEvent.setup().click(within(menu).getByRole(role, { name }));
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(document.activeElement).not.toBe(main);
+  });
+
+  it("still gives a right-click's card focus back on Escape", async () => {
+    render_(ctxRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+    const tile = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+    const main = tile.querySelector<HTMLElement>(".folia-card-main")!;
+    main.focus();
+    fireEvent.contextMenu(tile.querySelector(".folia-card-title")!, { clientX: 300, clientY: 200 });
+    const menu = await screen.findByRole("menu", { name: "Card actions" });
+    fireEvent.keyDown(menu, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(document.activeElement).toBe(main);
+  });
+
+  it("lets Shift+Tab step on when the menu has no card to hand focus to", async () => {
+    render_(ctxRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+    const tile = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+    (document.activeElement as HTMLElement | null)?.blur();
+    fireEvent.contextMenu(tile.querySelector(".folia-card-title")!, { clientX: 300, clientY: 200 });
+    const menu = await screen.findByRole("menu", { name: "Card actions" });
+    // Opened with nothing focused, so there is no card to land on: holding Shift+Tab back would
+    // leave focus stuck in the menu.
+    const notPrevented = fireEvent.keyDown(within(menu).getAllByRole("menuitem")[0]!, {
+      key: "Tab",
+      shiftKey: true,
+    });
+    expect(notPrevented).toBe(true);
+  });
+
   it("still opens a right-click's menu at the pointer", async () => {
     render_(ctxRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
     const tile = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;

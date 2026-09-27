@@ -21,10 +21,13 @@ import { Icon, type IconName } from "./icons";
  * action in it carries the line the person was pointing at, and the note refuses when that line
  * has since moved on.
  */
-export type ContextTarget = { x: number; y: number } & (
-  | { kind: "card" }
-  | { kind: "todo"; todoLine: TodoLine }
-);
+export type ContextTarget = {
+  x: number;
+  y: number;
+  /** Opened from the keyboard, where an action's end leaves focus nowhere unless it goes back to
+   *  the card. After a pointer open nobody asked for focus on the card. */
+  byKeyboard: boolean;
+} & ({ kind: "card" } | { kind: "todo"; todoLine: TodoLine });
 
 // Every focusable row the menu's roving focus (arrow keys, initial focus) has to reach — every
 // `menuitem`/`menuitemradio`/`menuitemcheckbox` row, whatever CSS class it renders with. Matching
@@ -81,10 +84,11 @@ export function CardContextMenu({
   const doc = useBoardDocument();
   const win = useBoardWindow();
   const ref = useRef<HTMLDivElement>(null);
-  // Whether closing hands focus back to the card, decided by why the menu closed: Escape and the
-  // actions that stay on the board do, since nothing else claims focus after them. Actions that
-  // move focus on purpose ("Open details", "Rename" …), Tab, and a click or focus elsewhere don't,
-  // because focus already went where the person sent it.
+  // Whether closing hands focus back to the card, decided by why the menu closed: Escape does, and
+  // so do the actions that stay on the board when the keyboard opened the menu, since nothing else
+  // claims focus after them. Actions that move focus on purpose ("Open details", "Rename" …), Tab,
+  // a click or focus elsewhere, and any action after a pointer open don't: focus already went where
+  // the person sent it, or nobody asked for it on the card.
   const restoreOnClose = useRef(false);
   const opener = useRef<HTMLElement | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -135,8 +139,9 @@ export function CardContextMenu({
     // on from the card — focusing it here lets the browser's own Tab step continue from there —
     // and Shift+Tab lands on the card itself. Either way, focus leaving the menu closes it.
     if (e.key === "Tab") {
-      if (e.shiftKey) e.preventDefault();
       opener.current?.focus();
+      // Only once the card really holds focus: with no card to land on, Shift+Tab steps on as usual.
+      if (e.shiftKey && doc.activeElement === opener.current) e.preventDefault();
       return;
     }
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -165,7 +170,7 @@ export function CardContextMenu({
     opts?: { disabled?: boolean; danger?: boolean; navigates?: boolean; movesFocus?: boolean },
   ) => {
     const run = (e: ReactMouseEvent) => {
-      restoreOnClose.current = !opts?.movesFocus;
+      restoreOnClose.current = target.byKeyboard && !opts?.movesFocus;
       onClick(e.nativeEvent);
       onClose();
     };
@@ -226,7 +231,7 @@ export function CardContextMenu({
                 role="menuitemradio"
                 aria-checked={c.id === todoColumn}
                 onClick={() => {
-                  restoreOnClose.current = true;
+                  restoreOnClose.current = target.byKeyboard;
                   a.moveTodo(path, target.todoLine, c.id);
                   onClose();
                 }}
@@ -240,7 +245,7 @@ export function CardContextMenu({
               aria-checked={todoColumn === ""}
               title="Show it inside its card again"
               onClick={() => {
-                restoreOnClose.current = true;
+                restoreOnClose.current = target.byKeyboard;
                 a.moveTodo(path, target.todoLine, null);
                 onClose();
               }}
@@ -285,7 +290,7 @@ export function CardContextMenu({
                 role="menuitemradio"
                 aria-checked={samePriority(p, priority)}
                 onClick={() => {
-                  restoreOnClose.current = true;
+                  restoreOnClose.current = target.byKeyboard;
                   void a.setPriority(path, p);
                   onClose();
                 }}
@@ -304,7 +309,7 @@ export function CardContextMenu({
               aria-label="No priority"
               title="No priority"
               onClick={() => {
-                restoreOnClose.current = true;
+                restoreOnClose.current = target.byKeyboard;
                 void a.setPriority(path, "");
                 onClose();
               }}
