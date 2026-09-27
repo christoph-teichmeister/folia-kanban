@@ -350,7 +350,7 @@ The tools, their arguments and the rest of the setup are in [docs/mcp.md](docs/m
 | Filter your own, overdue / due-soon, blocked or unread cards | One-click **Mine** / **Overdue** / **Due soon** / **Blocked** / **Unread** buttons |
 | Move or reorder a card | Drag with the pointer, or pick it up with the keyboard |
 | Scroll horizontally across columns | Hold **Shift** and drag the board background |
-| Card menu (open, mark done, assign it to yourself, priority, move up/down, copy the card's path, add subcard, delete) | Right-click a card |
+| Card menu (open, mark done, assign it to yourself, priority, move up/down, copy the card's path, add subcard, delete) | Right-click a card, or focus it and press the Menu key or **Shift+F10** |
 | Toggle or remove a surfaced checklist item | Right-click it on the card |
 | Column menu (rename, recolour, WIP limit, reorder, delete) | The column's `⋯` button |
 | Swap the tab between the board and the Markdown editor | The button in the tab header |

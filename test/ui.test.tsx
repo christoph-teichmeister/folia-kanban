@@ -1966,6 +1966,110 @@ describe("card context menu", () => {
     return { repo, menu: await screen.findByRole("menu") };
   };
 
+  // The card's box as the layout would report it, so an anchored menu has somewhere to land.
+  const placeCard = (card: HTMLElement) =>
+    vi
+      .spyOn(card, "getBoundingClientRect")
+      .mockReturnValue(DOMRect.fromRect({ x: 40, y: 100, width: 200, height: 60 }));
+
+  describe("from the keyboard", () => {
+    const focusCard = async (cardName: string, repo = ctxRepo()) => {
+      render_(repo, { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+      const tile = (await screen.findByText(cardName)).closest(".folia-card") as HTMLElement;
+      placeCard(tile);
+      const main = tile.querySelector<HTMLElement>(".folia-card-main")!;
+      main.focus();
+      return main;
+    };
+
+    it.each([
+      ["the Menu key", { key: "ContextMenu" }],
+      ["Shift+F10", { key: "F10", shiftKey: true }],
+    ])("opens the focused card's menu with %s, under the card", async (_, keys) => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, keys);
+
+      const menu = await screen.findByRole("menu", { name: "Card actions" });
+      await waitFor(() => expect(menu.style.left).toBe("40px"));
+      expect(menu.style.top).toBe("160px");
+      expect(document.activeElement).toBe(within(menu).getAllByRole("menuitem")[0]);
+    });
+
+    it("opens nothing while the card is lifted for a keyboard drag", async () => {
+      const user = userEvent.setup();
+      await focusCard("First");
+      await user.keyboard("{ }");
+      expect(document.querySelector(".folia-card-overlay")).not.toBeNull();
+
+      await user.keyboard("{Shift>}{F10}{/Shift}");
+      expect(screen.queryByRole("menu")).toBeNull();
+      await user.keyboard("{Escape}");
+    });
+
+    it("leaves F10 without Shift alone", async () => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "F10" });
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("keeps the menu where it is when the platform follows the key with its own contextmenu", async () => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      const menu = await screen.findByRole("menu", { name: "Card actions" });
+      await waitFor(() => expect(menu.style.left).toBe("40px"));
+
+      // Fired at whatever holds focus by then, the menu's first item, and placed on it.
+      fireEvent.contextMenu(document.activeElement!, { clientX: 60, clientY: 170 });
+
+      expect(screen.getAllByRole("menu")).toHaveLength(1);
+      expect(menu.style.left).toBe("40px");
+      expect(menu.style.top).toBe("160px");
+    });
+
+    it("gives focus back to the card when the menu is dismissed", async () => {
+      const main = await focusCard("First");
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      const menu = await screen.findByRole("menu", { name: "Card actions" });
+      fireEvent.keyDown(menu, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+      expect(document.activeElement).toBe(main);
+    });
+
+    it("opens a placed todo's own menu", async () => {
+      const repo = new FakeRepo(config, {
+        "Tasks/First.md": {
+          fm: { type: "task", status: "todo" },
+          body: "\n# First\n\n## Subtasks\n- [ ] placed [status:: doing]\n",
+        },
+      });
+      const main = await focusCard("placed", repo);
+      fireEvent.keyDown(main, { key: "ContextMenu" });
+      await screen.findByRole("menu", { name: "Todo actions" });
+    });
+  });
+
+  it("anchors a contextmenu that reports no position to the card", async () => {
+    render_(ctxRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+    const tile = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+    placeCard(tile);
+    fireEvent.contextMenu(tile.querySelector(".folia-card-main")!, { clientX: 0, clientY: 0 });
+
+    const menu = await screen.findByRole("menu", { name: "Card actions" });
+    await waitFor(() => expect(menu.style.left).toBe("40px"));
+    expect(menu.style.top).toBe("160px");
+  });
+
+  it("still opens a right-click's menu at the pointer", async () => {
+    render_(ctxRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
+    const tile = (await screen.findByText("First")).closest(".folia-card") as HTMLElement;
+    placeCard(tile);
+    fireEvent.contextMenu(tile.querySelector(".folia-card-title")!, { clientX: 300, clientY: 200 });
+
+    const menu = await screen.findByRole("menu", { name: "Card actions" });
+    await waitFor(() => expect(menu.style.left).toBe("300px"));
+    expect(menu.style.top).toBe("200px");
+  });
+
   it("carries the click's modifiers to the repository from every Open-note affordance", async () => {
     // The board cannot read a modifier itself (which key is "Mod" is the platform's business, and
     // that lives behind the port), so what it owes is the click. These assertions are about the

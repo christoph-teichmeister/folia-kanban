@@ -136,12 +136,7 @@ function CardItemInner({
   const open = () => {
     if (!isDragging) actions.open(notePath);
   };
-  // Right-click opens a context-aware menu. preventDefault stops Obsidian's own context menu;
-  // dnd-kit's PointerSensor only activates on the left button, so this never starts a drag.
-  const onContextMenu = (e: MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const todoEl = (e.target as HTMLElement).closest(".folia-card-next-todo");
+  const openMenu = (x: number, y: number, todoEl: Element | null) => {
     const rowIndex = todoEl ? Number(todoEl.getAttribute("data-todo-index")) : NaN;
     // Which checklist line was right-clicked, read here, while the person is still pointing at it:
     // this tile's own, for a todo placed in a column, or the surfaced next-todo row the click
@@ -155,14 +150,35 @@ function CardItemInner({
     // A row the board no longer holds a todo at gets no menu: the card's own would offer to finish
     // the whole card from a click aimed at one line.
     if (todoEl && !line) return;
-    setMenu(
-      line
-        ? { x: e.clientX, y: e.clientY, kind: "todo", todoLine: line }
-        : { x: e.clientX, y: e.clientY, kind: "card" },
-    );
+    setMenu(line ? { x, y, kind: "todo", todoLine: line } : { x, y, kind: "card" });
   };
-  // Merge dnd-kit keyboard handling (Space = pick up) with Enter = open.
+  // Right-click opens a context-aware menu. preventDefault stops Obsidian's own context menu;
+  // dnd-kit's PointerSensor only activates on the left button, so this never starts a drag.
+  const onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // React bubbles a portal's events through the component tree, so a contextmenu the platform
+    // fires at the focused menu item (the trailing one after the keyboard opened it) lands here.
+    if (!e.currentTarget.contains(e.target as Node)) return;
+    // A contextmenu fired from the keyboard can report (0, 0) rather than a point on the card.
+    const at =
+      e.clientX === 0 && e.clientY === 0
+        ? anchorBelow(e.currentTarget)
+        : { x: e.clientX, y: e.clientY };
+    openMenu(at.x, at.y, (e.target as HTMLElement).closest(".folia-card-next-todo"));
+  };
+  // Merge dnd-kit keyboard handling (Space = pick up) with Enter = open and the platform's
+  // context-menu keys = the card menu, anchored to the card since there is no pointer to follow.
   const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Not while the card is lifted: the menu would take focus and act on a card still in flight.
+      if (isDragging) return;
+      const at = anchorBelow(e.currentTarget);
+      openMenu(at.x, at.y, null);
+      return;
+    }
     if (e.key === "Enter") {
       e.preventDefault();
       actions.open(notePath);
@@ -493,6 +509,12 @@ function CardItemInner({
         })()}
     </div>
   );
+}
+
+/** The point just under the card's bottom-left corner, where a menu opened without a pointer goes. */
+function anchorBelow(el: Element): { x: number; y: number } {
+  const r = (el.closest(".folia-card") ?? el).getBoundingClientRect();
+  return { x: r.left, y: r.bottom };
 }
 
 /**
