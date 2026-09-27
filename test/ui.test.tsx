@@ -2798,6 +2798,12 @@ describe("card context menu", () => {
     fireEvent.keyDown(menu, { key: "ArrowDown" });
     expect(document.activeElement).toBe(rows[0]);
     expect(within(menu).getByRole("menuitem", { name: /Move up/ })).not.toHaveFocus();
+
+    // ArrowUp walks the same rows backwards, including wrapping past the priority group.
+    for (let i = rows.length - 1; i >= 0; i--) {
+      fireEvent.keyDown(menu, { key: "ArrowUp" });
+      expect(document.activeElement).toBe(rows[i]);
+    }
   });
 
   it("arrow keys reach the move-to-column group in the todo menu (#73)", async () => {
@@ -2816,6 +2822,12 @@ describe("card context menu", () => {
     rows[0]?.focus();
     for (let i = 1; i < rows.length; i++) {
       fireEvent.keyDown(menu, { key: "ArrowDown" });
+      expect(document.activeElement).toBe(rows[i]);
+    }
+
+    // ArrowUp walks the same rows backwards, including through the move-to-column group.
+    for (let i = rows.length - 2; i >= 0; i--) {
+      fireEvent.keyDown(menu, { key: "ArrowUp" });
       expect(document.activeElement).toBe(rows[i]);
     }
   });
