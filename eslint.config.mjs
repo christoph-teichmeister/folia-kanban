@@ -246,4 +246,23 @@ export default [
     files: ["src/obsidian/mcpHttpServer.ts"],
     rules: { "@typescript-eslint/consistent-type-imports": "off" },
   },
+  {
+    // One version gate. The preset's `obsidianmd/no-unsupported-api` already fails any call to an
+    // API newer than manifest.json's `minAppVersion` unless a literal `requireApiVersion(...)`
+    // guards it. Allowing that guard only in src/obsidian/compat.ts leaves compat.ts as the one
+    // place such a call can live, each with its fallback beside it.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/obsidian/compat.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "ImportSpecifier[imported.name='requireApiVersion'], CallExpression[callee.name='requireApiVersion']",
+          message:
+            "Gate newer Obsidian APIs in src/obsidian/compat.ts, with a fallback for older apps; requireApiVersion belongs there only.",
+        },
+      ],
+    },
+  },
 ];

@@ -491,7 +491,9 @@ describe("the plugin reacts to an external settings change", () => {
     expect(tab).toContain("this.pendingMcpFields = {};");
     // From 1.13 the tab is Obsidian's to draw; emptying its container would replace what it
     // rendered, and what its settings search indexed, with the older imperative rows.
-    expect(tab).toContain('requireApiVersion("1.13.0")) this.update()');
+    expect(tab).toContain(
+      "if (!refreshDeclarativeSettingTab(this, true) && this.containerEl.isConnected)",
+    );
   });
 
   // `data.json` also carries per-card state that ordinary board use elsewhere writes. Redrawing the

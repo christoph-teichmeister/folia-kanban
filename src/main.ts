@@ -13,7 +13,6 @@ import {
   Plugin,
   PluginSettingTab,
   Setting,
-  requireApiVersion,
   TFile,
   TFolder,
   WorkspaceLeaf,
@@ -72,6 +71,7 @@ import {
   writeMcpToken,
   type McpState,
 } from "./obsidian/mcpService";
+import { refreshDeclarativeSettingTab, setSettingError } from "./obsidian/compat";
 import { stamp } from "./model/dates";
 import { type BoardViewMode, isBoardFrontmatter, resolveBoardViewMode } from "./viewMode";
 
@@ -924,17 +924,11 @@ class KanbanSettingTab extends PluginSettingTab {
       return;
     }
     void this.plugin.updateSettings(patch).then(() => {
-      // Only 1.13 and later reaches this method at all, but the version is asked anyway: both APIs
-      // are @since 1.13.0 and minAppVersion is 1.11.4, so an unguarded call is a promise the
-      // manifest does not make.
       // Agent access gates the port and bind-address rows, and those two draw themselves from a
       // `render` callback — which carries no `disabled` predicate for `refreshDomState` to
       // re-evaluate. Only redrawing the tab reaches them. Every other row does disable from a
       // predicate (side-panel layout, add-card open mode), and gets the cheap path.
-      if (requireApiVersion("1.13.0")) {
-        if (key === "mcpEnabled") this.update();
-        else this.refreshDomState();
-      }
+      refreshDeclarativeSettingTab(this, key === "mcpEnabled");
     });
   }
 
@@ -951,13 +945,12 @@ class KanbanSettingTab extends PluginSettingTab {
   settingsChangedExternally(): void {
     this.pendingUserName = null;
     this.pendingMcpFields = {};
-    // The same branch `setControlValue` takes, for the same reason: from 1.13 the tab is Obsidian's
-    // to draw from `getSettingDefinitions`, and emptying `containerEl` behind it would replace what
-    // it rendered — and what its settings search indexed — with the older imperative rows.
-    if (requireApiVersion("1.13.0")) this.update();
-    // Below that, `render` is the only path there is, and it costs nothing to skip when the tab is
-    // not on screen: `display` draws it fresh the next time it is opened.
-    else if (this.containerEl.isConnected) this.render();
+    // From 1.13 the tab is Obsidian's to draw from `getSettingDefinitions`, and emptying
+    // `containerEl` behind it would replace what it rendered — and what its settings search
+    // indexed — with the older imperative rows. Below that, `render` is the only path there is, and
+    // it costs nothing to skip when the tab is not on screen: `display` draws it fresh the next time
+    // it is opened.
+    if (!refreshDeclarativeSettingTab(this, true) && this.containerEl.isConnected) this.render();
   }
 
   override hide(): void {
@@ -1021,7 +1014,7 @@ class KanbanSettingTab extends PluginSettingTab {
         .onChange((v) => {
           const outcome = heldFieldOutcome(key, v, this.plugin.settings, this.plugin.isSet(key));
           this.holdMcpField(key, outcome.commit);
-          this.showFieldError(setting, outcome.error);
+          setSettingError(setting, outcome.error);
         });
       // Nothing is written until focus leaves, and leaving is also when the field is put back to
       // what is really stored: an emptied one showing a grey default, or a refused one still
@@ -1034,7 +1027,7 @@ class KanbanSettingTab extends PluginSettingTab {
           this.plugin.isSet(key),
         );
         this.holdMcpField(key, outcome.commit);
-        this.showFieldError(setting, null);
+        setSettingError(setting, null);
         t.setValue(outcome.show);
         if (outcome.notice !== null) new Notice(outcome.notice, 5000);
         this.commitHeldFields();
@@ -1046,12 +1039,6 @@ class KanbanSettingTab extends PluginSettingTab {
   private holdMcpField(key: HeldFieldKey, commit: Partial<KanbanSettings> | null): void {
     if (commit) Object.assign(this.pendingMcpFields, commit);
     else delete this.pendingMcpFields[key];
-  }
-
-  /** Say under the field that what is in it is not a value. Obsidian below 1.13 has nowhere to put
-   *  one, and there the notice raised when focus leaves is the whole of the telling. */
-  private showFieldError(setting: Setting, message: string | null): void {
-    if (requireApiVersion("1.13.0")) setting.setErrorMessage(message);
   }
 
   /**
