@@ -34,8 +34,10 @@ describe("newer Obsidian APIs go through the one version gate", { timeout: 30_00
   it("rejects the gate reached through a namespace import outside the gate file", async () => {
     const code =
       'import * as Obsidian from "obsidian";\n' +
-      'export const newer = (): boolean => Obsidian.requireApiVersion("1.13.0");\n';
-    expect(await ruleIds(code, OTHER)).toContain("no-restricted-syntax");
+      'export const newer = (): boolean => Obsidian.requireApiVersion("1.13.0");\n' +
+      'export const newest = (): boolean => Obsidian["requireApiVersion"]("1.13.1");\n';
+    const ids = await ruleIds(code, OTHER);
+    expect(ids.filter((id) => id === "no-restricted-syntax")).toHaveLength(2);
   });
 
   it("accepts the guarded call in the gate file", async () => {
