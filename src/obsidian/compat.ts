@@ -5,15 +5,18 @@ import { requireApiVersion, type PluginSettingTab, type Setting } from "obsidian
 // guard, and `eslint.config.mjs` bans `requireApiVersion` everywhere else.
 
 /**
- * Tell Obsidian's declarative settings tab that a setting changed: `structural` when rows appear,
- * vanish or redraw themselves from a `render` callback, otherwise the cheap in-place refresh of
+ * Tell Obsidian's declarative settings tab that a setting changed: `"redraw"` when rows appear,
+ * vanish or draw themselves from a `render` callback, `"refresh"` for the cheap in-place re-check of
  * every row's `disabled` predicate.
  *
  * @returns false below 1.13, where the tab is the imperative one and the caller redraws it itself.
  */
-export function refreshDeclarativeSettingTab(tab: PluginSettingTab, structural: boolean): boolean {
+export function refreshDeclarativeSettingTab(
+  tab: PluginSettingTab,
+  how: "redraw" | "refresh",
+): boolean {
   if (requireApiVersion("1.13.0")) {
-    if (structural) tab.update();
+    if (how === "redraw") tab.update();
     else tab.refreshDomState();
     return true;
   }

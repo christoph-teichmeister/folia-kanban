@@ -247,9 +247,11 @@ export default [
     rules: { "@typescript-eslint/consistent-type-imports": "off" },
   },
   {
-    // One version gate. The preset's `obsidianmd/no-unsupported-api` already fails any call to an
-    // API newer than manifest.json's `minAppVersion` unless a literal `requireApiVersion(...)`
-    // guards it. Allowing that guard only in src/obsidian/compat.ts leaves compat.ts as the one
+    // One version gate. The preset's `obsidianmd/no-unsupported-api` already fails a use of an API
+    // newer than manifest.json's `minAppVersion` unless a literal `requireApiVersion(...)` guards
+    // it. It sees dotted member access, calls, `new` and `extends`, not a destructured property
+    // (`const { errorEl } = setting`) or a bracketed key (`b["setDestructive"]()`), so write newer
+    // APIs in the dotted form. Allowing that guard only in src/obsidian/compat.ts leaves compat.ts as the one
     // place such a call can live, each with its fallback beside it.
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/obsidian/compat.ts"],

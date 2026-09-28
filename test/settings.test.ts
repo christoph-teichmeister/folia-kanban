@@ -492,7 +492,7 @@ describe("the plugin reacts to an external settings change", () => {
     // From 1.13 the tab is Obsidian's to draw; emptying its container would replace what it
     // rendered, and what its settings search indexed, with the older imperative rows.
     expect(tab).toContain(
-      "if (!refreshDeclarativeSettingTab(this, true) && this.containerEl.isConnected)",
+      'if (!refreshDeclarativeSettingTab(this, "redraw") && this.containerEl.isConnected)',
     );
   });
 

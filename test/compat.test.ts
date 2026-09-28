@@ -18,8 +18,8 @@ describe("the version gate", () => {
 
   it("redraws the declarative tab on 1.13, fully or in place", () => {
     const tab = fakeTab();
-    expect(refreshDeclarativeSettingTab(asTab(tab), true)).toBe(true);
-    expect(refreshDeclarativeSettingTab(asTab(tab), false)).toBe(true);
+    expect(refreshDeclarativeSettingTab(asTab(tab), "redraw")).toBe(true);
+    expect(refreshDeclarativeSettingTab(asTab(tab), "refresh")).toBe(true);
     expect(tab.update).toHaveBeenCalledTimes(1);
     expect(tab.refreshDomState).toHaveBeenCalledTimes(1);
   });
@@ -27,8 +27,8 @@ describe("the version gate", () => {
   it("leaves the redraw to the caller below 1.13, touching neither newer method", () => {
     app.version = "1.11.4";
     const tab = fakeTab();
-    expect(refreshDeclarativeSettingTab(asTab(tab), true)).toBe(false);
-    expect(refreshDeclarativeSettingTab(asTab(tab), false)).toBe(false);
+    expect(refreshDeclarativeSettingTab(asTab(tab), "redraw")).toBe(false);
+    expect(refreshDeclarativeSettingTab(asTab(tab), "refresh")).toBe(false);
     expect(tab.update).not.toHaveBeenCalled();
     expect(tab.refreshDomState).not.toHaveBeenCalled();
   });

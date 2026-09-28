@@ -928,7 +928,7 @@ class KanbanSettingTab extends PluginSettingTab {
       // `render` callback — which carries no `disabled` predicate for `refreshDomState` to
       // re-evaluate. Only redrawing the tab reaches them. Every other row does disable from a
       // predicate (side-panel layout, add-card open mode), and gets the cheap path.
-      refreshDeclarativeSettingTab(this, key === "mcpEnabled");
+      refreshDeclarativeSettingTab(this, key === "mcpEnabled" ? "redraw" : "refresh");
     });
   }
 
@@ -950,7 +950,8 @@ class KanbanSettingTab extends PluginSettingTab {
     // indexed — with the older imperative rows. Below that, `render` is the only path there is, and
     // it costs nothing to skip when the tab is not on screen: `display` draws it fresh the next time
     // it is opened.
-    if (!refreshDeclarativeSettingTab(this, true) && this.containerEl.isConnected) this.render();
+    if (!refreshDeclarativeSettingTab(this, "redraw") && this.containerEl.isConnected)
+      this.render();
   }
 
   override hide(): void {
