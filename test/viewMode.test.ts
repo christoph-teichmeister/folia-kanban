@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { FrontMatterCache } from "obsidian";
-import { isBoardFrontmatter, resolveBoardViewMode } from "../src/viewMode";
+import { isBoardFrontmatter, resolveBoardViewMode } from "../src/obsidian/viewMode";
 
 const fm = (o: Record<string, unknown>): FrontMatterCache => o as FrontMatterCache;
 

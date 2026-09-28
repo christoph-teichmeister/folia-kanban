@@ -16,7 +16,7 @@ import {
   settingDefinitions,
   settingsPatchFor,
   type HeldFieldKey,
-} from "../src/settingsDefinitions";
+} from "../src/obsidian/settingsDefinitions";
 import {
   CARD_NEXT_TODOS_MAX,
   DEPENDENT_SETTING_KEYS,

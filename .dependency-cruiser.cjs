@@ -7,7 +7,8 @@
 //   mcp      — the MCP tool surface; same rule as ui (model + the port, never the adapter)
 // The plugin shell (main.ts, view.tsx) wires the adapter into Obsidian.
 // The "only the adapter/shell may import the 'obsidian' package" rule is enforced
-// in eslint.config.mjs via no-restricted-imports (precise specifier match).
+// in eslint.config.mjs via no-restricted-imports (precise specifier match), which sees
+// direct imports only; ui-never-reaches-obsidian below covers the transitive ones for src/ui.
 module.exports = {
   forbidden: [
     {
@@ -35,6 +36,14 @@ module.exports = {
       to: { path: "^src/obsidian/" },
     },
     {
+      name: "ui-never-reaches-obsidian",
+      severity: "error",
+      comment:
+        "No chain of imports from src/ui may end at the obsidian package, type-only ones included. ESLint's import ban sees only direct imports; this sees the whole path.",
+      from: { path: "^src/ui/" },
+      to: { path: "^obsidian$", reachable: true },
+    },
+    {
       name: "mcp-is-a-port-consumer",
       severity: "error",
       comment:
@@ -55,6 +64,7 @@ module.exports = {
     doNotFollow: { path: "node_modules" },
     tsConfig: { fileName: "tsconfig.json" },
     tsPreCompilationDeps: true,
-    includeOnly: "^src/",
+    // The obsidian package is let in so the reachability rule above has an end to find.
+    includeOnly: ["^src/", "^obsidian$"],
   },
 };

@@ -7,6 +7,17 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 const jsxA11yTyped =
   /** @type {{ flatConfigs: Record<string, import("eslint").Linter.Config> }} */ (jsxA11y);
 
+/** The preset's own `no-restricted-globals` entries, which any block overriding the rule must keep. */
+const obsidianRestrictedGlobals = (
+  obsidianmd.configs.recommended.find((c) => c.rules?.["no-restricted-globals"])?.rules?.[
+    "no-restricted-globals"
+  ] ?? []
+).filter((entry) => typeof entry === "object");
+
+const focusedWindowGlobals = ["activeDocument", "activeWindow"];
+const focusedWindowMessage =
+  "This is the focused window's, not necessarily the board's. Use useBoardDocument()/useBoardWindow() (src/ui/context.ts).";
+
 /**
  * Deliberate jsx-a11y exceptions, kept here rather than as `eslint-disable-next-line` comments:
  * Obsidian's community-directory scanner runs ESLint with its own config, which does not load
@@ -185,9 +196,10 @@ export default [
   {
     // Architecture boundary, placed after the obsidianmd preset spread because that preset turns
     // `no-restricted-imports` off for src. The Obsidian API may be imported only by
-    // the adapter (src/obsidian) and the plugin shell (main.ts/view.tsx). The domain, the UI and
-    // the MCP surface go through the CardRepository port (src/model/repo.ts).
-    files: ["src/model/**/*.{ts,tsx}", "src/ui/**/*.{ts,tsx}", "src/mcp/**/*.{ts,tsx}"],
+    // the adapter (src/obsidian) and the plugin shell (main.ts/view.tsx). Everything else goes
+    // through the CardRepository port (src/model/repo.ts).
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/obsidian/**", "src/main.ts", "src/view.tsx"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -196,7 +208,7 @@ export default [
             {
               name: "obsidian",
               message:
-                "UI, domain and MCP must not import the Obsidian API directly. Use the CardRepository port (src/model/repo.ts); only src/obsidian/** and the plugin shell may touch obsidian.",
+                "Only src/obsidian/** and the plugin shell (src/main.ts, src/view.tsx) may import the Obsidian API. Use the CardRepository port (src/model/repo.ts).",
             },
           ],
         },
@@ -204,8 +216,32 @@ export default [
     },
   },
   {
-    // no-undef is redundant with the TS type-checker, and `activeWindow`/`activeDocument` are
-    // valid Obsidian ambient globals. Disable it for the TS sources the preset enables it on.
+    // The same boundary for the ambient globals Obsidian injects: no import is involved, so the
+    // import ban cannot see them. This replaces the preset's option list for these files, so its
+    // own entries are carried over.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/obsidian/**", "src/main.ts", "src/view.tsx"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        ...obsidianRestrictedGlobals,
+        ...focusedWindowGlobals.map((name) => ({ name, message: focusedWindowMessage })),
+      ],
+      "no-restricted-properties": [
+        "error",
+        ...["window", "globalThis", "self"].flatMap((object) =>
+          focusedWindowGlobals.map((property) => ({
+            object,
+            property,
+            message: focusedWindowMessage,
+          })),
+        ),
+      ],
+    },
+  },
+  {
+    // no-undef is redundant with the TS type-checker, and the adapter and shell may use Obsidian's
+    // ambient globals. Disable it for the TS sources the preset enables it on.
     files: ["src/**/*.{ts,tsx}"],
     rules: { "no-undef": "off" },
   },

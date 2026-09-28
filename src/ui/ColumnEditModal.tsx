@@ -49,8 +49,8 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
 export function ColumnEditModal({ column, onClose }: Props) {
   const a = useBoardActions();
   const colorLabelId = useId();
-  // Portalled to the board's OWN document body: `activeDocument` is whichever window has focus,
-  // which for a board in a pop-out window is not the one the modal belongs to.
+  // Portalled to the board's OWN document body: the focused window's document, for a board in a
+  // pop-out window, is not the one the modal belongs to.
   const doc = useBoardDocument();
   const [draft, setDraft] = useState<Draft>(() => toDraft(column));
   /* See ColumnMenu: a colour the note carries that is not one of the eight gets a ninth, unpickable

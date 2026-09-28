@@ -1,5 +1,5 @@
 import type { Setting, SettingDefinition, SettingDefinitionItem } from "obsidian";
-import { isBindAddress, normalizeBindAddress } from "./mcp/bindAddress";
+import { isBindAddress, normalizeBindAddress } from "../mcp/bindAddress";
 import {
   CARD_NEXT_TODOS_MAX,
   EXTRA_ALIASES,
@@ -16,14 +16,14 @@ import {
   type DropdownKey,
   type EditableSettingKey,
   type RowControlSpec,
-} from "./settingsLayout";
+} from "../settingsLayout";
 import {
   DETAIL_WIDTH_MAX,
   DETAIL_WIDTH_MIN,
   MCP_PORT_MAX,
   MCP_PORT_MIN,
   type KanbanSettings,
-} from "./settings";
+} from "../settings";
 
 type ToggleKey = (typeof TOGGLE_SETTING_KEYS)[number];
 

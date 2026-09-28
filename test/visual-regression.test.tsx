@@ -50,7 +50,15 @@ function makeRepo() {
 }
 
 const render_ = (repo: FakeRepo, settings = DEFAULT_SETTINGS) =>
-  render(<App repo={repo} settings={settings} onUpdateSettings={() => {}} today="2026-06-13" />);
+  render(
+    <App
+      repo={repo}
+      settings={settings}
+      onUpdateSettings={() => {}}
+      today="2026-06-13"
+      mountedIn={document.body}
+    />,
+  );
 
 // Strip the run-varying tokens so the structural snapshot is stable across isolated vs full-suite
 // runs and across machines: dnd-kit's generated aria-describedby, and the inline transition style

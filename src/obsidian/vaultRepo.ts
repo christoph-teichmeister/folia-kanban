@@ -26,7 +26,7 @@ import type {
 import type { CardMutation } from "../model/board";
 import type { PropertyNamesInUse, PropertySuggestSource } from "../model/repo";
 import { staleLine } from "../model/repo";
-import { isBoardFrontmatter } from "../viewMode";
+import { isBoardFrontmatter } from "./viewMode";
 import { VIEW_TYPE_KANBAN } from "../viewType";
 import { attachPropertySuggest } from "./propertySuggest";
 import { buildBoard, claimInStep, resolveCardFolder } from "../model/board";

@@ -7,7 +7,7 @@
 // comment signature — which is what makes an agent's write indistinguishable from a person's.
 
 import type { App, TFile } from "obsidian";
-import { isBoardFrontmatter } from "../viewMode";
+import { isBoardFrontmatter } from "./viewMode";
 import type { BoardHost, BoardRef } from "../mcp/host";
 import type { CardRepository } from "../model/repo";
 import type { ServerInfo } from "../mcp/protocol";

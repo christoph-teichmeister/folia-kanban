@@ -3,7 +3,6 @@ import { MCP_DEFAULT_BIND_ADDRESS, isBindAddress } from "./mcp/bindAddress";
 import type { FileOp } from "./model/pathOps";
 import { remapPathKeys } from "./model/pathOps";
 import type { HistoryScope } from "./model/types";
-import type { BoardViewMode } from "./viewMode";
 
 /** Where the MCP server listens by default. Neighbour of the Local REST API plugin's 27124. */
 const MCP_DEFAULT_PORT = 27125;
@@ -11,6 +10,9 @@ const MCP_DEFAULT_PORT = 27125;
 /** The range a port setting is held to: the unprivileged ports. */
 export const MCP_PORT_MIN = 1024;
 export const MCP_PORT_MAX = 65535;
+
+/** The two ways a board note can be shown. */
+export type BoardViewMode = "board" | "markdown";
 
 export interface KanbanSettings {
   detailPresentation: "side" | "modal";

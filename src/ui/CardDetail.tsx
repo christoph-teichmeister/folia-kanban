@@ -806,8 +806,8 @@ export function CardDetail({
   const repo = useRepo();
   const actions = useBoardActions();
   const matchCtx = useMatchContext();
-  // The panel can live in a pop-out window; `activeDocument` follows focus, so focus bookkeeping
-  // and the outside-click/drag listeners name the board's own document instead.
+  // The panel can live in a pop-out window, and the focused window's document need not be its own,
+  // so focus bookkeeping and the outside-click/drag listeners name the board's own document.
   const doc = useBoardDocument();
   const win = useBoardWindow();
   const boardRootRef = useBoardRootRef();

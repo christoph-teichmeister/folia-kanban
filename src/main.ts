@@ -41,6 +41,7 @@ import {
   settingsForDisk,
   withoutStoredMcpToken,
   type BoardSettings,
+  type BoardViewMode,
   type KanbanSettings,
   type SettingsPatch,
   type StoredSettings,
@@ -50,7 +51,7 @@ import {
   settingDefinitions,
   settingsPatchFor,
   type HeldFieldKey,
-} from "./settingsDefinitions";
+} from "./obsidian/settingsDefinitions";
 import {
   ABOUT_HEADING,
   MCP_TOKEN_COPY,
@@ -80,7 +81,7 @@ import {
 } from "./obsidian/mcpService";
 import { refreshDeclarativeSettingTab, setSettingError } from "./obsidian/compat";
 import { stamp } from "./model/dates";
-import { type BoardViewMode, isBoardFrontmatter, resolveBoardViewMode } from "./viewMode";
+import { isBoardFrontmatter, resolveBoardViewMode } from "./obsidian/viewMode";
 
 /** Marks the header button this plugin adds to a board note's Markdown editor. */
 const BOARD_ACTION_CLASS = "folia-open-as-board";

@@ -45,7 +45,15 @@ function makeRepo() {
 }
 
 const render_ = (repo: FakeRepo, settings = DEFAULT_SETTINGS) =>
-  render(<App repo={repo} settings={settings} onUpdateSettings={() => {}} today="2026-06-13" />);
+  render(
+    <App
+      repo={repo}
+      settings={settings}
+      onUpdateSettings={() => {}}
+      today="2026-06-13"
+      mountedIn={document.body}
+    />,
+  );
 
 // jsdom has no real layout/canvas, so axe's color-contrast rule can't be evaluated here — disable just
 // that rule and keep every other check on. One helper so neither call can forget the option.

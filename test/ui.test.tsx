@@ -126,14 +126,28 @@ function renderInSecondWindow(repo: FakeRepo, innerHeight: number) {
   const container = doc.createElement("div");
   doc.body.appendChild(container);
   const result = render(
-    <App repo={repo} settings={DEFAULT_SETTINGS} onUpdateSettings={() => {}} today="2026-06-13" />,
+    <App
+      repo={repo}
+      settings={DEFAULT_SETTINGS}
+      onUpdateSettings={() => {}}
+      today="2026-06-13"
+      mountedIn={container}
+    />,
     { container, baseElement: doc.body },
   );
   return { ...result, doc, view, frame };
 }
 
 const render_ = (repo: FakeRepo, settings = DEFAULT_SETTINGS) =>
-  render(<App repo={repo} settings={settings} onUpdateSettings={() => {}} today="2026-06-13" />);
+  render(
+    <App
+      repo={repo}
+      settings={settings}
+      onUpdateSettings={() => {}}
+      today="2026-06-13"
+      mountedIn={document.body}
+    />,
+  );
 
 /** Same as `render_`, but settings updates (e.g. a subitems-collapse toggle) actually apply —
  *  needed for anything that reads its own patch back through `useSettings()`. `settingsBox`, when
@@ -153,6 +167,7 @@ function renderStateful(
         settings={settings}
         onUpdateSettings={(patch) => setSettings((s) => applySettingsPatch(s, patch))}
         today="2026-06-13"
+        mountedIn={document.body}
       />
     );
   }
@@ -444,6 +459,7 @@ describe("status bar clearance", () => {
         settings={DEFAULT_SETTINGS}
         onUpdateSettings={() => {}}
         today="2026-06-13"
+        mountedIn={document.body}
         host={host}
       />,
     );
@@ -3559,6 +3575,7 @@ describe("search filter (single source of truth)", () => {
         settings={DEFAULT_SETTINGS}
         onUpdateSettings={() => {}}
         today="2026-06-13"
+        mountedIn={document.body}
         host={host}
       />,
     );
@@ -3587,6 +3604,7 @@ describe("search filter (single source of truth)", () => {
         settings={DEFAULT_SETTINGS}
         onUpdateSettings={() => {}}
         today="2026-06-13"
+        mountedIn={document.body}
         host={host}
       />,
     );
@@ -3606,6 +3624,7 @@ describe("search filter (single source of truth)", () => {
         settings={DEFAULT_SETTINGS}
         onUpdateSettings={() => {}}
         today="2026-06-13"
+        mountedIn={document.body}
         host={host}
       />,
     );
@@ -3632,6 +3651,7 @@ describe("search filter (single source of truth)", () => {
         settings={DEFAULT_SETTINGS}
         onUpdateSettings={() => {}}
         today="2026-06-13"
+        mountedIn={document.body}
         host={host}
       />,
     );
@@ -3654,6 +3674,7 @@ describe("search filter (single source of truth)", () => {
         settings={DEFAULT_SETTINGS}
         onUpdateSettings={() => {}}
         today="2026-06-13"
+        mountedIn={document.body}
         host={host}
       />,
     );

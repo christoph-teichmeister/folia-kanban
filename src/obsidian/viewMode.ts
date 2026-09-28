@@ -1,13 +1,11 @@
 import type { FrontMatterCache } from "obsidian";
+import type { BoardViewMode } from "../settings";
 
 /** Frontmatter key that marks a note as a Folia Kanban board. */
 const BOARD_FLAG = "folia-board";
 
 /** Per-note override for the "open board notes as" setting. */
 const VIEW_OVERRIDE_KEY = "folia-view";
-
-/** The two ways a board note can be shown. */
-export type BoardViewMode = "board" | "markdown";
 
 /** A board is any note carrying `folia-board: true`. Nothing else is ever a board. */
 export function isBoardFrontmatter(frontmatter: FrontMatterCache | undefined): boolean {

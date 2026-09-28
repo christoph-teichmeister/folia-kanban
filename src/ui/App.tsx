@@ -40,6 +40,7 @@ import {
   RepoContext,
   MatchContextContext,
   SettingsContext,
+  BoardMountContext,
   BoardRootContext,
   unreadStateOf,
   type BoardActions,
@@ -169,9 +170,11 @@ interface Props {
   today?: string;
   /** The leaf hosting this board, when there is one. See {@link BoardHost}. */
   host?: BoardHost;
+  /** The element the board is mounted in; its document is the board's own. */
+  mountedIn: HTMLElement;
 }
 
-export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
+export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }: Props) {
   const [board, setBoard] = useState<BoardModel | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   // Add-card flows: which column is in CREATE mode, plus a one-shot presentation override and a
@@ -305,7 +308,7 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
   // Obsidian's status bar is fixed to the bottom of its window and the workspace runs underneath
   // it, so the columns and the side detail panel reserve its height to keep their last content out
   // from behind it. The bar belongs to the board's OWN window, which is why this reads the root's
-  // document rather than `activeDocument`: that one follows focus, and a pop-out window has no
+  // document rather than the focused window's: that one follows focus, and a pop-out window has no
   // status bar at all, so a board there reserves nothing. Watching the bar's box is what keeps the
   // reservation true when its height changes, rather than freezing it at the first board load.
   useEffect(() => {
@@ -1108,62 +1111,64 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
           <ContextsContext.Provider value={stableContexts}>
             <RelationCountsContext.Provider value={relationCountsValue}>
               <MatchContextContext.Provider value={matchCtx}>
-                <BoardRootContext.Provider value={rootRef}>
-                  <div className="folia-root folia-scope" ref={rootRef}>
-                    <Toolbar
-                      ref={searchRef}
-                      query={query}
-                      onChange={setQuery}
-                      matchCount={counts.match}
-                      totalCount={counts.total}
-                      canFilterMine={settings.userName.trim() !== ""}
-                    />
-                    {board.cardFolderWarning && (
-                      <div className="folia-card-folder-notice" role="status">
-                        {board.cardFolderWarning}
-                      </div>
-                    )}
-                    <div className="folia-main" role="region" aria-label="Board">
-                      <Board
-                        board={board}
-                        today={todayValue}
-                        selectedPath={selected}
-                        wipLimits={wipLimits}
-                        filter={filter}
-                        doneColumnId={doneColumnId}
-                        onMove={(card, overId) => void onMove(card, overId)}
-                        onAddCard={onAddCard}
+                <BoardMountContext.Provider value={mountedIn}>
+                  <BoardRootContext.Provider value={rootRef}>
+                    <div className="folia-root folia-scope" ref={rootRef}>
+                      <Toolbar
+                        ref={searchRef}
+                        query={query}
+                        onChange={setQuery}
+                        matchCount={counts.match}
+                        totalCount={counts.total}
+                        canFilterMine={settings.userName.trim() !== ""}
                       />
-                      {/* Side modes (split/float) render the panel as a sibling; split shrinks the board,
-                    float overlays it. Modal renders via a portal into the root, over a backdrop. */}
-                      {detailMode !== "modal" && detail}
-                    </div>
-                    {detailMode === "modal" &&
-                      panelShown &&
-                      rootRef.current &&
-                      createPortal(
-                        <div
-                          className="folia-detail-modal-backdrop"
-                          onPointerDown={(e) => {
-                            if (e.target === e.currentTarget) closeDetail();
-                          }}
-                        >
-                          {detail}
-                        </div>,
-                        rootRef.current,
+                      {board.cardFolderWarning && (
+                        <div className="folia-card-folder-notice" role="status">
+                          {board.cardFolderWarning}
+                        </div>
                       )}
-                    {toast && (
-                      <div
-                        className={"folia-toast folia-toast-" + toast.tone}
-                        role="status"
-                        aria-live="polite"
-                      >
-                        <Icon name={toast.tone === "error" ? "alert" : "check-circle"} />
-                        {toast.text}
+                      <div className="folia-main" role="region" aria-label="Board">
+                        <Board
+                          board={board}
+                          today={todayValue}
+                          selectedPath={selected}
+                          wipLimits={wipLimits}
+                          filter={filter}
+                          doneColumnId={doneColumnId}
+                          onMove={(card, overId) => void onMove(card, overId)}
+                          onAddCard={onAddCard}
+                        />
+                        {/* Side modes (split/float) render the panel as a sibling; split shrinks the board,
+                    float overlays it. Modal renders via a portal into the root, over a backdrop. */}
+                        {detailMode !== "modal" && detail}
                       </div>
-                    )}
-                  </div>
-                </BoardRootContext.Provider>
+                      {detailMode === "modal" &&
+                        panelShown &&
+                        rootRef.current &&
+                        createPortal(
+                          <div
+                            className="folia-detail-modal-backdrop"
+                            onPointerDown={(e) => {
+                              if (e.target === e.currentTarget) closeDetail();
+                            }}
+                          >
+                            {detail}
+                          </div>,
+                          rootRef.current,
+                        )}
+                      {toast && (
+                        <div
+                          className={"folia-toast folia-toast-" + toast.tone}
+                          role="status"
+                          aria-live="polite"
+                        >
+                          <Icon name={toast.tone === "error" ? "alert" : "check-circle"} />
+                          {toast.text}
+                        </div>
+                      )}
+                    </div>
+                  </BoardRootContext.Provider>
+                </BoardMountContext.Provider>
               </MatchContextContext.Provider>
             </RelationCountsContext.Provider>
           </ContextsContext.Provider>

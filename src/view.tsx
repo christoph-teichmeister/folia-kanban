@@ -162,6 +162,7 @@ export class KanbanView extends FileView {
           settings={this.getSettings()}
           onUpdateSettings={this.updateSettings}
           host={this.host}
+          mountedIn={this.contentEl}
         />
       </StrictMode>,
     );

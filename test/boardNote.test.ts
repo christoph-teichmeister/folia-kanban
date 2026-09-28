@@ -7,7 +7,7 @@ import {
   cardFolderFor,
   uniqueNotePath,
 } from "../src/boardNote";
-import { isBoardFrontmatter, resolveBoardViewMode } from "../src/viewMode";
+import { isBoardFrontmatter, resolveBoardViewMode } from "../src/obsidian/viewMode";
 import { BoardFrontmatterSchema, decode } from "../src/model/schemas";
 import { normalizeColumns } from "../src/model/columns";
 import { resolveCardFolder } from "../src/model/board";

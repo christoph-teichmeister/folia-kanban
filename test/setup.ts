@@ -8,8 +8,8 @@ import { afterEach } from "vitest";
 const hasDom = typeof document !== "undefined";
 
 if (hasDom) {
-  // jsdom has no Obsidian globals; map activeDocument/activeWindow to the jsdom document/window
-  // so popout-compat code (which uses activeDocument/activeWindow) works under test.
+  // jsdom has no Obsidian globals; map activeDocument/activeWindow to the jsdom document/window so
+  // the pop-out tests can stand a decoy focused window in for them.
   Object.assign(globalThis, { activeDocument: document, activeWindow: window });
 
   // Obsidian adds DOM helpers of its own to every element, and jsdom has none of them. Only the

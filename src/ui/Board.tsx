@@ -402,7 +402,7 @@ export function Board({
           renders inside `.folia-board`, any transformed ancestor (Obsidian transforms `.workspace-leaf`
           for tab/slide animations) becomes its containing block and the lifted ghost drifts (~one column
           right) while the drop placeholder — which uses pure viewport math — stays put. Portal it out to
-          the board's OWN document body (not `activeDocument`: a background `repo.onChange` reload can
+          the board's OWN document body (not the focused window's: a background `repo.onChange` reload can
           re-render this board while another window is active, so it must anchor to its own document, and
           this is popout-window safe) so `fixed` is viewport-relative again. The guard only skips the
           pre-mount render, where no drag can be active. React context flows through the portal, so the
