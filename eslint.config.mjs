@@ -257,8 +257,9 @@ export default [
       "no-restricted-syntax": [
         "error",
         {
-          selector:
-            "ImportSpecifier[imported.name='requireApiVersion'], CallExpression[callee.name='requireApiVersion']",
+          // Any mention, so a namespace import (`Obsidian.requireApiVersion`) or a destructured
+          // alias cannot bring the gate back elsewhere.
+          selector: "Identifier[name='requireApiVersion']",
           message:
             "Gate newer Obsidian APIs in src/obsidian/compat.ts, with a fallback for older apps; requireApiVersion belongs there only.",
         },

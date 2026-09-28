@@ -31,6 +31,13 @@ describe("newer Obsidian APIs go through the one version gate", { timeout: 30_00
     expect(ids).not.toContain("obsidianmd/no-unsupported-api");
   });
 
+  it("rejects the gate reached through a namespace import outside the gate file", async () => {
+    const code =
+      'import * as Obsidian from "obsidian";\n' +
+      'export const newer = (): boolean => Obsidian.requireApiVersion("1.13.0");\n';
+    expect(await ruleIds(code, OTHER)).toContain("no-restricted-syntax");
+  });
+
   it("accepts the guarded call in the gate file", async () => {
     const ids = await ruleIds(guarded, GATE);
     expect(ids).not.toContain("no-restricted-syntax");
