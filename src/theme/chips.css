@@ -30,8 +30,9 @@
    borderless chip loses the only edge these translucent tints have.
    The percentages are also why the warn and danger chips keep mixing off the ramp rather than off
    --text-warning / --text-error the way the plain warning surfaces now do: the numbers were tuned
-   against these hues, and nothing in CI can re-check a contrast ratio (see docs/decisions.md and
-   tracking/waivers/0002-automated-a11y-gate.md). Re-tuning without a check is guessing. */
+   against these hues, and nothing in CI can re-check a contrast ratio: jsdom cannot compute one,
+   so test/a11y.axe.test.tsx disables the rule (see docs/decisions.md and
+   https://github.com/stavarengo/folia-kanban/issues/99). Re-tuning without a check is guessing. */
 .folia-scope .folia-chip-prio-1 { color: color-mix(in srgb, var(--folia-prio-1) 60%, var(--text-normal)); background: color-mix(in oklch, var(--folia-prio-1) 20%, transparent); border-color: color-mix(in oklch, var(--folia-prio-1) 32%, transparent); }
 .folia-scope .folia-chip-prio-2 { color: color-mix(in srgb, var(--folia-prio-2) 60%, var(--text-normal)); background: color-mix(in oklch, var(--folia-prio-2) 20%, transparent); border-color: color-mix(in oklch, var(--folia-prio-2) 32%, transparent); }
 .folia-scope .folia-chip-prio-3 { color: color-mix(in srgb, var(--folia-prio-3) 58%, var(--text-normal)); background: color-mix(in oklch, var(--folia-prio-3) 22%, transparent); border-color: color-mix(in oklch, var(--folia-prio-3) 34%, transparent); }
