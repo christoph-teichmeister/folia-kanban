@@ -1,5 +1,7 @@
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -9,7 +11,6 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type RefObject,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
 import type {
   Board,
@@ -29,29 +30,25 @@ import { FOLIA_CARD_KEYS, PANEL_FIELD_KEYS, propertySuggestions } from "../model
 import { laneFill, prospectiveCard } from "../model/lanes";
 import { relationKeys } from "../model/relationships";
 import { SELF, isMine, normalizeAuthor, seenMarker, unreadComments } from "../model/unread";
-import { DETAIL_WIDTH_MAX, DETAIL_WIDTH_MIN, seenMarkerFor } from "../settings";
+import { seenMarkerFor } from "../settings";
 import { assigneeValues, boardAssignees, sameAssignee, toggleAssignee } from "../model/assignees";
 import { describeFill, priorityOptions } from "./cardView";
-import {
-  useBoardActions,
-  useMatchContext,
-  useBoardDocument,
-  useBoardRootRef,
-  useBoardWindow,
-  useRepo,
-  useSettings,
-  useSettingsUpdater,
-} from "./context";
+import { useBoardActions, useMatchContext, useBoardRootRef, useRepo, useSettings } from "./context";
 import { Icon } from "./icons";
 import { Markdown } from "./Markdown";
 
-/** How the detail panel is presented; App decides where to mount it. */
-export type DetailMode = "split" | "float" | "modal";
+/** What the panel may ask of the dialog it is drawn in; see `DetailModalHandle` in App. */
+export interface DetailDialogControls {
+  close(): void;
+  pushEscape(handler: () => void): () => void;
+}
+
+/** Provided by the dialog, so the panel only has it once it is in one. */
+export const DetailDialogContext = createContext<DetailDialogControls | null>(null);
 
 interface Props {
   path: string;
   board: Board;
-  mode: DetailMode;
   onClose: () => void;
   /** Switch the panel to another card (subcard links). The create form never navigates. */
   onNavigate?: (path: string) => void;
@@ -74,8 +71,6 @@ interface Props {
    */
   focusSeq?: number;
 }
-
-const clampWidth = (n: number) => Math.min(DETAIL_WIDTH_MAX, Math.max(DETAIL_WIDTH_MIN, n));
 
 /**
  * A one-line field's local draft, committed on blur/Enter. The persisted value follows the note
@@ -792,7 +787,6 @@ function relationChoices(board: Board, selfPath: string): Map<string, string> {
 export function CardDetail({
   path,
   board,
-  mode,
   onClose,
   onNavigate,
   onChanged,
@@ -806,13 +800,9 @@ export function CardDetail({
   const repo = useRepo();
   const actions = useBoardActions();
   const matchCtx = useMatchContext();
-  // The panel can live in a pop-out window, and the focused window's document need not be its own,
-  // so focus bookkeeping and the outside-click/drag listeners name the board's own document.
-  const doc = useBoardDocument();
-  const win = useBoardWindow();
   const boardRootRef = useBoardRootRef();
   const settings = useSettings();
-  const updateSettings = useSettingsUpdater();
+  const dialog = useContext(DetailDialogContext);
   // The board reloads on a debounce, so for a moment after this card's file is renamed or moved
   // the board still knows the card only under its old path. Keep showing what it last said about
   // this card instead of flashing "Card not found" at a card that is right there; the next board
@@ -823,11 +813,14 @@ export function CardDetail({
   const card = liveCard ?? lastCard.current;
   const isCreate = createColumn != null;
   const panelRef = useRef<HTMLDivElement | null>(null);
-  // The panel's scroller: everything in the panel but the resize handle. Focus lands here on open,
-  // and every control the panel has sits inside it, because the scroll keys only ever move the
-  // focused element's own scroll container or an ancestor's, never a descendant's.
+  // The panel's scroller. Focus lands inside it on open, and every control the panel has sits inside
+  // it, because the scroll keys only ever move the focused element's own scroll container or an
+  // ancestor's, never a descendant's.
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
+  // Where focus lands on open: the card's name, inside the scroller, so the scroll keys reach it.
+  // Its ring sits in the header's padding, where nothing covers or clips it; one drawn around the
+  // whole scroller is cut by the sticky header and by the scrollbar.
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
   const descRef = useRef<HTMLTextAreaElement | null>(null);
   const descViewRef = useRef<HTMLDivElement | null>(null);
   const subcardRef = useRef<HTMLInputElement | null>(null);
@@ -858,8 +851,6 @@ export function CardDetail({
   const [newComment, setNewComment] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newProp, setNewProp] = useState({ key: "", val: "" });
-  // Width override only while a resize drag is in flight; otherwise the panel reads settings.detailWidth.
-  const [dragWidth, setDragWidth] = useState<number | null>(null);
   // Height the rendered preview occupied right before flipping to the raw editor, so the textarea
   // adopts it (min-height) and the panel doesn't jump on preview↔edit toggle. Null = no carry-over.
   const [preservedDescHeight, setPreservedDescHeight] = useState<number | null>(null);
@@ -924,12 +915,7 @@ export function CardDetail({
     // The picked key goes into React state, never straight into the input: this field is
     // controlled, so a value written behind React's back is gone at the next render.
     onPick: (key) => setNewProp((cur) => ({ ...cur, key })),
-    onOpenChange: (open) => {
-      suggestOpen.current = open;
-    },
   });
-  /** Whether a suggestion popup is on screen, which decides who Escape belongs to (see `onKeyDown`). */
-  const suggestOpen = useRef(false);
   const suggestOff = useRef<(() => void) | null>(null);
   // A callback ref rather than an effect: the panel's create form has no property field at all,
   // so attachment has to follow the element itself appearing and disappearing.
@@ -1060,8 +1046,6 @@ export function CardDetail({
     wrote.current = stamped;
     actions.markCommentsSeen(path, marker);
   }, [path, bodyPath, marker, seenNow, actions]);
-  const isSide = mode !== "modal";
-  const width = dragWidth ?? settings.detailWidth;
 
   // Reads can overlap (a write's own reload and the board's); only the latest may land. Every
   // read this panel starts is for its one card — the panel is remounted for another — so the
@@ -1096,6 +1080,14 @@ export function CardDetail({
     };
   }, []);
   const stillHere = () => alive.current;
+
+  // A note opened somewhere else in the workspace would open under the dialog, so the dialog goes
+  // first. Closed directly rather than through `onClose`, which only asks for a render: the dialog
+  // gives focus back as it closes, and that has to happen before the note takes it.
+  const openElsewhere = (open: () => Promise<void>) => {
+    dialog?.close();
+    void open();
+  };
   // The body is re-read whenever the board reloads — its own writes and edits landing from
   // elsewhere (another pane, an agent, sync) come through the same signal — so what the panel
   // shows is what the note says, not what it said when the panel opened. Each field with a draft
@@ -1109,12 +1101,11 @@ export function CardDetail({
     void reload();
   }, [path, isCreate, board]);
 
-  // Dialog focus management: focus in on open, return focus to the opener on close. The create form
-  // autofocuses its title input (a synchronous commit-phase focus), so don't steal it back here.
+  // Focus in on open. The dialog the panel is drawn in gives focus back to whatever had it when it
+  // opened. The create form autofocuses its title input (a synchronous commit-phase focus), so
+  // don't steal it back here.
   useEffect(() => {
-    openerRef.current = doc.activeElement as HTMLElement | null;
-    if (!isCreate) (scrollRef.current ?? panelRef.current)?.focus();
-    return () => openerRef.current?.focus?.();
+    if (!isCreate) (titleRef.current ?? scrollRef.current ?? panelRef.current)?.focus();
   }, []);
 
   // A freshly-created card (inline-edit / detail flows) lands the user in the description editor.
@@ -1131,16 +1122,39 @@ export function CardDetail({
     if (editingDesc) descRef.current?.focus();
   }, [editingDesc]);
 
+  // Escape in the description editor drops the draft and leaves the editor, and must not close the
+  // dialog on the way. The host sees Escape before the textarea does, so while the editor has focus
+  // the key is handed to this instead. Given back on blur, and whenever the editor goes: a textarea
+  // removed while it has focus never reports the blur.
+  const escapeOff = useRef<(() => void) | null>(null);
+  const cancelDesc = useRef(() => {});
+  cancelDesc.current = () => {
+    revertDesc();
+    setDescRefusal(null);
+    setEditingDesc(false);
+  };
+  const releaseEscape = useCallback(() => {
+    escapeOff.current?.();
+    escapeOff.current = null;
+  }, []);
+  const claimEscape = () => {
+    releaseEscape();
+    escapeOff.current = dialog?.pushEscape(() => cancelDesc.current()) ?? null;
+  };
+  useEffect(() => {
+    if (!editingDesc) releaseEscape();
+  }, [editingDesc, releaseEscape]);
+  useEffect(() => releaseEscape, [releaseEscape]);
+
   // Cap the rendered preview to the space between its top and the viewport bottom (leaving a small
-  // gutter), but never below a readable floor. Works across split/float/modal: it measures the
-  // preview's own on-screen position, so the modal's max-height and the side panel's scroll both
-  // resolve to a sensible ceiling.
+  // gutter), but never below a readable floor. It measures the preview's own on-screen position, so
+  // the dialog's max-height resolves to a sensible ceiling.
   //
   // Two boxes move the preview without any window resizing, and a `resize` listener sleeps through
   // both: the board's own, when a split divider is dragged or a sidebar collapses, and the panel's,
-  // when its left border is dragged narrow enough to wrap the header above the preview. The panel
-  // is watched for its WIDTH alone, because in the float and modal presentations its height follows
-  // the very ceiling being set here, and answering that would be a loop.
+  // when it narrows enough to wrap the header above the preview. The panel is watched for its WIDTH
+  // alone, because its height follows the very ceiling being set here, and answering that would be
+  // a loop.
   useLayoutEffect(() => {
     if (isCreate || editingDesc) return;
     const measure = () => {
@@ -1208,59 +1222,6 @@ export function CardDetail({
     if (focusTitleOverride && !isCreate) titleOverrideRef.current?.focus();
   }, [focusSeq]);
 
-  // Side modes: a pointerdown outside the panel closes it — but not when it lands on another
-  // card (that card's own open handler switches the detail), nor on a menu/context surface, nor
-  // on a suggestion popup: Obsidian hangs `.suggestion-container` off the document body, so a
-  // popup this panel's own field opened is outside the panel in the DOM while being part of it on
-  // screen. Without it, clicking a property-name suggestion would close the panel out from under
-  // the pick instead of making it.
-  // Modal mode closes via its backdrop instead (handled by App).
-  useEffect(() => {
-    if (!isSide) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (
-        t?.closest?.(
-          ".folia-detail, .folia-card, .folia-menu, .folia-card-context, .suggestion-container",
-        )
-      )
-        return;
-      // Commit any in-progress edit before closing: blurring fires the focused field's onBlur,
-      // which initiates its repo write synchronously — so clicking away saves instead of discarding.
-      const ae = doc.activeElement as HTMLElement | null;
-      if (
-        ae &&
-        panelRef.current?.contains(ae) &&
-        (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")
-      )
-        ae.blur();
-      onClose();
-    };
-    doc.addEventListener("pointerdown", onPointerDown);
-    return () => doc.removeEventListener("pointerdown", onPointerDown);
-  }, [isSide, onClose, doc]);
-
-  // Drag the panel's left border to resize (side modes). Width is derived from the panel's own
-  // right edge so it works whether the panel is a flex sibling (split) or right-docked (float).
-  const onResizeStart = (e: ReactPointerEvent) => {
-    e.preventDefault();
-    const right = panelRef.current?.getBoundingClientRect().right ?? win.innerWidth;
-    (e.target as Element).setPointerCapture(e.pointerId);
-    let latest = clampWidth(right - e.clientX);
-    const onMove = (ev: PointerEvent) => {
-      latest = clampWidth(right - ev.clientX);
-      setDragWidth(latest);
-    };
-    const onUp = () => {
-      doc.removeEventListener("pointermove", onMove);
-      doc.removeEventListener("pointerup", onUp);
-      setDragWidth(null);
-      updateSettings({ detailWidth: latest });
-    };
-    doc.addEventListener("pointermove", onMove);
-    doc.addEventListener("pointerup", onUp);
-  };
-
   // Every write the panel makes goes through here, and a failure is reported the way every other
   // board mutation's is (the toast), instead of leaving the panel looking as if nothing happened.
   // The body is re-read and the board reloaded either way, since a write can fail halfway.
@@ -1276,26 +1237,6 @@ export function CardDetail({
       onChanged();
     }
   };
-
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      // While a suggestion popup is open the keystroke belongs to it, and the popup is Obsidian's:
-      // its own keymap listens on the document, BELOW this handler in the bubble path, so stopping
-      // propagation here is what would strand the popup open. Let this one through instead, and
-      // let the next Escape — with no popup left — close the panel. The flag is cleared rather
-      // than waited on, so a popup that went away without saying so cannot trap the panel.
-      if (suggestOpen.current) {
-        suggestOpen.current = false;
-        return;
-      }
-      e.stopPropagation();
-      onClose();
-    }
-  };
-
-  const modeClass =
-    mode === "float" ? " folia-detail--float" : mode === "modal" ? " folia-detail--modal" : "";
-  const panelStyle = isSide ? { width, flex: `0 0 ${width}px` } : undefined;
 
   if (isCreate) {
     const columnTitle =
@@ -1324,40 +1265,18 @@ export function CardDetail({
       })();
     };
     return (
-      // a11y exception (no-noninteractive-element-interactions): dialog surface: onKeyDown drives Escape/keyboard on a role=dialog + aria-modal + focus-managed panel
       <div
-        className={"folia-detail" + modeClass}
+        className="folia-detail"
         data-testid="card-detail"
         role="dialog"
-        aria-modal={mode === "modal"}
+        aria-modal="true"
         aria-label={`New card in ${columnTitle}`}
         ref={panelRef}
         tabIndex={-1}
-        onKeyDown={onKeyDown}
-        style={panelStyle}
       >
-        {isSide && (
-          <div
-            className="folia-detail-resize"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize panel"
-            onPointerDown={onResizeStart}
-          />
-        )}
         <div className="folia-detail-scroll" ref={scrollRef} tabIndex={-1}>
           <div className="folia-detail-header">
             <h2 className="folia-detail-title">New card in {columnTitle}</h2>
-            <div className="folia-row-actions">
-              <button
-                className="folia-icon-btn"
-                aria-label="Close"
-                title="Close (Esc)"
-                onClick={onClose}
-              >
-                <Icon name="close" />
-              </button>
-            </div>
           </div>
           <div className="folia-detail-body">
             <section className="folia-section">
@@ -1405,22 +1324,16 @@ export function CardDetail({
 
   if (!card) {
     return (
-      // a11y exception (no-noninteractive-element-interactions): dialog surface: onKeyDown drives Escape on a role=dialog + aria-modal + focus-managed panel
       <div
-        className={"folia-detail" + modeClass}
+        className="folia-detail"
         role="dialog"
-        aria-modal={mode === "modal"}
+        aria-modal="true"
         aria-label="Card not found"
         ref={panelRef}
         tabIndex={-1}
-        onKeyDown={onKeyDown}
-        style={panelStyle}
       >
         <div className="folia-detail-header">
           <span>Card not found</span>
-          <button className="folia-icon-btn" aria-label="Close" onClick={onClose}>
-            <Icon name="close" />
-          </button>
         </div>
       </div>
     );
@@ -1477,35 +1390,21 @@ export function CardDetail({
   );
 
   return (
-    // a11y exception (no-noninteractive-element-interactions): dialog surface: onKeyDown drives Escape/keyboard on a role=dialog + aria-modal + focus-managed panel
     <div
-      className={"folia-detail" + modeClass}
+      className="folia-detail"
       data-testid="card-detail"
       role="dialog"
-      aria-modal={mode === "modal"}
+      aria-modal="true"
       aria-label={card.title}
       ref={panelRef}
       tabIndex={-1}
-      onKeyDown={onKeyDown}
-      style={panelStyle}
     >
-      {isSide && (
-        // Pointer-only by design (drag to resize); exposed as a labelled role="separator", so
-        // there is no keyboard equivalent to add.
-        <div
-          className="folia-detail-resize"
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize panel"
-          onPointerDown={onResizeStart}
-        />
-      )}
       <div className="folia-detail-scroll" ref={scrollRef} tabIndex={-1}>
         <div className="folia-detail-header">
           {/* A label, not the place to read a long title: clamped to two lines (see
             `.folia-detail-title`) with the whole of it on hover, and the full, wrapping copy
             sitting in the "Resulting display title" row a few pixels below. */}
-          <h2 className="folia-detail-title" title={card.title}>
+          <h2 className="folia-detail-title" title={card.title} ref={titleRef} tabIndex={-1}>
             {card.title}
           </h2>
           <div className="folia-row-actions">
@@ -1523,10 +1422,10 @@ export function CardDetail({
               className="folia-icon-btn"
               aria-label="Open note"
               title="Open note in Obsidian"
-              onClick={(e) => void repo.openCard(path, e.nativeEvent)}
+              onClick={(e) => openElsewhere(() => repo.openCard(path, e.nativeEvent))}
               onAuxClick={(e) => {
                 if (e.button !== 1) return;
-                void repo.openCard(path, e.nativeEvent);
+                openElsewhere(() => repo.openCard(path, e.nativeEvent));
               }}
             >
               <Icon name="external-link" />
@@ -1538,14 +1437,6 @@ export function CardDetail({
               onClick={() => setConfirmDelete(true)}
             >
               <Icon name="trash" />
-            </button>
-            <button
-              className="folia-icon-btn"
-              aria-label="Close"
-              title="Close (Esc)"
-              onClick={onClose}
-            >
-              <Icon name="close" />
             </button>
           </div>
         </div>
@@ -1724,15 +1615,8 @@ export function CardDetail({
                     setDescRefusal(null);
                   }}
                   placeholder="Add a description…"
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      // Stay inside the editor: don't let Escape bubble to the panel and close it.
-                      e.stopPropagation();
-                      revertDesc();
-                      setDescRefusal(null);
-                      setEditingDesc(false);
-                    }
-                  }}
+                  onFocus={claimEscape}
+                  onBlur={releaseEscape}
                 />
                 {descRefusal && (
                   <p className="folia-desc-refusal" role="alert">

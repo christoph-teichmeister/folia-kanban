@@ -27,18 +27,6 @@ class PropertyNameSuggest extends AbstractInputSuggest<PropertySuggestion> {
     super(app, input);
   }
 
-  // Obsidian shows and hides the popup through these, so they are where the panel learns whether
-  // one is on screen — there is no public flag to read.
-  override open(): void {
-    super.open();
-    this.source.onOpenChange(true);
-  }
-
-  override close(): void {
-    super.close();
-    this.source.onOpenChange(false);
-  }
-
   protected getSuggestions(query: string): PropertySuggestion[] {
     return [...this.source.suggestions(query)];
   }
@@ -88,7 +76,6 @@ export function attachPropertySuggest(
   const inert: PropertySuggestSource = {
     suggestions: () => [],
     onPick: () => {},
-    onOpenChange: () => {},
   };
   const existing = attached.get(input);
   const suggest = existing ?? new PropertyNameSuggest(app, input, source);
@@ -96,7 +83,6 @@ export function attachPropertySuggest(
   else attached.set(input, suggest);
   return () => {
     if (suggest.source !== source) return;
-    // Closed first, so the popup's disappearance is reported to the source that asked for it.
     suggest.close();
     suggest.source = inert;
   };

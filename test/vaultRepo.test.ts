@@ -1683,18 +1683,12 @@ describe("the suggester attached to a text input", () => {
   /** One suggestion source, and what it was asked and told. */
   function source(keys: string[]) {
     const picked: string[] = [];
-    /** Every open/close the popup reported, in order. */
-    const openness: boolean[] = [];
     return {
       picked,
-      openness,
       suggestions: (query: string) =>
         keys.filter((k) => k.includes(query)).map((key) => ({ key, group: "folia" as const })),
       onPick: (key: string) => {
         picked.push(key);
-      },
-      onOpenChange: (open: boolean) => {
-        openness.push(open);
       },
     };
   }
@@ -1711,8 +1705,6 @@ describe("the suggester attached to a text input", () => {
     expect(offered.map((s) => s.key)).toEqual(["status"]);
     suggest.selectSuggestion(offered[0], new MouseEvent("click"));
     expect(src.picked).toEqual(["status"]);
-    // Picking closes the popup, and the panel is told so — Escape means something else once it is gone.
-    expect(src.openness.at(-1)).toBe(false);
     // The field is React-controlled: writing the value here would be reverted by the next render.
     expect(input.value).toBe("");
   });

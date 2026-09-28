@@ -28,6 +28,16 @@ So the answer is unchanged: technically yes, cleanly no.
 
 Until then, the shipped answer is the swap: a board note opens as the board and the tab header button flips it to the Markdown editor and back, one tab either way (see the README, "The board and the Markdown editor are the same tab").
 
+## The card detail panel as a side panel, split or floating
+
+**Decided 2026-09-29. Card details open only in Obsidian's own dialog.**
+
+The detail panel used to have three presentations: split (the panel docked beside the columns, shrinking them), float (the panel over the columns' right edge) and modal (a dialog). Split and float were drawn by Folia inside the board's own tab, with a hand-made resize edge, a click-outside close that had to recognise Obsidian's suggestion popup by its undocumented `.suggestion-container` class, and bookkeeping to tell whose Escape it was. The dialog was hand-made too, with no focus trap.
+
+Only the dialog has a native form. Obsidian's `Modal` gives it the backdrop, the focus trap, Escape, the close button and focus restore, and a child `Scope` pushed onto the keymap is how Escape stays inside the description editor. For the other two there is nothing to build on: the API documents no way to put a pane inside a view, and nothing documented is a persistent overlay inside a view. That is the same missing piece as the entry above, and the same answer. A workspace leaf beside the board would be a different feature, a second pane, and Obsidian already does that one. So split and float went, with everything that existed only for them: the width setting, the resize edge and its two open bugs (#76, #85), the click-outside close and the popup tracking. Settings that chose them are dropped on load, which puts those users on the dialog.
+
+**What would change this:** a public API for a pane or a persistent overlay inside a view. Before trying again, check `node_modules/obsidian/obsidian.d.ts` for one, the same way the entry above says to.
+
 ## Unread-comment ordering assumes one clock
 
 **Decided 2026-08-26. Same-clock writers are the supported case.**

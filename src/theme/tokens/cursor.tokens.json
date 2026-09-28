@@ -46,14 +46,6 @@
       "reason": "a word that explains itself on hover."
     }
   },
-  "resize": {
-    "$value": "col-resize",
-    "cssVar": "--folia-cursor-resize",
-    "source": {
-      "owned": true,
-      "reason": "the detail panel's edge; Obsidian's own divider is a later phase (audit 02-17)."
-    }
-  },
   "link": {
     "$value": "var(--cursor-link)",
     "cssVar": "--folia-cursor-link",

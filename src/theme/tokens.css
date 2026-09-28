@@ -59,11 +59,6 @@
   --folia-menu-h-max: calc(var(--size-4-1) * 110);
   --folia-modal-w: var(--dialog-width);
   --folia-menu-pad: var(--size-4-3);
-  --folia-detail-w: calc(var(--size-4-1) * 95); /* the width before CardDetail writes the user's own, inline */
-  --folia-detail-modal-w: calc(var(--size-4-1) * 160);
-  --folia-detail-modal-w-max: 92vw;
-  --folia-detail-modal-h-max: 85vh;
-  --folia-detail-slide: var(--size-4-3); /* how far the panel travels as it opens */
   --folia-suggest-h-max: calc(var(--size-4-1) * 70);
   --folia-search-w: calc(var(--size-4-1) * 80);
   --folia-add-column-w: calc(var(--size-4-1) * 55);
@@ -109,7 +104,6 @@
   --folia-todo-mark: var(--size-4-2);
   --folia-progress-h: var(--size-4-1);
   --folia-divider-h: var(--border-width);
-  --folia-resize-w: var(--size-2-3);
   --folia-ctx-strip-inset: var(--size-2-3); /* the context strip is inset past the priority bar beside it */
   --folia-icon-size: var(--icon-s);
   --folia-icon-stroke: var(--icon-s-stroke-width);
@@ -154,7 +148,6 @@
   --folia-shadow-card-hover: 0 4px 14px rgba(0, 0, 0, 0.22);
   --folia-shadow-overlay: 0 14px 36px rgba(0, 0, 0, 0.4);
   --folia-shadow-pop: 0 6px 20px rgba(0, 0, 0, 0.28);
-  --folia-shadow-panel: -8px 0 24px rgba(0, 0, 0, 0.18);
   --folia-suggestion-marker: inset var(--folia-border-width-thick) 0 0 var(--text-normal);
   --folia-ring: 0 0 0 2px color-mix(in oklch, var(--folia-accent) 30%, transparent);
   --folia-ring-soft: 0 0 0 2px color-mix(in oklch, var(--folia-accent) 25%, transparent);
@@ -254,7 +247,6 @@
   --folia-cursor-grabbing: grabbing;
   --folia-cursor-text: text;
   --folia-cursor-help: help;
-  --folia-cursor-resize: col-resize;
 
   /* typography — font sizes */
   --folia-font-size-xxs: calc(var(--font-ui-smaller) * 5 / 6);
@@ -288,8 +280,6 @@
   --folia-z-index-raised: 2;
   --folia-z-index-sticky: 30;
   --folia-z-index-toast: 50;
-  --folia-z-index-scrim: 55;
-  --folia-z-index-popover: 70;
 
   /* z-index — surfaces portalled to <body>. Those leave the leaf and land in the root stacking
      context, side by side with Obsidian's own notices, menus, tooltips and modals, so they read
@@ -350,6 +340,5 @@
   --folia-shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.12);
   --folia-shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.24);
   --folia-shadow-pop: 0 4px 12px rgba(0, 0, 0, 0.14);
-  --folia-shadow-panel: -4px 0 16px rgba(0, 0, 0, 0.1);
   --folia-scrim: rgba(0, 0, 0, 0.34);
 }

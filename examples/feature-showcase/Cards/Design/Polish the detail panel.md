@@ -8,4 +8,4 @@ energy: medium
 
 # Polish the detail panel
 
-Tighten spacing, make the resize handle easier to grab, and round the comment bubbles.
+Tighten spacing, make the header buttons easier to hit, and round the comment bubbles.

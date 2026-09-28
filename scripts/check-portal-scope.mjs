@@ -19,8 +19,11 @@
 // surface must take its `z-index` from the app's `--layer-*` scale — directly, or through one of
 // the `--folia-z-index-app-*` aliases that name the rung it sits on.
 //
-// Which side a portal is on is therefore a real question, and this check refuses to guess: only two
-// container shapes are recognised, a document body (outside) and the board root ref (inside).
+// Which side a portal is on is therefore a real question, and this check refuses to guess: only three
+// container shapes are recognised, a document body (outside), the board root ref (inside), and the
+// detail panel's dialog content (`modal.contentEl` in src/ui/App.tsx). That last one is outside the
+// root but carries the scope itself (src/obsidian/detailModal.ts puts the class on it), so what goes
+// in it must not re-declare the tokens, and its stacking is the host dialog's, not the portal's.
 // Anything else is reported as unclassifiable rather than defaulted, because BOTH defaults are
 // wrong in one direction — "assume outside" would tell an in-root portal to add the class and
 // reintroduce the shadowing, "assume inside" would excuse a body portal with dead tokens. Teach it
@@ -39,6 +42,15 @@ const SCOPE = "folia-scope";
 const INSIDE_ROOT = [/^rootRef\.current$/];
 /** Container expressions that name a document body, always outside the board root. */
 const OUTSIDE_ROOT = [/(^|\.)body$/];
+/**
+ * Containers outside the board root that already carry the scope themselves, each pinned to the one
+ * file that portals into it: the expression alone is only a variable name, and another dialog's
+ * `modal.contentEl` would carry no such promise. The detail dialog's does — `DetailModalHandle`
+ * states it and `src/obsidian/detailModal.ts` keeps it.
+ */
+const SCOPED_CONTAINER = [{ file: join("src", "ui", "App.tsx"), container: /^modal\.contentEl$/ }];
+const isScopedContainer = (file, container) =>
+  SCOPED_CONTAINER.some((c) => c.file === file && c.container.test(container));
 /** `z-index` values a body-portalled surface may take: the app's scale, or an alias naming a rung of it. */
 const APP_RUNG = /^var\(\s*(--layer-[a-z-]+|--folia-z-index-app-[a-z-]+)\b/;
 
@@ -268,13 +280,23 @@ for (const file of (await sourceFiles(SRC_DIR)).sort()) {
     const scoped = (classes.match(/[A-Za-z0-9_-]+/g) ?? []).includes(SCOPE);
     if (
       !INSIDE_ROOT.some((re) => re.test(container)) &&
-      !OUTSIDE_ROOT.some((re) => re.test(container))
+      !OUTSIDE_ROOT.some((re) => re.test(container)) &&
+      !isScopedContainer(file, container)
     ) {
       errors.push(
         `[${where}] cannot tell whether the container \`${container}\` is inside the board root, and ` +
-          `guessing would be wrong either way. Teach INSIDE_ROOT/OUTSIDE_ROOT in this script about ` +
-          `the new shape.`,
+          `guessing would be wrong either way. Teach INSIDE_ROOT/OUTSIDE_ROOT/SCOPED_CONTAINER in ` +
+          `this script about the new shape.`,
       );
+      continue;
+    }
+    if (isScopedContainer(file, container)) {
+      if (scoped) {
+        errors.push(
+          `[${where}] portals into a container that already carries \`${SCOPE}\`; the class on ` +
+            `the portalled element only declares the same tokens again. Drop it.`,
+        );
+      }
       continue;
     }
     if (INSIDE_ROOT.some((re) => re.test(container))) {

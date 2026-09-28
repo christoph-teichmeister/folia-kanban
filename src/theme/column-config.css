@@ -169,7 +169,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .folia-scope *,
-  .folia-detail,
   .folia-menu,
   .folia-modal,
   .folia-modal-backdrop,
@@ -177,7 +176,6 @@
     transition-duration: var(--folia-dur-none);
   }
   /* No positional slide/scale for motion-sensitive users — these surfaces just appear. */
-  .folia-detail,
   .folia-menu,
   .folia-modal,
   .folia-modal-backdrop,

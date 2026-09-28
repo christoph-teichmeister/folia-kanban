@@ -32,22 +32,6 @@
       "reason": "an in-board rung; the workspace leaf is its own stacking context, so these numbers are only ever compared with each other."
     }
   },
-  "scrim": {
-    "$value": "55",
-    "cssVar": "--folia-z-index-scrim",
-    "source": {
-      "owned": true,
-      "reason": "an in-board rung; the workspace leaf is its own stacking context, so these numbers are only ever compared with each other."
-    }
-  },
-  "popover": {
-    "$value": "70",
-    "cssVar": "--folia-z-index-popover",
-    "source": {
-      "owned": true,
-      "reason": "an in-board rung; the workspace leaf is its own stacking context, so these numbers are only ever compared with each other."
-    }
-  },
   "app-menu": {
     "$value": "var(--layer-menu, 65)",
     "cssVar": "--folia-z-index-app-menu",

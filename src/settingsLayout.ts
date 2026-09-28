@@ -1,12 +1,5 @@
 import { MCP_DEFAULT_BIND_ADDRESS } from "./mcp/bindAddress";
-import {
-  DEFAULT_SETTINGS,
-  DETAIL_WIDTH_MAX,
-  DETAIL_WIDTH_MIN,
-  MCP_PORT_MAX,
-  MCP_PORT_MIN,
-  type KanbanSettings,
-} from "./settings";
+import { DEFAULT_SETTINGS, MCP_PORT_MAX, MCP_PORT_MIN, type KanbanSettings } from "./settings";
 
 // The settings tab as data: what it offers, in what order, under which headings, worded how, and
 // what makes a row go inert. Both renderings read it — the declarative definitions Obsidian 1.13
@@ -19,11 +12,7 @@ import {
  */
 export type EditableSettingKey =
   | "boardNoteDefaultView"
-  | "detailPresentation"
-  | "sidePanelMode"
-  | "detailWidth"
   | "addCardFlow"
-  | "addCardOpenMode"
   | "cardNextTodos"
   | "subitemsDefault"
   | "userName"
@@ -48,12 +37,7 @@ export const TOGGLE_SETTING_KEYS = [
 /** Every setting whose control is a dropdown, i.e. one with a fixed list of choices. */
 export type DropdownKey = Exclude<
   EditableSettingKey,
-  | "detailWidth"
-  | "cardNextTodos"
-  | "userName"
-  | "mcpPort"
-  | "mcpBindAddress"
-  | (typeof TOGGLE_SETTING_KEYS)[number]
+  "cardNextTodos" | "userName" | "mcpPort" | "mcpBindAddress" | (typeof TOGGLE_SETTING_KEYS)[number]
 >;
 
 /**
@@ -63,18 +47,10 @@ export type DropdownKey = Exclude<
  */
 export const SETTING_OPTIONS = {
   boardNoteDefaultView: { board: "The board", markdown: "The markdown editor" },
-  detailPresentation: { side: "Side panel", modal: "Modal dialog" },
-  sidePanelMode: { split: "Split (shrink the board)", float: "Float (overlay the columns)" },
   addCardFlow: {
     inline: "Inline",
     "inline-edit": "Inline, then open details",
     detail: "Open details to create",
-  },
-  addCardOpenMode: {
-    default: "Use the card-details setting",
-    modal: "Modal dialog",
-    "side-float": "Side panel (float)",
-    "side-split": "Side panel (split)",
   },
   subitemsDefault: { expanded: "Expanded", collapsed: "Collapsed" },
   historyScope: { moves: "Moves only", structural: "Structural changes", all: "Everything" },
@@ -97,25 +73,9 @@ export const SETTING_COPY = {
     name: "Open board notes as",
     desc: "Which view a note carrying `folia-board: true` opens in from the file explorer, a link, search or the quick switcher. A link that points at a heading or a line inside the note opens the markdown there instead, and so does a sidebar, where a board would have no room. A single note overrides this with `folia-view: board` or `folia-view: markdown` of its own, and the button in the tab header swaps between the two at any time.",
   },
-  detailPresentation: {
-    name: "Show details in",
-    desc: "Where a card's details open: a panel docked beside the board, or a dialog centred over it.",
-  },
-  sidePanelMode: {
-    name: "Side panel layout",
-    desc: "Split shrinks the board to make room for the panel; float lets the panel overlay the columns. Only used when “Show details in” is the side panel — a new card's details, opened by the add-card setting into a panel of their own, carry the layout that setting names.",
-  },
-  detailWidth: {
-    name: "Side panel width",
-    desc: "How wide the docked panel is whenever a card's details open in one, in pixels — including when the add-card setting below opens a panel over a modal presentation. Dragging the panel's left border changes this too.",
-  },
   addCardFlow: {
     name: "Add-card flow",
     desc: "What the add-card button does: add a card in place, add it and open its details, or open the details and create the card from there.",
-  },
-  addCardOpenMode: {
-    name: "Open the new card's details in",
-    desc: "Where a newly added card's details open. Only used by the two flows that open them.",
   },
   cardNextTodos: {
     name: "Next todos shown",
@@ -184,11 +144,7 @@ export const CARD_NEXT_TODOS_MAX = 5;
 /** What each row is drawn with. `held` means the row draws itself — see {@link heldFieldOutcome}. */
 export const SETTING_CONTROLS = {
   boardNoteDefaultView: { kind: "dropdown", options: SETTING_OPTIONS.boardNoteDefaultView },
-  detailPresentation: { kind: "dropdown", options: SETTING_OPTIONS.detailPresentation },
-  sidePanelMode: { kind: "dropdown", options: SETTING_OPTIONS.sidePanelMode },
-  detailWidth: { kind: "slider", min: DETAIL_WIDTH_MIN, max: DETAIL_WIDTH_MAX, step: 10 },
   addCardFlow: { kind: "dropdown", options: SETTING_OPTIONS.addCardFlow },
-  addCardOpenMode: { kind: "dropdown", options: SETTING_OPTIONS.addCardOpenMode },
   cardNextTodos: { kind: "slider", min: 0, max: CARD_NEXT_TODOS_MAX, step: 1 },
   subitemsDefault: { kind: "dropdown", options: SETTING_OPTIONS.subitemsDefault },
   userName: { kind: "text", placeholder: USER_NAME_PLACEHOLDER },
@@ -208,12 +164,12 @@ export const SETTING_CONTROLS = {
  * one thing, not two that drift.
  *
  * The order runs from what a user changes to make the plugin fit their vault down to what most
- * vaults never touch: how board notes open, then what a card's details look like, then the cards
+ * vaults never touch: how board notes open, then the cards
  * themselves, then adding one, then who is writing and what gets recorded, then agent access.
  */
 export interface SettingGroupSpec {
   /** Identifies the group in code — the agent-access one is desktop-only and carries token rows. */
-  id: "boards" | "cardDetails" | "cards" | "addingCards" | "identity" | "agentAccess";
+  id: "boards" | "cards" | "addingCards" | "identity" | "agentAccess";
   heading: string;
   keys: readonly EditableSettingKey[];
 }
@@ -230,13 +186,8 @@ export const SETTING_GROUPS = [
       "boardSetupEditorMenu",
     ],
   },
-  {
-    id: "cardDetails",
-    heading: "Card details",
-    keys: ["detailPresentation", "sidePanelMode", "detailWidth"],
-  },
   { id: "cards", heading: "Cards on the board", keys: ["cardNextTodos", "subitemsDefault"] },
-  { id: "addingCards", heading: "Adding cards", keys: ["addCardFlow", "addCardOpenMode"] },
+  { id: "addingCards", heading: "Adding cards", keys: ["addCardFlow"] },
   { id: "identity", heading: "Comments and history", keys: ["userName", "historyScope"] },
   {
     id: "agentAccess",
@@ -247,17 +198,13 @@ export const SETTING_GROUPS = [
 
 /**
  * Extra words the 1.13 settings search should find a row by. Short names read better under a
- * heading but they take words with them — a row called "Side panel layout" no longer contains
- * "card details", and the heading above it is not indexed. Each row therefore carries its own
+ * heading but they take words with them — a row called "Next todos shown" no longer contains
+ * "cards on the board", and the heading above it is not indexed. Each row therefore carries its own
  * heading plus whatever it used to be called, so a search that used to land on it still does.
  */
 export const EXTRA_ALIASES: Partial<Record<EditableSettingKey, readonly string[]>> = {
   boardNoteDefaultView: ["default view", "folia-view", "markdown editor"],
-  detailPresentation: ["presentation", "modal", "side panel"],
-  sidePanelMode: ["split", "float", "overlay"],
-  detailWidth: ["panel width", "pixels", "resize"],
   addCardFlow: ["add card button", "new card", "inline"],
-  addCardOpenMode: ["add card", "new card", "modal"],
   cardNextTodos: ["todos", "checklist", "preview"],
   subitemsDefault: ["subcards", "collapse", "expand"],
   userName: ["comments", "author", "signature", "unread", "assign", "assignee", "mine"],
@@ -277,12 +224,6 @@ export const EXTRA_ALIASES: Partial<Record<EditableSettingKey, readonly string[]
  *  is disabled rather than hidden: a setting that vanishes is a setting nobody can find again. The
  *  words that explain the dependency live in {@link SETTING_COPY}, always visible. */
 const ROW_DISABLED: Partial<Record<EditableSettingKey, (s: KanbanSettings) => boolean>> = {
-  // The layout dropdown goes inert under a modal presentation because the one other way a panel
-  // opens — "Open the new card's details in", set to a side value — names its own layout and never
-  // reads this. The width is deliberately NOT gated the same way: the panel reads it however it was
-  // opened, so greying it would be a lie the moment that override is used.
-  sidePanelMode: (s) => s.detailPresentation === "modal",
-  addCardOpenMode: (s) => s.addCardFlow === "inline",
   mcpPort: (s) => !s.mcpEnabled,
   mcpBindAddress: (s) => !s.mcpEnabled,
 };
@@ -299,7 +240,7 @@ export function isRowDisabled(key: EditableSettingKey, settings: KanbanSettings)
 
 /** The rows whose new value changes which *other* rows exist or are live, so the imperative tab has
  *  to be drawn again rather than left as it is. */
-export const TAB_REDRAW_KEYS = ["detailPresentation", "addCardFlow", "mcpEnabled"] as const;
+export const TAB_REDRAW_KEYS = ["mcpEnabled"] as const;
 
 /** What is said when the token cannot be kept anywhere. Obsidian stores it in the platform's secure
  *  storage and refuses rather than falling back to the clear, so on a machine that has none there

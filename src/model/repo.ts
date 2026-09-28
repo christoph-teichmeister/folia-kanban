@@ -78,11 +78,6 @@ export interface PropertySuggestSource {
   suggestions(query: string): readonly PropertySuggestion[];
   /** The user picked one, by pointer or by keyboard. */
   onPick(key: string): void;
-  /**
-   * The popup opened or closed. The panel needs to know because Escape means two different things
-   * depending on it: dismiss the suggestions, or close the panel.
-   */
-  onOpenChange(open: boolean): void;
 }
 
 /**

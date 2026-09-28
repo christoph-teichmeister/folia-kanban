@@ -54,45 +54,6 @@
       "alias": "--size-4-3"
     }
   },
-  "detail-width": {
-    "$value": "calc(var(--size-4-1) * 95)",
-    "cssVar": "--folia-detail-w",
-    "source": {
-      "owned": true,
-      "reason": "Board layout dimension expressed in host grid units; no single documented spacing rung spans this component."
-    }
-  },
-  "detail-modal-width": {
-    "$value": "calc(var(--size-4-1) * 160)",
-    "cssVar": "--folia-detail-modal-w",
-    "source": {
-      "owned": true,
-      "reason": "Board layout dimension expressed in host grid units; no single documented spacing rung spans this component."
-    }
-  },
-  "detail-modal-width-max": {
-    "$value": "92vw",
-    "cssVar": "--folia-detail-modal-w-max",
-    "source": {
-      "owned": true,
-      "reason": "the share of the viewport the dialog may take on a narrow window; a viewport fraction is not something Obsidian names."
-    }
-  },
-  "detail-modal-height-max": {
-    "$value": "85vh",
-    "cssVar": "--folia-detail-modal-h-max",
-    "source": {
-      "owned": true,
-      "reason": "the share of the viewport height the dialog may take; a viewport fraction is not something Obsidian names."
-    }
-  },
-  "detail-slide": {
-    "$value": "var(--size-4-3)",
-    "cssVar": "--folia-detail-slide",
-    "source": {
-      "alias": "--size-4-3"
-    }
-  },
   "suggest-height-max": {
     "$value": "calc(var(--size-4-1) * 70)",
     "cssVar": "--folia-suggest-h-max",
@@ -316,13 +277,6 @@
     "cssVar": "--folia-divider-h",
     "source": {
       "alias": "--border-width"
-    }
-  },
-  "resize-handle-width": {
-    "$value": "var(--size-2-3)",
-    "cssVar": "--folia-resize-w",
-    "source": {
-      "alias": "--size-2-3"
     }
   },
   "icon-baseline": {

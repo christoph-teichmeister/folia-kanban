@@ -38,13 +38,13 @@ describe("hydrateSettings", () => {
 
   it("stamps it on upgrade from a data.json written before the field existed, keeping the rest", () => {
     const { settings, needsSave } = hydrateSettings(
-      { userName: "rafa", detailWidth: 420, commentsSeen: { "Tasks/A.md": "2026-06-02 10:00#1" } },
+      { userName: "rafa", cardNextTodos: 3, commentsSeen: { "Tasks/A.md": "2026-06-02 10:00#1" } },
       NOW,
     );
     expect(needsSave).toBe(true);
     expect(settings.commentsBaseline).toBe(NOW);
     expect(settings.userName).toBe("rafa");
-    expect(settings.detailWidth).toBe(420);
+    expect(settings.cardNextTodos).toBe(3);
     expect(settings.commentsSeen).toEqual({ "Tasks/A.md": "2026-06-02 10:00#1" });
   });
 
@@ -99,7 +99,7 @@ describe("hydrateSettings on a file written before settings were sparse", () => 
     const { settings, stored, needsSave } = hydrateSettings(
       legacy({
         historyScope: "moves",
-        detailWidth: 420,
+        cardNextTodos: 3,
         commentsSeen: { "Tasks/A.md": "2026-06-02 10:00#1" },
       }),
       NOW,
@@ -107,7 +107,7 @@ describe("hydrateSettings on a file written before settings were sparse", () => 
     expect(needsSave).toBe(true);
     expect(stored).toEqual({
       historyScope: "moves",
-      detailWidth: 420,
+      cardNextTodos: 3,
       commentsSeen: { "Tasks/A.md": "2026-06-02 10:00#1" },
       commentsBaseline: "2026-06-01 09:00",
     });
@@ -159,6 +159,50 @@ describe("hydrateSettings on a file written before settings were sparse", () => 
     );
     expect(withFuture.stored).toHaveProperty("somethingNewer", 7);
     expect(withFuture.needsSave).toBe(false);
+  });
+});
+
+describe("hydrateSettings on a file from before the side panels were removed", () => {
+  it.each([
+    ["detailPresentation", "side"],
+    ["detailPresentation", "modal"],
+    ["sidePanelMode", "split"],
+    ["sidePanelMode", "float"],
+    ["detailWidth", 520],
+  ])("drops %s: %s and asks for the file to be healed", (key, value) => {
+    const { stored, needsSave } = hydrateSettings(
+      onDisk({ commentsBaseline: NOW, userName: "rafa", [key]: value } as StoredSettings),
+      NOW,
+    );
+    expect(stored).toEqual({ commentsBaseline: NOW, userName: "rafa" });
+    expect(needsSave).toBe(true);
+  });
+
+  it.each(["default", "modal", "side-float", "side-split"])(
+    "drops the add-card presentation %s, which the dialog made meaningless",
+    (value) => {
+      const { stored, needsSave } = hydrateSettings(
+        onDisk({ commentsBaseline: NOW, addCardOpenMode: value } as unknown as StoredSettings),
+        NOW,
+      );
+      expect(stored).toEqual({ commentsBaseline: NOW });
+      expect(needsSave).toBe(true);
+    },
+  );
+
+  it("drops them from a file that predates sparse settings too", () => {
+    const { stored } = hydrateSettings(
+      {
+        ...DEFAULT_SETTINGS,
+        commentsBaseline: NOW,
+        detailPresentation: "modal",
+        sidePanelMode: "float",
+        detailWidth: 420,
+        addCardOpenMode: "side-split",
+      },
+      NOW,
+    );
+    expect(stored).toEqual({ commentsBaseline: NOW });
   });
 });
 
@@ -353,19 +397,19 @@ describe("the agent-access token leaving data.json", () => {
 describe("a data.json changed by Sync or by hand", () => {
   const LOCAL: StoredSettings = {
     commentsBaseline: NOW,
-    detailWidth: 420,
+    cardNextTodos: 3,
     commentsSeen: { "Tasks/A.md": "2026-06-02 10:00#1" },
   };
 
   it("is read, so what the other side wrote is no longer overwritten by this instance", () => {
     const { settings, stored, changedKeys } = adoptExternalSettings(
-      onDisk({ ...LOCAL, detailWidth: 520 }),
+      onDisk({ ...LOCAL, cardNextTodos: 4 }),
       LOCAL,
       NOW,
     );
-    expect(changedKeys).toEqual(["detailWidth"]);
-    expect(settings.detailWidth).toBe(520);
-    expect(stored).toEqual({ ...LOCAL, detailWidth: 520 });
+    expect(changedKeys).toEqual(["cardNextTodos"]);
+    expect(settings.cardNextTodos).toBe(4);
+    expect(stored).toEqual({ ...LOCAL, cardNextTodos: 4 });
   });
 
   // The write this instance just made comes back as a change to the same file. Answering it with a
@@ -401,15 +445,15 @@ describe("a data.json changed by Sync or by hand", () => {
       LOCAL,
       NOW,
     );
-    expect(changedKeys).toEqual(["detailWidth"]);
-    expect("detailWidth" in stored).toBe(false);
-    expect(settings.detailWidth).toBe(DEFAULT_SETTINGS.detailWidth);
+    expect(changedKeys).toEqual(["cardNextTodos"]);
+    expect("cardNextTodos" in stored).toBe(false);
+    expect(settings.cardNextTodos).toBe(DEFAULT_SETTINGS.cardNextTodos);
   });
 
   // Stamping the moment of the sync instead would count every comment ever written as already read,
   // on a machine where nobody had opened any of those cards.
   it("keeps this instance's comments baseline when the file carries none", () => {
-    const { settings, needsSave } = adoptExternalSettings({ detailWidth: 520 }, LOCAL, NOW);
+    const { settings, needsSave } = adoptExternalSettings({ cardNextTodos: 4 }, LOCAL, NOW);
     expect(settings.commentsBaseline).toBe(NOW);
     // The file is missing the marker as well as the baseline, so it is one to write back.
     expect(needsSave).toBe(true);
@@ -427,7 +471,7 @@ describe("a data.json changed by Sync or by hand", () => {
       );
       expect({ changedKeys, needsSave }).toEqual({ changedKeys: [], needsSave: false });
       expect(stored).toBe(LOCAL);
-      expect(settings.detailWidth).toBe(420);
+      expect(settings.cardNextTodos).toBe(3);
     }
   });
 

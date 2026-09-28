@@ -17,13 +17,7 @@ import {
   type EditableSettingKey,
   type RowControlSpec,
 } from "../settingsLayout";
-import {
-  DETAIL_WIDTH_MAX,
-  DETAIL_WIDTH_MIN,
-  MCP_PORT_MAX,
-  MCP_PORT_MIN,
-  type KanbanSettings,
-} from "../settings";
+import { MCP_PORT_MAX, MCP_PORT_MIN, type KanbanSettings } from "../settings";
 
 type ToggleKey = (typeof TOGGLE_SETTING_KEYS)[number];
 
@@ -158,7 +152,6 @@ function bindAddressPatchFor(value: unknown): Partial<KanbanSettings> | null {
 
 /** The bounds of every setting that is a number, so a value out of range is pulled in, not refused. */
 const NUMBER_RANGES = {
-  detailWidth: [DETAIL_WIDTH_MIN, DETAIL_WIDTH_MAX],
   cardNextTodos: [0, CARD_NEXT_TODOS_MAX],
   mcpPort: [MCP_PORT_MIN, MCP_PORT_MAX],
 } as const satisfies Partial<Record<EditableSettingKey, readonly [number, number]>>;

@@ -3,6 +3,7 @@ import { FileView, Scope, type KeymapEventListener } from "obsidian";
 import { StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { App as BoardApp, type BoardHost } from "./ui/App";
+import { openDetailModal } from "./obsidian/detailModal";
 import { VaultRepository } from "./obsidian/vaultRepo";
 import type { BoardSettings, SettingsPatch } from "./settings";
 import { VIEW_TYPE_KANBAN } from "./viewType";
@@ -51,6 +52,7 @@ export class KanbanView extends FileView {
       const ref = this.app.workspace.on("layout-change", cb);
       return () => this.app.workspace.offref(ref);
     },
+    openDetailModal: (onClosed) => openDetailModal(this.app, onClosed),
   };
 
   constructor(

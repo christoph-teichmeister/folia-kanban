@@ -64,12 +64,6 @@ export function useSettings(): BoardSettings {
   return c.settings;
 }
 
-export function useSettingsUpdater(): (patch: SettingsPatch) => void {
-  const c = useContext(SettingsContext);
-  if (!c) throw new Error("SettingsContext missing");
-  return c.update;
-}
-
 /**
  * One control decides both a card's inline-todos preview and its subcard group (§ collapse
  * subitems): whatever is nested under a card tile lives or dies together. `isCollapsed` reads the

@@ -17,6 +17,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/ui/App";
 import { FakeRepo } from "./fakeRepo";
+import { testHost } from "./fakeHost";
 import type { BoardConfig } from "../src/model/types";
 import { DEFAULT_BOARD_SETTINGS as DEFAULT_SETTINGS } from "./boardSettings";
 import { BLOCKS } from "../src/model/relationships";
@@ -57,6 +58,7 @@ const render_ = (repo: FakeRepo, settings = DEFAULT_SETTINGS) =>
       onUpdateSettings={() => {}}
       today="2026-06-13"
       mountedIn={document.body}
+      host={testHost()}
     />,
   );
 

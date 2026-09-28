@@ -1,85 +1,44 @@
 /* ------------------------------------------------------------------ detail panel */
+/* The panel is drawn in Obsidian's own dialog (`src/obsidian/detailModal.ts`), which owns the box,
+   the backdrop, the border and the close button. The panel takes the dialog's surface, so the two
+   read as one. */
 .folia-detail {
-  position: relative; /* anchors the left-edge resize handle */
-  flex: 0 0 var(--folia-detail-w);
-  width: var(--folia-detail-w);
-  /* The resting line of the resize divider. `.folia-detail--modal` resets `border` wholesale,
-     keeping this to the side presentations, where the edge is draggable. */
-  border-left: var(--divider-width) solid var(--divider-color);
-  background: var(--folia-col-bg);
-  box-shadow: var(--folia-shadow-panel);
-  /* The panel itself never scrolls; `.folia-detail-scroll` does. The resize handle is a child of this
-     box, and a child of a scroll container is one viewport tall and scrolls away with the content. */
   display: flex;
   flex-direction: column;
-  animation: folia-slide-in var(--folia-dur) var(--folia-ease);
+  min-height: 0;
+  background: var(--modal-background);
 }
+/* The panel's own scroller has to be the one that scrolls. Left to itself the host dialog scrolls
+   instead, and its close button, positioned in the dialog, scrolls away with the content. So the
+   dialog and its content box pass their height down rather than growing past it. */
+.folia-detail-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.folia-detail-modal-content {
+  position: relative; /* the toast is drawn in here while the dialog is open */
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.folia-detail-modal-content > .folia-detail {
+  flex: 1 1 auto;
+}
+/* The panel itself never scrolls; this box does, and it holds every control, because the scroll
+   keys only move the focused element's scroll container or an ancestor's. */
 .folia-detail-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* A field scrolled into view lands below the sticky header, not under it (one line of title). */
+  scroll-padding-top: calc(2 * var(--folia-space-lg) + var(--folia-hit-md));
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;
-  /* Keeps the sticky header's z-index in here, below the resize handle beside this box. */
-  isolation: isolate;
 }
 
-/* Float: panel overlays the columns; the board keeps full width underneath. */
-.folia-detail--float {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: var(--folia-z-index-scrim);
-}
-
-/* Modal: centered dialog, sized by CSS (resize/inline width ignored). */
-.folia-detail-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: var(--folia-z-index-popover);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--folia-scrim);
-}
-.folia-detail--modal {
-  /* A balanced dialog width DECOUPLED from the side-panel detailWidth (App never passes an inline
-     width in modal mode). width:auto would collapse to the body's narrow intrinsic size — the sliver. */
-  flex: 0 0 auto;
-  width: min(var(--folia-detail-modal-w), var(--folia-detail-modal-w-max));
-  max-height: var(--folia-detail-modal-h-max);
-  /* Chrome from the host's modal variables; the box stays Folia's, because this width is a
-     balanced dialog rather than anything the host describes, and the surface colour is the same
-     panel the docked presentation shows. */
-  border: var(--modal-border-width) solid var(--modal-border-color);
-  border-radius: var(--modal-radius);
-  box-shadow: var(--folia-shadow-overlay);
-  overflow: hidden; /* the scroller stays inside the rounded corners */
-}
-
-/* Left-edge drag target (side modes only), drawn the way the host draws a split handle: it sits on
-   the panel's border and, under the pointer, paints `--divider-width-hover` of `--divider-color-hover`
-   over it. It covers the panel's border, outside the padding box a scroll container would clip. */
-.folia-detail-resize {
-  position: absolute;
-  left: calc(var(--divider-width) * -1);
-  top: 0;
-  bottom: 0;
-  width: var(--folia-resize-w);
-  border-left: var(--divider-width-hover) solid transparent;
-  cursor: var(--folia-cursor-resize);
-  z-index: var(--folia-z-index-base);
-  transition: border-color var(--folia-dur) var(--folia-ease);
-}
-.folia-detail-resize:hover {
-  border-left-color: var(--divider-color-hover);
-}
-@keyframes folia-slide-in {
-  from { transform: translateX(var(--folia-detail-slide)); opacity: var(--folia-opacity-hidden); }
-  to { transform: none; opacity: var(--folia-opacity-shown); }
-}
 .folia-detail-header {
   display: flex;
   align-items: flex-start;
@@ -88,8 +47,12 @@
   border-bottom: var(--folia-border-width) solid var(--folia-border);
   position: sticky;
   top: 0;
-  background: var(--folia-col-bg);
+  background: var(--modal-background);
   z-index: var(--folia-z-index-base);
+}
+/* The host draws its close button in the dialog's top corner, over where this header ends. */
+.folia-detail-modal .folia-detail-header {
+  padding-inline-end: calc(var(--folia-space-lg) + var(--folia-hit-md));
 }
 /* The sticky header names the card; it is not where a long title is read. `overflow-wrap: anywhere`
    makes an unbreakable 200-character slug break instead of widening the panel or shouldering the
@@ -127,21 +90,16 @@
      on a red band. What the finding is really about is the SOURCE: this used to mix the palette
      red that also fills the danger button, and now mixes the error colour itself, so a theme that
      recolours the error state reaches it. */
-  background: color-mix(in srgb, var(--folia-error-bg) 10%, var(--folia-col-bg));
+  background: color-mix(in srgb, var(--folia-error-bg) 10%, var(--modal-background));
   border-bottom: var(--folia-border-width) solid var(--folia-border);
 }
 .folia-detail-body {
   /* The property gutter is a share of this box (see `--folia-prop-key-w`). */
   container-type: inline-size;
   padding: var(--folia-space-lg);
-  /* last content (History) clears Obsidian's fixed status bar in side modes; modal is centered. */
-  padding-bottom: calc(var(--folia-space-lg) + var(--folia-statusbar-clearance));
   display: flex;
   flex-direction: column;
   gap: var(--folia-space-xl-plus);
-}
-.folia-detail--modal .folia-detail-body {
-  padding-bottom: var(--folia-space-lg);
 }
 .folia-fields {
   display: flex;
@@ -406,8 +364,7 @@
    mount/resize) and scroll it internally, so a long description never grows the panel past the
    screen. The fallback caps at calc(100vh - chrome) for the first paint before the measured value
    lands. Scroll lives on the prose (not .folia-desc-view), so the pencil button — absolutely
-   positioned against the non-scrolling view box — stays pinned while the text scrolls. Works across
-   split/float/modal: the measured value reflects each presentation's on-screen position. */
+   positioned against the non-scrolling view box — stays pinned while the text scrolls. */
 .folia-desc-view .folia-desc-rendered {
   max-height: var(--folia-desc-max-h);
   overflow-y: auto;

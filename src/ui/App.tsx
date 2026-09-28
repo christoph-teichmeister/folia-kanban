@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import type { Board as BoardModel, Card, ColumnDef } from "../model/types";
 import {
@@ -25,13 +33,7 @@ import {
 import { laneFill, laneRefusal, prospectiveCard } from "../model/lanes";
 import { DEFAULT_PRIORITIES } from "../model/priorities";
 import type { CardRepository } from "../model/repo";
-import {
-  isCollapsedIn,
-  seenMarkerFor,
-  type BoardSettings,
-  type KanbanSettings,
-  type SettingsPatch,
-} from "../settings";
+import { isCollapsedIn, seenMarkerFor, type BoardSettings, type SettingsPatch } from "../settings";
 import { baseName, parentFolder, relativeToFolder, remapPath } from "../model/pathOps";
 import {
   BoardActionsContext,
@@ -50,7 +52,7 @@ import {
 } from "./context";
 
 import { Board } from "./Board";
-import { CardDetail, type DetailMode } from "./CardDetail";
+import { CardDetail, DetailDialogContext } from "./CardDetail";
 import { Toolbar } from "./Toolbar";
 import { Icon } from "./icons";
 import { useToday } from "./useToday";
@@ -66,22 +68,6 @@ const EMPTY_RELATION_COUNTS = {} as const;
 /** Stable empty column list, so the actions object keeps its identity before the board loads. */
 const EMPTY_COLUMNS: readonly ColumnDef[] = [];
 const EMPTY_PRIORITIES: readonly string[] = [];
-
-/** Translate `addCardOpenMode` into a presentation override; 'default' means "use the global". */
-function mapOpenMode(openMode: KanbanSettings["addCardOpenMode"]): DetailMode | null {
-  switch (openMode) {
-    case "modal":
-      return "modal";
-    case "side-float":
-      return "float";
-    case "side-split":
-      return "split";
-    // Any other value (incl. the "default" setting or a stale/corrupt persisted value)
-    // means "use the global default" — no presentation override.
-    default:
-      return null;
-  }
-}
 
 /**
  * Merge a column edit patch onto the current def. A key set to `undefined` in the patch CLEARS
@@ -129,16 +115,29 @@ function pathForm(
   }
 }
 
+/** The open dialog the card detail panel is drawn in. See {@link BoardHost.openDetailModal}. */
+export interface DetailModalHandle {
+  /** Where the panel goes. It already carries `folia-scope`, since it is outside the board root. */
+  readonly contentEl: HTMLElement;
+  /** Close the dialog, committing a half-typed field first. A second call does nothing. */
+  close(): void;
+  /**
+   * Make Escape call `handler` instead of closing the dialog, until the returned function is
+   * called. Calling that function more than once is harmless.
+   */
+  pushEscape(handler: () => void): () => void;
+}
+
 /**
  * What the board borrows from the leaf it is mounted in. `src/ui/**` cannot import `obsidian`, so
  * anything only the host view can answer arrives through this port.
  *
- * Today that is one thing: the board-level `/` shortcut. `.folia-root` is not focusable, so a `/`
- * typed with focus on `<body>` never reaches a React handler, and the board used to listen on its
- * whole document instead — which meant every open board inspected every keypress, and with two
- * boards side by side the one that happened to bind last answered for all of them. The host
- * registers the same shortcut on the view's keymap scope, which Obsidian runs only for the leaf
- * that has focus.
+ * The board-level `/` shortcut is one such thing. `.folia-root` is not focusable, so a `/` typed
+ * with focus on `<body>` never reaches a React handler, and the board used to listen on its whole
+ * document instead — which meant every open board inspected every keypress, and with two boards
+ * side by side the one that happened to bind last answered for all of them. The host registers
+ * the same shortcut on the view's keymap scope, which Obsidian runs only for the leaf that has
+ * focus. The card detail panel's dialog is another.
  */
 export interface BoardHost {
   /**
@@ -157,6 +156,50 @@ export interface BoardHost {
    * same size. Returns the unsubscribe function.
    */
   onPlacementChange(cb: () => void): () => void;
+
+  /**
+   * Open the dialog the card detail panel is drawn in. `onClosed` runs whenever it closes, whoever
+   * closed it — the person (Escape, the backdrop, the host's close button) or the board.
+   */
+  openDetailModal(onClosed: () => void): DetailModalHandle;
+}
+
+/**
+ * Keeps the detail panel's dialog open for as long as this is mounted, and draws the panel in it.
+ * A portal carries every React context along, so the panel needs nothing re-provided. A layout
+ * effect, so the panel mounts into the open dialog before anything is painted.
+ */
+function DetailDialog({
+  host,
+  onClosed,
+  children,
+}: {
+  host: BoardHost;
+  onClosed: () => void;
+  children: ReactNode;
+}) {
+  const [modal, setModal] = useState<DetailModalHandle | null>(null);
+  const onClosedRef = useRef(onClosed);
+  onClosedRef.current = onClosed;
+  useLayoutEffect(() => {
+    // The board closing the dialog itself has nothing to be told about.
+    let ours = false;
+    const opened = host.openDetailModal(() => {
+      if (!ours) onClosedRef.current();
+    });
+    setModal(opened);
+    return () => {
+      ours = true;
+      opened.close();
+    };
+  }, [host]);
+  return (
+    modal &&
+    createPortal(
+      <DetailDialogContext.Provider value={modal}>{children}</DetailDialogContext.Provider>,
+      modal.contentEl,
+    )
+  );
 }
 
 interface Props {
@@ -168,8 +211,8 @@ interface Props {
   onUpdateSettings: (patch: SettingsPatch) => void;
   /** Pins the date for deterministic tests; otherwise the real date, which follows the clock. */
   today?: string;
-  /** The leaf hosting this board, when there is one. See {@link BoardHost}. */
-  host?: BoardHost;
+  /** The leaf hosting this board. See {@link BoardHost}. */
+  host: BoardHost;
   /** The element the board is mounted in; its document is the board's own. */
   mountedIn: HTMLElement;
 }
@@ -177,10 +220,9 @@ interface Props {
 export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }: Props) {
   const [board, setBoard] = useState<BoardModel | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  // Add-card flows: which column is in CREATE mode, plus a one-shot presentation override and a
-  // flag to focus the description of a freshly-created card. All cleared when the panel closes.
+  // Add-card flows: which column is in CREATE mode, plus a flag to focus the description of a
+  // freshly-created card. Both cleared when the panel closes.
   const [createColumn, setCreateColumn] = useState<string | null>(null);
-  const [openOverride, setOpenOverride] = useState<DetailMode | null>(null);
   const [focusNew, setFocusNew] = useState(false);
   // One-shot: focus the open card's "Add a subcard" input (the context-menu "Add subcard" action).
   const [focusAddSubcard, setFocusAddSubcard] = useState(false);
@@ -193,6 +235,8 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
   // rides on this — the panel's state is scoped to one mount, so nothing typed on one card can
   // still be sitting in a field when the panel moves to the next.
   const [openId, setOpenId] = useState(0);
+  const openIdRef = useRef(openId);
+  openIdRef.current = openId;
   // Advances on every open, including a re-open of the card already showing. The panel's one-shot
   // focus actions ride on this instead of on a remount; see `openCard`.
   const [focusSeq, setFocusSeq] = useState(0);
@@ -240,17 +284,19 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
   // guard `CardDetail` uses for its own per-card body reads: a result whose number has been
   // superseded by the time it resolves is dropped rather than handed to `setBoard`/`setError`.
   const loadSeq = useRef(0);
-  const load = useCallback(async () => {
+  /** Resolves true when this read is the one that landed, false when a newer one superseded it. */
+  const load = useCallback(async (): Promise<boolean> => {
     const seq = ++loadSeq.current;
     try {
       const b = await repo.loadBoard();
-      if (seq !== loadSeq.current) return;
+      if (seq !== loadSeq.current) return false;
       setBoard(b);
       setError(null);
     } catch (e) {
-      if (seq !== loadSeq.current) return;
+      if (seq !== loadSeq.current) return false;
       setError(e instanceof Error ? e.message : String(e));
     }
+    return true;
   }, [repo]);
 
   useEffect(() => {
@@ -340,10 +386,10 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
     // size from the source; the root's own box is watched too, for the resizes that are not moves.
     const place = new ResizeObserver(resolve);
     place.observe(root);
-    const offPlacement = host?.onPlacementChange(resolve);
+    const offPlacement = host.onPlacementChange(resolve);
     return () => {
       place.disconnect();
-      offPlacement?.();
+      offPlacement();
       barHeight?.disconnect();
     };
   }, [boardShown, host]);
@@ -408,7 +454,6 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
           // 'inline' (default): add-only — stay in the column, don't open the detail.
           // 'inline-edit': open the new card's detail and focus its description for editing.
           if (settings.addCardFlow === "inline-edit") {
-            setOpenOverride(mapOpenMode(settings.addCardOpenMode));
             setFocusNew(true);
             setOpenId((n) => n + 1);
             setSelected(path);
@@ -419,7 +464,7 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
       })();
       return true;
     },
-    [repo, load, settings.addCardFlow, settings.addCardOpenMode, reportError, refusedByLane],
+    [repo, load, settings.addCardFlow, reportError, refusedByLane],
   );
 
   const doneColumnId = useMemo(
@@ -501,9 +546,8 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
 
   // Opening a real card resets every add-card flow field so a stale create form can't resurface
   // when the panel later flips to create mode (e.g. the opened card is deleted out from under it).
-  // Invariant: createColumn is null whenever a real card is selected.
+  // Invariant: createColumn is null whenever a real card's details are on screen.
   const openCard = useCallback((path: string) => {
-    setOpenOverride(null);
     setFocusNew(false);
     setFocusAddSubcard(false);
     setFocusTitleOverride(false);
@@ -567,7 +611,6 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
         setSelected(null);
         setCreateColumn(col);
         setOpenId((n) => n + 1);
-        setOpenOverride(mapOpenMode(settings.addCardOpenMode));
       },
       addSubcard: (path) => {
         // The subcard needs a title; route through the detail's existing add-subcard input
@@ -940,7 +983,6 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
       showToast,
       reportError,
       refusedByLane,
-      settings.addCardOpenMode,
       board?.config.columns,
       onUpdateSettings,
     ],
@@ -1019,21 +1061,16 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
     return { total, match };
   }, [board, filter, matchCtx, settings]);
 
-  // "/" focuses the search box, as the placeholder advertises. The host decides WHEN the key is
-  // this board's — only it knows which leaf has focus — and the board decides whether it wants it,
-  // which it doesn't while the user is typing in a field. A board with no host (a test, any
-  // embedding without a leaf) simply has no shortcut.
   // "/" focuses the search box, as the placeholder advertises. The host owns when the key is this
   // board's — only it knows which leaf has focus — and the board owns whether it wants that one.
   // Bound only while there is a box to focus, because that is the only way to leave the key alone:
   // once the host has the key registered, declining it does NOT pass it to another shortcut, it
   // only stops Obsidian cancelling it, which is enough for the field the user is typing in to
   // receive its own slash but not enough for a hotkey bound to "/" to fire. Unbinding is what
-  // takes the registration away entirely. A board with no host (a test, an embedding with no leaf)
-  // simply has no shortcut.
+  // takes the registration away entirely.
   useEffect(() => {
     if (!boardShown) return;
-    return host?.bindSearchShortcut((event) => {
+    return host.bindSearchShortcut((event) => {
       const el = event.target as HTMLElement | null;
       const tag = el?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable)
@@ -1046,27 +1083,29 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
   if (error) return <div className="folia-error">Couldn’t load the board: {error}</div>;
   if (!board) return <div className="folia-loading">Loading board…</div>;
 
-  // The add-card flows can override the presentation for one open; otherwise use the global setting.
-  const globalDetailMode: DetailMode =
-    settings.detailPresentation === "modal"
-      ? "modal"
-      : settings.sidePanelMode === "float"
-        ? "float"
-        : "split";
-  const detailMode: DetailMode = openOverride ?? globalDetailMode;
   const detailOpen =
     selected != null && (board.cards[selected] != null || renamedTo?.to === selected);
+  // The create form hands over to the card it made once the board draws that card, whichever load
+  // brought it. Waiting on one particular load would not do: a newer one can supersede it.
+  const handedOver = createColumn != null && detailOpen;
+  if (handedOver) setCreateColumn(null);
   const createMode = createColumn != null && !detailOpen;
   const panelShown = detailOpen || createMode;
 
   const closeDetail = () => {
     setSelected(null);
     setCreateColumn(null);
-    setOpenOverride(null);
     setFocusNew(false);
     setFocusAddSubcard(false);
     setFocusTitleOverride(false);
   };
+
+  const toastEl = toast && (
+    <div className={"folia-toast folia-toast-" + toast.tone} role="status" aria-live="polite">
+      <Icon name={toast.tone === "error" ? "alert" : "check-circle"} />
+      {toast.text}
+    </div>
+  );
 
   // Both branches share `openId` as their key on purpose: the create form and the card it creates
   // are one panel the user never sees close, so they must be one mounted component.
@@ -1075,7 +1114,6 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
       key={openId}
       path={selected}
       board={board}
-      mode={detailMode}
       focusNew={focusNew}
       focusAddSubcard={focusAddSubcard}
       focusTitleOverride={focusTitleOverride}
@@ -1089,16 +1127,21 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
       key={openId}
       path=""
       board={board}
-      mode={detailMode}
       createColumn={createColumn}
       onClose={closeDetail}
       onChanged={() => void load()}
       onCreated={(newPath) => {
+        // The create form stays up until a board that knows the new card arrives (see
+        // `handedOver` above); with no panel in between, the dialog would close and reopen. Once a
+        // read of ours has landed, the board is as current as it gets: a card it still does not
+        // draw is not coming, and the form goes rather than wait for it — unless the panel has been
+        // pointed at something else meanwhile, another create form included, which is not ours.
+        const panel = openIdRef.current;
+        setFocusNew(true);
+        setSelected(newPath);
         void (async () => {
-          setCreateColumn(null);
-          setFocusNew(true);
-          await load();
-          setSelected(newPath);
+          while (!(await load()));
+          if (openIdRef.current === panel) setCreateColumn(null);
         })();
       }}
     />
@@ -1138,33 +1181,16 @@ export function App({ repo, settings, onUpdateSettings, today, host, mountedIn }
                           onMove={(card, overId) => void onMove(card, overId)}
                           onAddCard={onAddCard}
                         />
-                        {/* Side modes (split/float) render the panel as a sibling; split shrinks the board,
-                    float overlays it. Modal renders via a portal into the root, over a backdrop. */}
-                        {detailMode !== "modal" && detail}
                       </div>
-                      {detailMode === "modal" &&
-                        panelShown &&
-                        rootRef.current &&
-                        createPortal(
-                          <div
-                            className="folia-detail-modal-backdrop"
-                            onPointerDown={(e) => {
-                              if (e.target === e.currentTarget) closeDetail();
-                            }}
-                          >
-                            {detail}
-                          </div>,
-                          rootRef.current,
-                        )}
-                      {toast && (
-                        <div
-                          className={"folia-toast folia-toast-" + toast.tone}
-                          role="status"
-                          aria-live="polite"
-                        >
-                          <Icon name={toast.tone === "error" ? "alert" : "check-circle"} />
-                          {toast.text}
-                        </div>
+                      {/* The dialog covers the board, so while it is open the toast goes up with it:
+                          a refusal from the panel said under the backdrop is not said at all. */}
+                      {panelShown ? (
+                        <DetailDialog host={host} onClosed={closeDetail}>
+                          {detail}
+                          {toastEl}
+                        </DetailDialog>
+                      ) : (
+                        toastEl
                       )}
                     </div>
                   </BoardRootContext.Provider>

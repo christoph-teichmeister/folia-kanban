@@ -968,8 +968,8 @@ class KanbanSettingTab extends PluginSettingTab {
     void this.plugin.updateSettings(patch).then(() => {
       // Agent access gates the port and bind-address rows, and those two draw themselves from a
       // `render` callback — which carries no `disabled` predicate for `refreshDomState` to
-      // re-evaluate. Only redrawing the tab reaches them. Every other row does disable from a
-      // predicate (side-panel layout, add-card open mode), and gets the cheap path.
+      // re-evaluate. Only redrawing the tab reaches them. No other row is gated, so every other
+      // change gets the cheap path.
       refreshDeclarativeSettingTab(this, key === "mcpEnabled" ? "redraw" : "refresh");
     });
   }

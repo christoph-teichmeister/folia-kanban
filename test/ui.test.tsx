@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { readFileSync } from "node:fs";
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
-import { act, render, screen, within, waitFor, fireEvent } from "@testing-library/react";
+import { act, cleanup, render, screen, within, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/ui/App";
 import { FakeRepo } from "./fakeRepo";
+import { fakeDetailModals, testHost } from "./fakeHost";
 import type { BoardConfig } from "../src/model/types";
 import { applySettingsPatch, type BoardSettings } from "../src/settings";
 import { DEFAULT_BOARD_SETTINGS as DEFAULT_SETTINGS } from "./boardSettings";
@@ -62,6 +63,7 @@ function fakeHost() {
       return onSlash?.(event) ?? false;
     },
     bound: () => onSlash !== null,
+    ...fakeDetailModals(),
     onPlacementChange(cb: () => void) {
       placement = cb;
       return () => {
@@ -132,6 +134,7 @@ function renderInSecondWindow(repo: FakeRepo, innerHeight: number) {
       onUpdateSettings={() => {}}
       today="2026-06-13"
       mountedIn={container}
+      host={testHost(doc)}
     />,
     { container, baseElement: doc.body },
   );
@@ -146,6 +149,7 @@ const render_ = (repo: FakeRepo, settings = DEFAULT_SETTINGS) =>
       onUpdateSettings={() => {}}
       today="2026-06-13"
       mountedIn={document.body}
+      host={testHost()}
     />,
   );
 
@@ -168,9 +172,11 @@ function renderStateful(
         onUpdateSettings={(patch) => setSettings((s) => applySettingsPatch(s, patch))}
         today="2026-06-13"
         mountedIn={document.body}
+        host={host}
       />
     );
   }
+  const host = testHost();
   return render(<Stateful />);
 }
 
@@ -951,18 +957,18 @@ describe("card detail", () => {
     expect(body).not.toContain("hi there");
   });
 
-  it("commits an in-progress comment edit when clicking outside to close", async () => {
+  it("commits an in-progress comment edit when the dialog closes", async () => {
     const user = userEvent.setup();
     const repo = makeRepo();
-    render_(repo); // default = side + split
+    render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
     await user.click(within(detail).getByLabelText("Edit comment"));
     const box = within(detail).getByLabelText("Edit comment") as HTMLTextAreaElement;
     await user.clear(box);
     await user.type(box, "saved on close"); // no Enter — still focused, edit in flight
-    // Click the board background: the outside-pointerdown handler should blur (commit) then close.
-    fireEvent.pointerDown(document.body);
+    // Closing the dialog blurs the field first, which commits it.
+    await user.keyboard("{Escape}");
     await waitFor(() => expect(repo.files.get("Tasks/Alpha.md")!.body).toContain("saved on close"));
     expect(repo.files.get("Tasks/Alpha.md")!.body).not.toContain("hi there");
   });
@@ -1174,41 +1180,6 @@ describe("property names suggest themselves (20260827.08)", () => {
     expect(within(detail).getByLabelText("Add property")).toBeDisabled();
   });
 
-  it("stays open when a click lands in the suggestion popup, which hangs off the body", async () => {
-    const repo = suggestingRepo();
-    // A side panel is the mode that closes on a click outside itself.
-    const user = userEvent.setup();
-    render_(repo, { ...DEFAULT_SETTINGS, detailPresentation: "side" });
-    await user.click(await screen.findByText("Alpha"));
-    const detail = await screen.findByTestId("card-detail");
-
-    // Obsidian's popup, as it really sits in the DOM: a body child, outside the panel.
-    const popup = document.createElement("div");
-    popup.className = "suggestion-container";
-    const item = document.createElement("div");
-    item.className = "suggestion-item";
-    popup.appendChild(item);
-    document.body.appendChild(popup);
-    try {
-      fireEvent.pointerDown(item);
-      expect(detail).toBeInTheDocument();
-    } finally {
-      popup.remove();
-    }
-  });
-
-  it("gives the first Escape to the suggestions and the next one to the panel", async () => {
-    const repo = suggestingRepo();
-    const { user, detail } = await openAlpha(repo);
-
-    act(() => repo.attachedSuggest!.source.onOpenChange(true));
-    await user.keyboard("{Escape}");
-    expect(detail).toBeInTheDocument();
-
-    await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByTestId("card-detail")).toBeNull());
-  });
-
   it("still offers Folia's own names when the vault cannot say what it uses", async () => {
     const user = userEvent.setup();
     const repo = makeRepo();
@@ -1225,47 +1196,182 @@ describe("property names suggest themselves (20260827.08)", () => {
   });
 });
 
-describe("detail presentation", () => {
-  const open = async (settings = DEFAULT_SETTINGS) => {
+describe("detail dialog", () => {
+  /** Opens Alpha with a host whose dialog the test can reach. */
+  const open = async (repo = makeRepo()) => {
     const user = userEvent.setup();
-    render_(makeRepo(), settings);
-    await user.click(await screen.findByText("Alpha"));
-    return user;
+    const modals = fakeDetailModals();
+    render(
+      <App
+        repo={repo}
+        settings={DEFAULT_SETTINGS}
+        onUpdateSettings={() => {}}
+        today="2026-06-13"
+        mountedIn={document.body}
+        host={{ ...testHost(), ...modals }}
+      />,
+    );
+    const tile = await screen.findByText("Alpha");
+    await user.click(tile);
+    const detail = await screen.findByTestId("card-detail");
+    return { repo, user, modals, detail, tile, dialog: modals.current()! };
   };
 
-  it("renders a backdrop in modal mode", async () => {
-    await open({ ...DEFAULT_SETTINGS, detailPresentation: "modal" });
-    const detail = await screen.findByTestId("card-detail");
-    expect(document.querySelector(".folia-detail-modal-backdrop")).not.toBeNull();
-    expect(detail).toHaveClass("folia-detail--modal");
-    expect(detail).toHaveAttribute("aria-modal", "true");
+  it("draws the panel in the host's dialog, outside the board root", async () => {
+    const { detail, dialog } = await open();
+    expect(dialog.contentEl.contains(detail)).toBe(true);
+    expect(dialog.contentEl).toHaveClass("folia-scope");
+    expect(document.querySelector(".folia-root")!.contains(detail)).toBe(false);
   });
 
-  it("mounts the modal panel inside the backdrop and not as a flex sibling of the board", async () => {
-    // The modal lives in the backdrop overlay (a centered dialog), decoupled from the side panel —
-    // px width is brittle in jsdom, so assert the structure: panel is the backdrop's child, and
-    // it carries no inline width style (only side/float read settings.detailWidth into one).
-    await open({ ...DEFAULT_SETTINGS, detailPresentation: "modal" });
-    const detail = await screen.findByTestId("card-detail");
-    expect(detail.parentElement).toHaveClass("folia-detail-modal-backdrop");
-    expect(detail.style.width).toBe("");
+  it("closes the dialog and the panel on Escape, and focus goes back to the card", async () => {
+    const { user, dialog, tile } = await open();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("card-detail")).toBeNull());
+    expect(dialog.closed).toBe(true);
+    expect(tile.closest(".folia-card")!.contains(document.activeElement)).toBe(true);
   });
 
-  it("uses the float class with no backdrop in side+float mode", async () => {
-    await open({ ...DEFAULT_SETTINGS, detailPresentation: "side", sidePanelMode: "float" });
-    const detail = await screen.findByTestId("card-detail");
-    expect(detail).toHaveClass("folia-detail--float");
-    expect(document.querySelector(".folia-detail-modal-backdrop")).toBeNull();
-    expect(detail).toHaveAttribute("aria-modal", "false");
+  it("closes the panel when the host's close button closes the dialog", async () => {
+    const { user, dialog } = await open();
+    await user.click(within(dialog.containerEl).getByLabelText("Close dialog"));
+    await waitFor(() => expect(screen.queryByTestId("card-detail")).toBeNull());
   });
 
-  it("is a plain sibling with no backdrop in side+split mode", async () => {
-    await open({ ...DEFAULT_SETTINGS, detailPresentation: "side", sidePanelMode: "split" });
-    const detail = await screen.findByTestId("card-detail");
-    expect(detail).not.toHaveClass("folia-detail--float");
-    expect(detail).not.toHaveClass("folia-detail--modal");
-    expect(document.querySelector(".folia-detail-modal-backdrop")).toBeNull();
-    expect(detail.parentElement).toHaveClass("folia-main");
+  it("saves a half-typed field when the dialog closes", async () => {
+    const { repo, user, detail } = await open();
+    const priority = within(detail).getByLabelText("Priority");
+    await user.clear(priority);
+    await user.type(priority, "urgent");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(repo.files.get("Tasks/Alpha.md")!.fm.priority).toBe("urgent"));
+  });
+
+  it("gives Escape in the description to the editor: the draft goes, the dialog stays", async () => {
+    const { repo, user, detail, dialog } = await open();
+    await user.click(within(detail).getByLabelText("Edit description"));
+    const editor = await within(detail).findByRole("textbox", { name: "Edit description" });
+    await user.type(editor, " and more");
+    await user.keyboard("{Escape}");
+
+    expect(within(detail).queryByRole("textbox", { name: "Edit description" })).toBeNull();
+    expect(dialog.closed).toBe(false);
+    expect(repo.files.get("Tasks/Alpha.md")!.body).not.toContain("and more");
+
+    // The editor is gone, so the next Escape is the dialog's again.
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(dialog.closed).toBe(true));
+  });
+
+  it("closes the dialog before opening the note elsewhere", async () => {
+    const { repo, user, detail, dialog } = await open();
+    await user.click(within(detail).getByLabelText("Open note"));
+    expect(dialog.closed).toBe(true);
+    expect(repo.opened).toEqual(["Tasks/Alpha.md"]);
+  });
+
+  it("keeps one dialog from the create form to the card it creates", async () => {
+    const user = userEvent.setup();
+    const modals = fakeDetailModals();
+    const opened = vi.fn(modals.openDetailModal);
+    render(
+      <App
+        repo={makeRepo()}
+        settings={{ ...DEFAULT_SETTINGS, addCardFlow: "detail" }}
+        onUpdateSettings={() => {}}
+        today="2026-06-13"
+        mountedIn={document.body}
+        host={{ ...testHost(), openDetailModal: opened }}
+      />,
+    );
+    await screen.findByText("Alpha");
+    await user.click(screen.getAllByLabelText(/^Add card/)[0]!);
+    await user.type(await screen.findByLabelText("New card title"), "Fresh{Enter}");
+    await screen.findByRole("dialog", { name: "Fresh" });
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(modals.current()?.closed).toBe(false);
+  });
+
+  it("keeps one dialog when a newer reload overtakes the one the create form waited on", async () => {
+    const user = userEvent.setup();
+    const repo = makeRepo();
+    const modals = fakeDetailModals();
+    const opened = vi.fn(modals.openDetailModal);
+    render(
+      <App
+        repo={repo}
+        settings={{ ...DEFAULT_SETTINGS, addCardFlow: "detail" }}
+        onUpdateSettings={() => {}}
+        today="2026-06-13"
+        mountedIn={document.body}
+        host={{ ...testHost(), openDetailModal: opened }}
+      />,
+    );
+    await screen.findByText("Alpha");
+    await user.click(screen.getAllByLabelText(/^Add card/)[0]!);
+    const title = await screen.findByLabelText("New card title");
+    // From here every read waits for the test to let it through.
+    const real = repo.loadBoard.bind(repo);
+    const held: (() => void)[] = [];
+    vi.spyOn(repo, "loadBoard").mockImplementation(async () => {
+      await new Promise<void>((go) => held.push(go));
+      return real();
+    });
+    await user.type(title, "Fresh{Enter}");
+    await waitFor(() => expect(held).toHaveLength(1));
+    act(() => repo.notify());
+    await waitFor(() => expect(held).toHaveLength(2));
+    // The first read lands after the second started, so it is dropped: the board is unchanged.
+    await act(async () => held[0]!());
+    expect(screen.getByTestId("card-detail")).toBeInTheDocument();
+    expect(modals.current()?.closed).toBe(false);
+
+    // The form reads again for itself, so both newer reads are let through.
+    await waitFor(() => expect(held).toHaveLength(3));
+    await act(async () => held[1]!());
+    await act(async () => held[2]!());
+    await screen.findByRole("dialog", { name: "Fresh" });
+    expect(opened).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a create form started later alone when an earlier create's read lands", async () => {
+    const user = userEvent.setup();
+    const repo = makeRepo();
+    render_(repo, { ...DEFAULT_SETTINGS, addCardFlow: "detail" });
+    await screen.findByText("Alpha");
+    await user.click(screen.getByLabelText("Add card to Done"));
+    const title = await screen.findByLabelText("New card title");
+    const real = repo.loadBoard.bind(repo);
+    const held: (() => void)[] = [];
+    vi.spyOn(repo, "loadBoard").mockImplementation(async () => {
+      await new Promise<void>((go) => held.push(go));
+      return real();
+    });
+    await user.type(title, "Fresh{Enter}");
+    await waitFor(() => expect(held).toHaveLength(1));
+
+    // Leave before the read lands and start another card somewhere else.
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("card-detail")).toBeNull());
+    await user.click(screen.getAllByLabelText(/^Add card to (?!Done)/)[0]!);
+    const second = await screen.findByLabelText("New card title");
+    await user.type(second, "half typed");
+
+    await act(async () => held[0]!());
+    expect(screen.getByLabelText("New card title")).toHaveValue("half typed");
+  });
+
+  it("says what it has to say inside the dialog, not under its backdrop", async () => {
+    const { user, detail, dialog } = await open();
+    await user.click(within(detail).getByLabelText("Mark done"));
+    const toast = await screen.findByText(/done!/);
+    expect(dialog.contentEl.contains(toast)).toBe(true);
+  });
+
+  it("closes the dialog when the board goes away", async () => {
+    const { dialog } = await open();
+    cleanup();
+    expect(dialog.closed).toBe(true);
   });
 });
 
@@ -1963,26 +2069,6 @@ describe("pop-out window ownership", () => {
       // own list, and every arrow key lands back on the first item.
       fireEvent.keyDown(menu, { key: "ArrowDown" });
       expect(document.activeElement).toBe(items[1]);
-    });
-  });
-
-  it("closes the side detail panel from a pointerdown in the board's own document", async () => {
-    const user = userEvent.setup();
-    render_(makeRepo(), {
-      ...DEFAULT_SETTINGS,
-      detailPresentation: "side",
-      sidePanelMode: "split",
-    });
-    await screen.findByText("Alpha");
-
-    await inOtherFocusedWindow(async () => {
-      // Opened while another window holds focus, which is when the panel decides where to hang its
-      // teardown listener. It has to be the board's document: hung off the focused window's, a
-      // click on the board itself would never reach it and the panel would stay open.
-      await user.click(screen.getByText("Alpha"));
-      await screen.findByTestId("card-detail");
-      fireEvent.pointerDown(document.body);
-      await waitFor(() => expect(screen.queryByTestId("card-detail")).toBeNull());
     });
   });
 
@@ -3998,12 +4084,12 @@ describe("settings context", () => {
       const settings = useSettings();
       return (
         <span data-testid="probe">
-          {settings.detailPresentation}/{settings.cardNextTodos}
+          {settings.addCardFlow}/{settings.cardNextTodos}
         </span>
       );
     }
     const value = {
-      settings: { ...DEFAULT_SETTINGS, detailPresentation: "modal" as const, cardNextTodos: 3 },
+      settings: { ...DEFAULT_SETTINGS, addCardFlow: "detail" as const, cardNextTodos: 3 },
       update: () => {},
     };
     render(
@@ -4011,7 +4097,7 @@ describe("settings context", () => {
         <Probe />
       </SettingsContext.Provider>,
     );
-    expect(screen.getByTestId("probe")).toHaveTextContent("modal/3");
+    expect(screen.getByTestId("probe")).toHaveTextContent("detail/3");
   });
 });
 
@@ -5366,7 +5452,8 @@ describe("is: and unread: in the search box and chips", () => {
     // …yet the tile stays put and the count does not drop while the panel is open.
     expect(screen.getByText("2 of 4")).toBeInTheDocument();
     expect(screen.getAllByText("Chatty").some((el) => el.closest(".folia-card"))).toBe(true);
-    await user.click(within(detail).getAllByLabelText("Close")[0] as HTMLElement);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(detail).not.toBeInTheDocument());
     await waitFor(() => expect(screen.getByText("1 of 4")).toBeInTheDocument());
     expect(screen.queryByText("Chatty")).toBeNull();
   });
@@ -6902,7 +6989,7 @@ describe("a title far wider than the panel (20260827.02)", () => {
     expect(heading.contains(actions)).toBe(false);
     expect(actions.parentElement).toBe(heading.parentElement);
     expect(rule(".folia-detail-header .folia-row-actions")).toContain("flex: 0 0 auto");
-    for (const name of ["Close", "Delete card", "Open note"]) {
+    for (const name of ["Delete card", "Open note"]) {
       expect(within(actions).getByLabelText(name)).toBeInTheDocument();
     }
   });
@@ -6956,58 +7043,47 @@ describe("a title far wider than the panel (20260827.02)", () => {
   });
 });
 
-describe("the detail panel's resize edge on a scrolled panel (#65)", () => {
-  // A child of a scroll container is one viewport tall and scrolls away with the content, so the
-  // handle is the panel's child and the panel itself never scrolls; an inner box does. The scroll
-  // keys only move the focused element's scroll container or an ancestor's, so that box holds every
-  // control the panel has and takes focus on open. jsdom cannot scroll, so what is pinned is that
-  // structure, in both render paths, and the rules it rests on.
-  const expectHandleBesideScroller = (detail: HTMLElement) => {
-    const handle = within(detail).getByRole("separator", { name: "Resize panel" });
+describe("the detail panel's scroller (#65)", () => {
+  // The scroll keys only move the focused element's scroll container or an ancestor's, so one inner
+  // box holds every control the panel has and takes focus on open. jsdom cannot scroll, so what is
+  // pinned is that structure, in both render paths, and the rules it rests on.
+  const expectEveryControlInScroller = (detail: HTMLElement) => {
     const scroller = detail.querySelector(".folia-detail-scroll");
-    expect(handle.parentElement).toBe(detail);
     expect(scroller?.parentElement).toBe(detail);
-    expect(scroller?.contains(handle)).toBe(false);
     for (const control of within(detail).getAllByRole("button")) {
       expect(scroller?.contains(control)).toBe(true);
     }
   };
 
-  it("keeps the handle beside the scroller, and every control inside it, when editing a card", async () => {
+  it("keeps every control inside the scroller when editing a card", async () => {
     const user = userEvent.setup();
     render_(makeRepo());
     await user.click(await screen.findByText("Alpha"));
-    expectHandleBesideScroller(await screen.findByTestId("card-detail"));
+    expectEveryControlInScroller(await screen.findByTestId("card-detail"));
   });
 
-  it("lands focus on the scroller when a card opens, so the scroll keys reach it", async () => {
+  it("lands focus on the card's name, inside the scroller, so the scroll keys reach it", async () => {
     const user = userEvent.setup();
     render_(makeRepo());
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    expect(detail.querySelector(".folia-detail-scroll")).toHaveFocus();
+    const title = within(detail).getByRole("heading", { name: "Alpha" });
+    expect(title).toHaveFocus();
+    expect(detail.querySelector(".folia-detail-scroll")!.contains(title)).toBe(true);
   });
 
-  it("keeps the handle beside the scroller, and every control inside it, when creating a card", async () => {
+  it("keeps every control inside the scroller when creating a card", async () => {
     const user = userEvent.setup();
     render_(makeRepo(), { ...DEFAULT_SETTINGS, addCardFlow: "detail" });
     await screen.findByText("Alpha");
     await user.click(screen.getByLabelText("Add card to Done"));
-    expectHandleBesideScroller(await screen.findByTestId("card-detail"));
+    expectEveryControlInScroller(await screen.findByTestId("card-detail"));
   });
 
-  it("scrolls an inner box instead of the panel, and draws the host's divider hover on the handle", () => {
+  it("scrolls an inner box instead of the panel", () => {
     expect(rule(".folia-detail")).not.toMatch(/overflow(-y)?:/);
     expect(rule(".folia-detail-scroll")).toContain("overflow-y: auto");
     expect(rule(".folia-detail-scroll")).toContain("min-height: 0");
-    // The sticky header's z-index stays inside the scroller, under the handle.
-    expect(rule(".folia-detail-scroll")).toContain("isolation: isolate");
-    expect(rule(".folia-detail-resize")).toContain(
-      "border-left: var(--divider-width-hover) solid transparent",
-    );
-    expect(rule(".folia-detail-resize:hover")).toContain(
-      "border-left-color: var(--divider-color-hover)",
-    );
   });
 });
 

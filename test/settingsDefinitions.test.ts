@@ -32,14 +32,7 @@ import {
   isRowDisabled,
   type EditableSettingKey,
 } from "../src/settingsLayout";
-import {
-  DEFAULT_SETTINGS,
-  DETAIL_WIDTH_MAX,
-  DETAIL_WIDTH_MIN,
-  MCP_PORT_MAX,
-  MCP_PORT_MIN,
-  type KanbanSettings,
-} from "../src/settings";
+import { DEFAULT_SETTINGS, MCP_PORT_MAX, MCP_PORT_MIN, type KanbanSettings } from "../src/settings";
 import { MCP_DEFAULT_BIND_ADDRESS } from "../src/mcp/bindAddress";
 
 const noop = (): void => {};
@@ -161,8 +154,8 @@ describe("settingDefinitions", () => {
     expect(laidOut).toHaveLength(new Set(laidOut).size);
   });
 
-  // A short name reads better under a heading but takes words with it: "Side panel layout" no
-  // longer contains "card details", and Obsidian does not index the heading above it. Every row
+  // A short name reads better under a heading but takes words with it: "Next todos shown" no
+  // longer contains "cards on the board", and Obsidian does not index the heading above it. Every row
   // carries its own heading as a search term so a search that used to land on it still does.
   it("gives every row the heading it sits under as a search term", () => {
     for (const { row, heading } of rowsOf(definitions)) {
@@ -195,12 +188,6 @@ describe("settingDefinitions", () => {
     // list is exactly how the two agent-access fields came to be greyed with nothing saying why.
     for (const key of DEPENDENT_SETTING_KEYS)
       expect(SETTING_COPY[key].desc, key).toMatch(/\bOnly used\b/);
-    expect(SETTING_COPY.sidePanelMode.desc).toContain(
-      "Only used when “Show details in” is the side panel",
-    );
-    expect(SETTING_COPY.addCardOpenMode.desc).toContain(
-      "Only used by the two flows that open them",
-    );
     // The token rows are gated the same way without being settings, so they are named here.
     for (const copy of [MCP_TOKEN_COPY, MCP_TOKEN_REGENERATE])
       expect(copy.desc, copy.name).toContain("until agent access is on");
@@ -208,17 +195,6 @@ describe("settingDefinitions", () => {
 
   // Both tabs ask this one question, so a row cannot be live on one path and greyed on the other.
   it("reads a row's dependency the same way for whichever tab is asking", () => {
-    const modal: KanbanSettings = { ...DEFAULT_SETTINGS, detailPresentation: "modal" };
-    const side: KanbanSettings = { ...DEFAULT_SETTINGS, detailPresentation: "side" };
-    expect(isRowDisabled("sidePanelMode", modal)).toBe(true);
-    expect(isRowDisabled("sidePanelMode", side)).toBe(false);
-    // `addCardOpenMode` set to a side value opens a panel even under a modal presentation, and the
-    // panel reads the width whichever way it opened, so the width row stays live.
-    for (const settings of [modal, side])
-      expect(isRowDisabled("detailWidth", settings)).toBe(false);
-    expect(isRowDisabled("addCardOpenMode", { ...DEFAULT_SETTINGS, addCardFlow: "inline" })).toBe(
-      true,
-    );
     expect(isRowDisabled("mcpPort", DEFAULT_SETTINGS)).toBe(true);
     expect(isRowDisabled("mcpPort", { ...DEFAULT_SETTINGS, mcpEnabled: true })).toBe(false);
     // A row nothing gates is never greyed, whatever the settings say.
@@ -226,47 +202,9 @@ describe("settingDefinitions", () => {
       "boardNoteDefaultView",
       "userName",
       "historyScope",
-      "detailWidth",
+      "cardNextTodos",
     ];
-    for (const key of ungated) expect(isRowDisabled(key, modal), key).toBe(false);
-  });
-
-  it("disables the rows that depend on another setting only while that setting says so", () => {
-    const disabledOf = (key: string, settings: KanbanSettings): boolean => {
-      const def = rowsOf(
-        settingDefinitions(
-          () => settings,
-          "1.2.3",
-          { copy: noop, regenerate: noop, renderHeldField: noop },
-          true,
-        ),
-      )
-        .map((r) => r.row)
-        .find((d) => "control" in d && d.control?.key === key);
-      // Without this, a renamed or dropped setting would make every "not disabled" case below pass
-      // for the wrong reason: no definition found, so nothing to be disabled.
-      if (!def || !("control" in def) || !def.control) throw new Error(`no control for ${key}`);
-      const { disabled } = def.control;
-      return typeof disabled === "function" ? disabled() : Boolean(disabled);
-    };
-
-    expect(disabledOf("sidePanelMode", { ...DEFAULT_SETTINGS, detailPresentation: "side" })).toBe(
-      false,
-    );
-    expect(disabledOf("sidePanelMode", { ...DEFAULT_SETTINGS, detailPresentation: "modal" })).toBe(
-      true,
-    );
-    expect(disabledOf("addCardOpenMode", { ...DEFAULT_SETTINGS, addCardFlow: "inline" })).toBe(
-      true,
-    );
-    expect(disabledOf("addCardOpenMode", { ...DEFAULT_SETTINGS, addCardFlow: "detail" })).toBe(
-      false,
-    );
-    // The width is never greyed: "Open the new card's details in" can open a side panel over a
-    // modal presentation, and the panel reads this width however it was opened.
-    expect(disabledOf("detailWidth", { ...DEFAULT_SETTINGS, detailPresentation: "modal" })).toBe(
-      false,
-    );
+    for (const key of ungated) expect(isRowDisabled(key, DEFAULT_SETTINGS), key).toBe(false);
   });
 });
 
@@ -288,20 +226,17 @@ describe("settingsPatchFor", () => {
   });
 
   it("keeps the numeric settings inside the range their control offers", () => {
-    expect(settingsPatchFor("detailWidth", 400)).toEqual({ detailWidth: 400 });
-    expect(settingsPatchFor("detailWidth", 10)).toEqual({ detailWidth: DETAIL_WIDTH_MIN });
-    expect(settingsPatchFor("detailWidth", 9999)).toEqual({ detailWidth: DETAIL_WIDTH_MAX });
-    expect(settingsPatchFor("detailWidth", "nope")).toBeNull();
+    expect(settingsPatchFor("cardNextTodos", 2)).toEqual({ cardNextTodos: 2 });
+    expect(settingsPatchFor("cardNextTodos", "nope")).toBeNull();
     // Number("") / Number(null) / Number(true) are 0, 0 and 1: read as numbers they would move a
     // setting to the bottom of its range instead of being refused.
-    expect(settingsPatchFor("detailWidth", null)).toBeNull();
-    expect(settingsPatchFor("detailWidth", "")).toBeNull();
-    expect(settingsPatchFor("detailWidth", "   ")).toBeNull();
+    expect(settingsPatchFor("cardNextTodos", "")).toBeNull();
+    expect(settingsPatchFor("cardNextTodos", "   ")).toBeNull();
     expect(settingsPatchFor("cardNextTodos", true)).toBeNull();
     expect(settingsPatchFor("cardNextTodos", null)).toBeNull();
     expect(settingsPatchFor("cardNextTodos", Number.NaN)).toBeNull();
     // A control that reports its value as a numeric string is still a number.
-    expect(settingsPatchFor("detailWidth", "420")).toEqual({ detailWidth: 420 });
+    expect(settingsPatchFor("cardNextTodos", "4")).toEqual({ cardNextTodos: 4 });
     expect(settingsPatchFor("cardNextTodos", -3)).toEqual({ cardNextTodos: 0 });
     expect(settingsPatchFor("cardNextTodos", 99)).toEqual({ cardNextTodos: CARD_NEXT_TODOS_MAX });
   });

@@ -15,11 +15,7 @@ export const MCP_PORT_MAX = 65535;
 export type BoardViewMode = "board" | "markdown";
 
 export interface KanbanSettings {
-  detailPresentation: "side" | "modal";
-  sidePanelMode: "split" | "float";
-  detailWidth: number;
   addCardFlow: "inline" | "inline-edit" | "detail";
-  addCardOpenMode: "default" | "modal" | "side-float" | "side-split";
   cardNextTodos: number;
   historyScope: HistoryScope;
   /** How the board pans horizontally.
@@ -119,11 +115,7 @@ export function applySettingsPatch(current: BoardSettings, patch: SettingsPatch)
 }
 
 export const DEFAULT_SETTINGS: KanbanSettings = {
-  detailPresentation: "side",
-  sidePanelMode: "split",
-  detailWidth: 380,
   addCardFlow: "inline",
-  addCardOpenMode: "default",
   cardNextTodos: 0,
   historyScope: "all",
   boardPan: "shift",
@@ -252,6 +244,7 @@ export function hydrateSettings(loaded: unknown, now: string): HydratedSettings 
   delete (stored as Record<string, unknown>)[SETTINGS_FORMAT_KEY];
   let needsSave = legacy;
   if (dropUnusable(stored)) needsSave = true;
+  if (dropRetired(stored)) needsSave = true;
   if (legacy) pruneFrozenDefaults(stored);
   // Truthiness, not presence: an empty baseline is not a value anyone can have chosen — it is what
   // `DEFAULT_SETTINGS` carries to mean "no baseline at all", and `seenMarkerFor` reads it as absent
@@ -282,6 +275,22 @@ function dropUnusable(stored: StoredSettings): boolean {
   )
     drop("mcpBindAddress");
   return dropped;
+}
+
+/**
+ * Keys a release removed. Unlike a key this build has never heard of, which a newer build may have
+ * written and is carried through, these are known to mean nothing any more, so a file still holding
+ * one is healed on load. The card detail panel used to have side-panel presentations (#88); only
+ * the dialog is left.
+ */
+const RETIRED_KEYS = ["detailPresentation", "sidePanelMode", "detailWidth", "addCardOpenMode"];
+
+/** Takes out what {@link RETIRED_KEYS} names. Returns whether anything went. */
+function dropRetired(stored: StoredSettings): boolean {
+  const record = stored as Record<string, unknown>;
+  const retired = RETIRED_KEYS.filter((key) => key in record);
+  for (const key of retired) delete record[key];
+  return retired.length > 0;
 }
 
 /** The one-time reading of a file that predates the marker: a value equal to its default is read as
@@ -342,9 +351,6 @@ export function migratePathKeyedSettings(
   }
   return patch;
 }
-
-export const DETAIL_WIDTH_MIN = 280;
-export const DETAIL_WIDTH_MAX = 720;
 
 /** Compares two stored sets by value rather than by identity or key order: the file is re-read into
  *  fresh objects, and the order keys happen to land in says nothing about what anyone changed. */
