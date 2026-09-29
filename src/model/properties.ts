@@ -207,3 +207,48 @@ export function propertySuggestions(
   take(lists.vault, "vault");
   return out;
 }
+
+/** A property value the detail panel shows as one line of text. */
+export type ScalarValue = string | number | boolean;
+
+/** What typed text becomes when it replaces a property value, or why it cannot. */
+export type ScalarEdit = { ok: true; value: ScalarValue } | { ok: false; reason: string };
+
+// YAML 1.2 decimal floats, the only numbers the text field accepts: `Number()` alone would read
+// `""` as 0 and `0x10` as 16, neither of which is what anyone typing into a number meant.
+const DECIMAL = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/;
+
+/**
+ * Read `text` as a new value for a property that holds `previous`, keeping its YAML type: a number
+ * stays a number and a boolean stays a boolean, so an edit never turns `estimate: 3` into
+ * `estimate: "5"`. Text that does not spell a value of that type is refused rather than written as
+ * a string, and so is an empty field or a whole part too long to keep exactly: the type would be
+ * gone the moment the key held a string or nothing. Adding the property again under the same name
+ * is the way to make it text, and the refusal says so, as Obsidian's own number field takes none.
+ *
+ * Booleans are `true` and `false` in any case, and nothing else: Obsidian reads YAML 1.2, where
+ * `yes` and `on` are strings.
+ */
+export function editScalar(previous: ScalarValue, text: string): ScalarEdit {
+  if (typeof previous === "string") return { ok: true, value: text };
+  const typed = text.trim();
+  if (typeof previous === "boolean") {
+    const lower = typed.toLowerCase();
+    if (lower === "true" || lower === "false") return { ok: true, value: lower === "true" };
+    return {
+      ok: false,
+      reason:
+        "This property holds true or false. To store text, add it again below under the same name.",
+    };
+  }
+  const n = Number(typed);
+  if (!DECIMAL.test(typed) || !Number.isFinite(n))
+    return {
+      ok: false,
+      reason:
+        "This property holds a number. To store text, add it again below under the same name.",
+    };
+  if (!/[eE]/.test(typed) && !Number.isSafeInteger(Math.trunc(n)))
+    return { ok: false, reason: "This number has more digits than the property can keep exactly." };
+  return { ok: true, value: n };
+}

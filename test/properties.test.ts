@@ -11,6 +11,7 @@ import {
   PANEL_FIELD_KEYS,
   SCALAR_ONLY_KEYS,
   TOOL_REFUSALS,
+  editScalar,
   propertySuggestions,
 } from "../src/model/properties";
 import type { CardFrontmatter } from "../src/model/types";
@@ -118,4 +119,73 @@ describe("what the property-name field offers", () => {
   it("offers nothing for a query no key holds", () => {
     expect(propertySuggestions("zzz", lists)).toEqual([]);
   });
+});
+
+describe("editing a property value keeps its type", () => {
+  it("passes text through untouched for a string", () => {
+    expect(editScalar("home", " 5 ")).toEqual({ ok: true, value: " 5 " });
+    expect(editScalar("home", "")).toEqual({ ok: true, value: "" });
+  });
+
+  it.each([
+    ["5", 5],
+    [" 5 ", 5],
+    ["-2.5", -2.5],
+    ["+3", 3],
+    [".5", 0.5],
+    ["5.", 5],
+    ["1e3", 1000],
+    ["0", 0],
+  ])("reads %j as the number %d", (text, value) => {
+    expect(editScalar(3, text)).toEqual({ ok: true, value });
+  });
+
+  it.each(["abc", "", "   ", "0x10", "5,5", "1 000", "Infinity", "NaN", "1e999", "5abc"])(
+    "refuses %j for a number, rather than writing a string, a zero or NaN",
+    (text) => {
+      expect(editScalar(3, text)).toEqual({
+        ok: false,
+        reason:
+          "This property holds a number. To store text, add it again below under the same name.",
+      });
+    },
+  );
+
+  it.each(["12345678901234567890", "9007199254740993.0", "12345678901234567890.5"])(
+    "refuses %j, whose whole part has more digits than a number can keep",
+    (text) => {
+      expect(editScalar(3, text)).toEqual({
+        ok: false,
+        reason: "This number has more digits than the property can keep exactly.",
+      });
+    },
+  );
+
+  it("still reads a long fraction or an exponent the way a number does", () => {
+    expect(editScalar(3, "0.12345678901234567890")).toEqual({
+      ok: true,
+      value: 0.12345678901234568,
+    });
+    expect(editScalar(3, "1e21")).toEqual({ ok: true, value: 1e21 });
+  });
+
+  it.each([
+    ["true", true],
+    ["false", false],
+    ["TRUE", true],
+    [" False ", false],
+  ])("reads %j as the boolean %s", (text, value) => {
+    expect(editScalar(true, text)).toEqual({ ok: true, value });
+  });
+
+  it.each(["yes", "no", "on", "1", "0", "", "truthy"])(
+    "refuses %j for a boolean, since Obsidian reads it as a string",
+    (text) => {
+      expect(editScalar(false, text)).toEqual({
+        ok: false,
+        reason:
+          "This property holds true or false. To store text, add it again below under the same name.",
+      });
+    },
+  );
 });
