@@ -1,5 +1,83 @@
 # Changelog
 
+## [0.5.0](https://github.com/stavarengo/folia-kanban/compare/0.4.2...0.5.0) (2026-09-29)
+
+### ⚠ BREAKING CHANGES
+
+* open card details only in Obsidian's own dialog
+
+### Features
+
+* give a card added to a lane what its rule asks ([61ce0dd](https://github.com/stavarengo/folia-kanban/commit/61ce0dd9e94c71a88ad90d55918eab0a08910bd6))
+* open card details only in Obsidian's own dialog ([a9d1924](https://github.com/stavarengo/folia-kanban/commit/a9d19243c504aa20d850affd6f5cf55fbb25aa5c)), closes [#88](https://github.com/stavarengo/folia-kanban/issues/88), references [#87](https://github.com/stavarengo/folia-kanban/issues/87)
+
+### Bug Fixes
+
+* **a11y:** let CardContextMenu's roving focus reach the priority and column groups ([399996a](https://github.com/stavarengo/folia-kanban/commit/399996a3547dfed35a37b569d702603a2b582cd5))
+* **a11y:** match menu rows by role instead of an enumerated class list ([a4128d7](https://github.com/stavarengo/folia-kanban/commit/a4128d701a05a4e8f4c02363f180a4f7d249f039)), references [#73](https://github.com/stavarengo/folia-kanban/issues/73) [#73](https://github.com/stavarengo/folia-kanban/issues/73)
+* **a11y:** never let CardContextMenu render in a focus-blocking state ([e63dfb6](https://github.com/stavarengo/folia-kanban/commit/e63dfb619af94f4c1bb9c0759a00cf197c41d8ed)), references [#73](https://github.com/stavarengo/folia-kanban/issues/73)
+* change some chip and muted text colours for readability ([96257cd](https://github.com/stavarengo/folia-kanban/commit/96257cdfbc24a9c03846b3815c90d407b0518e4d))
+* decide a parent checklist write on a fresh read, and say what move_card does for a card already in place ([c2ef9b3](https://github.com/stavarengo/folia-kanban/commit/c2ef9b3c0a4b7c07e54a7250c917e2eff873d901))
+* give the card focus back after a menu action only when the keyboard opened the menu ([03958c0](https://github.com/stavarengo/folia-kanban/commit/03958c040d6c6f58cf147fb73a4c4443afce7f25))
+* honour reduced motion when dragging cards and columns ([#118](https://github.com/stavarengo/folia-kanban/issues/118)) ([902dbcf](https://github.com/stavarengo/folia-kanban/commit/902dbcf91df3bf15c759dc9e4e0e2200b78990cc)), closes [#79](https://github.com/stavarengo/folia-kanban/issues/79)
+* keep a property's number or boolean type when it is edited in the detail panel ([#119](https://github.com/stavarengo/folia-kanban/issues/119)) ([7b1f6ac](https://github.com/stavarengo/folia-kanban/commit/7b1f6acaa3ade5403de7118665362c16c9089396)), closes [#77](https://github.com/stavarengo/folia-kanban/issues/77)
+* keep adding to a lane whose rule only a title can meet ([dfe1ab3](https://github.com/stavarengo/folia-kanban/commit/dfe1ab39bd741285b140a3ab3d876c2c48c19443))
+* keep the card menu shut while its card is lifted, and let Shift+Tab land on the card ([acb6230](https://github.com/stavarengo/folia-kanban/commit/acb62301cf4f16d5c89e1e279e8d4e2a739b5c02))
+* keep the detail panel's resize edge grabbable at any scroll position ([6afc384](https://github.com/stavarengo/folia-kanban/commit/6afc384f3476b544359095ac0d0a9c8c967ac756)), closes [#65](https://github.com/stavarengo/folia-kanban/issues/65)
+* keep the keyboard card menu item open until the app confirms it ([2ab0a4c](https://github.com/stavarengo/folia-kanban/commit/2ab0a4c9efc9cf96bf66c26e35c7b7f360e8f1a1))
+* label every detail panel field the same way, in a gutter wide enough for its names ([48ab1b8](https://github.com/stavarengo/folia-kanban/commit/48ab1b8b8dcb1f7becbfa231a072ed648c5eeafc)), closes [#62](https://github.com/stavarengo/folia-kanban/issues/62)
+* leave a card's note untouched when an action would store what it already holds ([a32291e](https://github.com/stavarengo/folia-kanban/commit/a32291ef029b3460512fe91c92b7c6ddb1a287b3))
+* name the no-priority and no-colour choices in words ([b1aaa0b](https://github.com/stavarengo/folia-kanban/commit/b1aaa0b3ef4cc546e33993851bfdf7eb1eae2208)), closes [#63](https://github.com/stavarengo/folia-kanban/issues/63)
+* open board notes natively; Markdown may flash, Back differs ([#116](https://github.com/stavarengo/folia-kanban/issues/116)) ([6ffcb3c](https://github.com/stavarengo/folia-kanban/commit/6ffcb3c92285ddc6f29b735d9f6d52db2eeca812)), closes [#100](https://github.com/stavarengo/folia-kanban/issues/100) [#30](https://github.com/stavarengo/folia-kanban/issues/30)
+* open the card context menu from the keyboard ([b89af11](https://github.com/stavarengo/folia-kanban/commit/b89af110efb778b121b3cf03b9400fbea54508a1)), closes [#72](https://github.com/stavarengo/folia-kanban/issues/72)
+* read an empty frontmatter block as empty ([5a8c723](https://github.com/stavarengo/folia-kanban/commit/5a8c7232cedd5c23a4ccea1d7543bd2c8291ac27)), references [#95](https://github.com/stavarengo/folia-kanban/issues/95)
+* reserve title room only for the quick actions a card actually shows ([8188c4c](https://github.com/stavarengo/folia-kanban/commit/8188c4c7109ea867332eeee4f59c9f69e23bdec3)), closes [#64](https://github.com/stavarengo/folia-kanban/issues/64)
+* return focus to the card only when the card menu's close calls for it, and close it when focus leaves ([0f24dfa](https://github.com/stavarengo/folia-kanban/commit/0f24dfa3f362466e77b6d4a6087bdbee004fa4cd))
+* say an empty ruled lane is empty only once ([b51435a](https://github.com/stavarengo/folia-kanban/commit/b51435a86df111aa44ceae6d776cad45267e0d3d))
+* stop sharing card collapse state between devices ([78148d8](https://github.com/stavarengo/folia-kanban/commit/78148d8606409a6d141b9273e751a61ec655e89d))
+* tell an agent when only its title misses a lane's words ([d8d7c0b](https://github.com/stavarengo/folia-kanban/commit/d8d7c0bdf97b397efc1bccbe925f1413b2d80574))
+* **theme:** size the column menu button like the other primary icon buttons ([c29201e](https://github.com/stavarengo/folia-kanban/commit/c29201e7504e105e35ebcdd25e55c59b6b0be4ee)), closes [#61](https://github.com/stavarengo/folia-kanban/issues/61)
+* treat a new card name differing only in letter case as taken ([57addf6](https://github.com/stavarengo/folia-kanban/commit/57addf60a4b98239f8a246bd4dda6d284996a4b4)), closes [#78](https://github.com/stavarengo/folia-kanban/issues/78)
+* write nothing when a card drawn inside its parent is sent to the column it stands in ([53f89af](https://github.com/stavarengo/folia-kanban/commit/53f89affb64ba9b8f45f6f4ad2286946f070ec19))
+* write nothing when a card is picked up and put down in place ([0948cea](https://github.com/stavarengo/folia-kanban/commit/0948ceaa9f2028049d41c409582b6db475707d60))
+
+### Refactoring
+
+* also ban requireApiVersion reached by string key ([ca4fbf9](https://github.com/stavarengo/folia-kanban/commit/ca4fbf9608452136b49c60d502b71f1a772af150)), references [#86](https://github.com/stavarengo/folia-kanban/issues/86)
+* ban any mention of requireApiVersion outside compat ([c338b0f](https://github.com/stavarengo/folia-kanban/commit/c338b0fa9ba3123e65498fc96b2873ade5cf6a06)), references [#86](https://github.com/stavarengo/folia-kanban/issues/86)
+* gate newer Obsidian APIs in one compat module ([753e284](https://github.com/stavarengo/folia-kanban/commit/753e2843994e4362b5f4f7ffa5a6628bdc1acb86)), references [#86](https://github.com/stavarengo/folia-kanban/issues/86)
+* keep Obsidian behind the adapter and shell ([1a0c763](https://github.com/stavarengo/folia-kanban/commit/1a0c763a9c8eb068cb9b0ba0521b48d8f2ef3153))
+* move the bind-address rules out of src/mcp ([73fdca3](https://github.com/stavarengo/folia-kanban/commit/73fdca3eee14e938fae4c24c4a4478cd4416e70e))
+* name the settings tab redraw kind and state the gate's reach ([b3647c7](https://github.com/stavarengo/folia-kanban/commit/b3647c7c6907f563cb0331bda4dbb2060ad97a97)), references [#86](https://github.com/stavarengo/folia-kanban/issues/86)
+
+### Documentation
+
+* **agents:** require a live Obsidian check with screenshots in chat for UI changes ([88b243b](https://github.com/stavarengo/folia-kanban/commit/88b243b4d0a5d632f6e533c2e25f1edeb1f7cc76))
+* **agents:** test UI changes in your own Obsidian instance ([b1f5e70](https://github.com/stavarengo/folia-kanban/commit/b1f5e707444fac2239fd3df0ae3ec11bdb7596ee))
+* drop internal process traces from decisions ([a96ed28](https://github.com/stavarengo/folia-kanban/commit/a96ed28fa2d190d9a28a13b8a920cc5da0ba41aa))
+* note that capturePage returns a stale frame from an unfocused window ([b54aace](https://github.com/stavarengo/folia-kanban/commit/b54aace6f1245b4f7cc343343a9d2359bb110ce0))
+* record the backlog staging project ([509dbc0](https://github.com/stavarengo/folia-kanban/commit/509dbc0a3d64494a18c42adc325e34dde76683a3))
+* state the undocumented-class rule as a rule ([2783bbc](https://github.com/stavarengo/folia-kanban/commit/2783bbce21fa2d540fd8b05d2f1475e58a06fbe7))
+* **waivers:** close the card menu keyboard item after the live check ([e0827eb](https://github.com/stavarengo/folia-kanban/commit/e0827ebfa3003f14f4681046129299268a44870b))
+
+### Tests
+
+* **a11y:** add ArrowUp coverage to the [#73](https://github.com/stavarengo/folia-kanban/issues/73) roving-focus tests ([9134e6a](https://github.com/stavarengo/folia-kanban/commit/9134e6a8214021bf84e0403d5ec30d7e59e99f87))
+* measure text contrast live in Obsidian with axe-core ([8660ebc](https://github.com/stavarengo/folia-kanban/commit/8660ebc861c0437d20b582a70795aae972183f89))
+
+### Build & Tooling
+
+* ban the fenced globals when reached through self or globalThis ([c6fd73d](https://github.com/stavarengo/folia-kanban/commit/c6fd73d8483b87eb40c95c9c46db485f6610afdf)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+* declare the page globals contrast-live's callbacks use ([af11391](https://github.com/stavarengo/folia-kanban/commit/af11391f216ad78490ce31ac0136884c33df4d35)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+* fence the app-supplied modules and runtime globals, and lint scripts/ ([9467adc](https://github.com/stavarengo/folia-kanban/commit/9467adcec60f7d9e687714eafbf0f2d2afda30bd)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+* forbid yaml anywhere in shipped code ([77212df](https://github.com/stavarengo/folia-kanban/commit/77212df5573bfdd349d0eff447fe94554166285c)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+* keep every path to Obsidian's modules behind the adapter and shell ([30c3ba4](https://github.com/stavarengo/folia-kanban/commit/30c3ba49baac528166610d0d03f5261a4bd21c66)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+* keep Node's builtin modules in the adapter and shell ([eece368](https://github.com/stavarengo/folia-kanban/commit/eece368b1d988535a922ceb2bc04f58bda000e7d)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+* keep the app-module rule working once a module is installed, and fence the root too ([7fd3857](https://github.com/stavarengo/folia-kanban/commit/7fd3857b53ab7b8234035acce9677d22c70243cb)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+* parse frontmatter with Obsidian's parseYaml instead of bundling yaml ([e3aa9ee](https://github.com/stavarengo/folia-kanban/commit/e3aa9ee4cecfb2cf2264484a380732383e40f99b)), references [#95](https://github.com/stavarengo/folia-kanban/issues/95)
+* tie the obsidian typings range to minAppVersion ([c5925f8](https://github.com/stavarengo/folia-kanban/commit/c5925f8cb974a64e3bbfc66c82f0e541eae7abb3)), closes [#49](https://github.com/stavarengo/folia-kanban/issues/49) [#86](https://github.com/stavarengo/folia-kanban/issues/86)
+* turn the layer rules into allow-lists and follow the UI's whole path ([da5cb1c](https://github.com/stavarengo/folia-kanban/commit/da5cb1cfbf83e11ebd519187bf05d444d0c62e17)), references [#97](https://github.com/stavarengo/folia-kanban/issues/97)
+
 ## [0.4.2](https://github.com/stavarengo/folia-kanban/compare/0.4.1...0.4.2) (2026-09-27)
 
 ### Bug Fixes
