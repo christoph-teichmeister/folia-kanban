@@ -332,6 +332,10 @@ export class FakeVault extends Events {
     return this.nodes.get(path) ?? null;
   }
 
+  getAllLoadedFiles(): TAbstractFile[] {
+    return [...this.nodes.values()];
+  }
+
   getMarkdownFiles(): TFile[] {
     return [...this.nodes.values()].filter(
       (n): n is TFile => n instanceof TFile && n.path.endsWith(".md"),

@@ -51,6 +51,7 @@ const MIRRORED: {
   vault: [
     "adapter",
     "getAbstractFileByPath",
+    "getAllLoadedFiles",
     "getMarkdownFiles",
     "cachedRead",
     "read",
@@ -370,6 +371,14 @@ describe("creating cards", () => {
     expect(await repo.createCard("Idea", "todo")).toBe("basic/Cards/Idea 3.md");
   });
 
+  it("treats a name differing only in letter case as taken, as Obsidian's own new notes do", async () => {
+    const { app, repo } = setup();
+    app.vault.addFile("basic/Cards/Fix bug.md", card("status: todo"));
+
+    expect(await repo.createCard("fix bug", "todo")).toBe("basic/Cards/fix bug 1.md");
+    expect(await repo.createCard("Something else", "todo")).toBe("basic/Cards/Something else.md");
+  });
+
   it("strips the characters a file name cannot hold", async () => {
     const { repo } = setup();
     expect(await repo.createCard("a/b:c?", "todo")).toBe("basic/Cards/abc.md");
@@ -548,6 +557,26 @@ describe("renaming a card", () => {
 
     expect(await repo.renameCard("basic/Cards/Old.md", "New")).toBe("basic/Cards/New 1.md");
     expect(app.vault.text("basic/Cards/New.md")).toContain("# New");
+  });
+
+  it("renames to a case variant of its own name instead of walking past itself", async () => {
+    const { app, repo } = setup();
+    app.vault.addFile("basic/Cards/Fix bug.md", "\n# Fix bug\n");
+
+    expect(await repo.renameCard("basic/Cards/Fix bug.md", "fix bug")).toBe(
+      "basic/Cards/fix bug.md",
+    );
+    expect(app.vault.getAbstractFileByPath("basic/Cards/Fix bug.md")).toBeNull();
+  });
+
+  it("walks past another card's name that differs only in letter case", async () => {
+    const { app, repo } = setup();
+    app.vault.addFile("basic/Cards/Fix bug.md", "\n# Fix bug\n");
+    app.vault.addFile("basic/Cards/Other.md", "\n# Other\n");
+
+    expect(await repo.renameCard("basic/Cards/Other.md", "fix bug")).toBe(
+      "basic/Cards/fix bug 1.md",
+    );
   });
 
   it("writes nothing for a blank or unchanged title", async () => {

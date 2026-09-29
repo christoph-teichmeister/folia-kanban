@@ -77,6 +77,7 @@ import { refreshDeclarativeSettingTab, setSettingError } from "./obsidian/compat
 import { stamp } from "./model/dates";
 import { isBoardFrontmatter } from "./obsidian/viewMode";
 import { markdownTabOutcome } from "./obsidian/boardRedirect";
+import { pathTaken } from "./obsidian/pathTaken";
 
 /** Marks the header button this plugin adds to a board note's Markdown editor. */
 const BOARD_ACTION_CLASS = "folia-open-as-board";
@@ -542,7 +543,7 @@ export default class FoliaKanbanPlugin extends Plugin {
     try {
       const source = this.app.workspace.getActiveFile()?.path ?? "";
       const folder = parent ?? this.app.fileManager.getNewFileParent(source);
-      const path = uniqueNotePath(folder.path, NEW_BOARD_BASENAME, (p) => this.exists(p));
+      const path = uniqueNotePath(folder.path, NEW_BOARD_BASENAME, pathTaken(this.app.vault));
       const title = path.slice(path.lastIndexOf("/") + 1, -".md".length);
       await this.makeBoard(await this.app.vault.create(path, boardNoteBody(title)));
     } catch (e) {
@@ -571,7 +572,7 @@ export default class FoliaKanbanPlugin extends Plugin {
     const open = this.leafShowing("markdown", file.path);
     if (open?.view instanceof MarkdownView) await open.view.save();
 
-    const cards = cardFolderFor(file.parent?.path ?? "", (p) => this.exists(p));
+    const cards = cardFolderFor(file.parent?.path ?? "", pathTaken(this.app.vault));
     let ownFolder = false;
     await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
       ownFolder = applyBoardFrontmatter(frontmatter, cards.property);
@@ -588,10 +589,6 @@ export default class FoliaKanbanPlugin extends Plugin {
     const leaf = open ?? this.app.workspace.getLeaf(true);
     await this.showBoardIn(leaf, file.path, true);
     await this.app.workspace.revealLeaf(leaf);
-  }
-
-  private exists(path: string): boolean {
-    return this.app.vault.getAbstractFileByPath(path) !== null;
   }
 
   /** Every note flagged `folia-board: true` in its frontmatter. */

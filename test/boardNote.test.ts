@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FrontMatterCache } from "obsidian";
+import type { FrontMatterCache, Vault } from "obsidian";
 import {
   NEW_BOARD_BASENAME,
   applyBoardFrontmatter,
@@ -8,6 +8,8 @@ import {
   uniqueNotePath,
 } from "../src/boardNote";
 import { isBoardFrontmatter, resolveBoardViewMode } from "../src/obsidian/viewMode";
+import { pathTaken } from "../src/obsidian/pathTaken";
+import { FakeVault } from "./obsidianFake";
 import { BoardFrontmatterSchema, decode } from "../src/model/schemas";
 import { normalizeColumns } from "../src/model/columns";
 import { resolveCardFolder } from "../src/model/board";
@@ -146,6 +148,16 @@ describe("uniqueNotePath", () => {
     expect(
       uniqueNotePath("Projects", "Board", taken("Projects/Board.md", "Projects/Board 1.md")),
     ).toBe("Projects/Board 2.md");
+  });
+
+  it("counts a vault name differing only in letter case as taken, for notes and folders alike", () => {
+    const vault = new FakeVault();
+    vault.addFile("Projects/board.md");
+    vault.addFolder("Projects/cards");
+    const taken = pathTaken(vault as unknown as Vault);
+
+    expect(uniqueNotePath("Projects", "Board", taken)).toBe("Projects/Board 1.md");
+    expect(cardFolderFor("Projects", taken).path).toBe("Projects/Cards 1");
   });
 
   it("writes a vault-root path without a leading slash", () => {

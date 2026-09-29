@@ -30,6 +30,7 @@ import { isBoardFrontmatter } from "./viewMode";
 import { VIEW_TYPE_KANBAN } from "../viewType";
 import { parseFrontmatter } from "./frontmatter";
 import { attachPropertySuggest } from "./propertySuggest";
+import { pathTaken } from "./pathTaken";
 import { buildBoard, claimInStep, resolveCardFolder } from "../model/board";
 import { normalizeColumns, scalarText, serializeColumns } from "../model/columns";
 import { mergePriorities, normalizePriorities, serializePriorities } from "../model/priorities";
@@ -797,11 +798,12 @@ export class VaultRepository implements CardRepository, HoverParent {
       await this.maybeHistory(path, "relation", relationRemovedLine(type, shown));
   }
 
-  private async uniquePath(folder: string, title: string): Promise<string> {
+  private async uniquePath(folder: string, title: string, except?: string): Promise<string> {
     const base = sanitizeFilename(title);
+    const taken = pathTaken(this.app.vault, except);
     let candidate = normalizePath(`${folder}/${base}.md`);
     let n = 1;
-    while (this.app.vault.getAbstractFileByPath(candidate)) {
+    while (taken(candidate)) {
       candidate = normalizePath(`${folder}/${base} ${n++}.md`);
     }
     return candidate;
@@ -921,7 +923,7 @@ export class VaultRepository implements CardRepository, HoverParent {
     const base = sanitizeFilename(wanted);
     if (base === file.basename) return path; // unchanged once made safe to use as a file name
     const folder = file.parent?.path ?? "";
-    const dest = await this.uniquePath(folder === "/" ? "" : folder, base);
+    const dest = await this.uniquePath(folder === "/" ? "" : folder, base, file.path);
     if (dest === path) return path;
     this.markWrite(path);
     this.markWrite(dest);
