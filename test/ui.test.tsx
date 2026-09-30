@@ -114,7 +114,12 @@ function renderInSecondWindow(repo: FakeRepo, innerHeight: number) {
   const frame = document.createElement("iframe");
   document.body.appendChild(frame);
   const doc = frame.contentDocument!;
-  const view = doc.defaultView!;
+  const view = doc.defaultView! as Window & typeof globalThis;
+  // Obsidian gives a pop-out window the same DOM helpers as the main one, which setup.ts stands in
+  // for on the main window only; the host controls draw with them.
+  const { createEl, createDiv } = HTMLElement.prototype;
+  Object.assign(view.HTMLElement.prototype, { createEl, createDiv });
+  Object.assign(view.Node.prototype, { empty: Node.prototype.empty });
   Object.defineProperty(view, "innerHeight", { configurable: true, value: innerHeight });
   const container = doc.createElement("div");
   doc.body.appendChild(container);
@@ -3280,6 +3285,32 @@ describe("column config (#1 filter, #6 group/sort, #8 edit modal, #10 opacity/pa
     return screen.findByRole("menu");
   };
 
+  // The host's icon button hands a key press's callback no event (only a pointer click carries
+  // one), so the menu has to anchor off the element the wrapper keeps live instead — this is the
+  // path that misses if that wiring breaks.
+  it("opens the column menu from the keyboard, anchored to its own button", async () => {
+    const repo = makeRepo();
+    render_(repo);
+    const user = userEvent.setup();
+    const trigger = await screen.findByRole("button", { name: "Column options for Todo" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(repo.menus.at(-1)?.at).toEqual({ below: trigger });
+    await screen.findByRole("menu");
+  });
+
+  it("presses the column menu button with Space without arming the column drag", async () => {
+    const repo = makeRepo();
+    render_(repo);
+    const user = userEvent.setup();
+    const trigger = await screen.findByRole("button", { name: "Column options for Todo" });
+    trigger.focus();
+    await user.keyboard("{ }");
+    expect(repo.menus.at(-1)?.at).toEqual({ below: trigger });
+    const column = trigger.closest(".folia-column") as HTMLElement;
+    expect(column).not.toHaveClass("folia-is-dragging");
+  });
+
   it("the column menu's Edit column hands the column to the host's dialog", async () => {
     const repo = makeRepo();
     render_(repo);
@@ -4867,6 +4898,22 @@ describe("unread comments", () => {
     ).toBeInTheDocument();
   });
 
+  it("names the tile with its subtask progress before its unread comments", async () => {
+    // The bar sits inside the tile's role="button" as well, so the name is the only place a screen
+    // reader hears how far the card has got.
+    render_(
+      new FakeRepo(config, {
+        "Tasks/Alpha.md": {
+          fm: { type: "task", status: "todo" },
+          body: "\n# Alpha\n\n## Subtasks\n- [x] one\n- [ ] two\n\n## Comments\n- _2026-06-13 10:00 @agent:_ hi\n",
+        },
+      }),
+    );
+    expect(
+      await screen.findByLabelText("Alpha, 1 of 2 subtasks done, 1 unread comment"),
+    ).toBeInTheDocument();
+  });
+
   it("with no name set nothing is yours, so both comments read as plain unread", async () => {
     render_(conversation());
     const alpha = (await screen.findByText("Alpha")).closest(".folia-card") as HTMLElement;
@@ -5540,6 +5587,8 @@ describe("the detail panel reports a failed write", () => {
 
     await expectNotice(repo, /does not match it/);
     expect(repo.files.get("Tasks/Alpha.md")?.fm["status"]).toBe("todo");
+    // The field goes back to what the note says rather than keeping the refused pick.
+    await waitFor(() => expect(within(detail).getByLabelText("Status")).toHaveValue("todo"));
   });
 
   it("refuses giving a subcard a lane's column from the panel", async () => {
@@ -5571,6 +5620,9 @@ describe("the detail panel reports a failed write", () => {
 
     await expectNotice(repo, /does not match it/);
     expect(repo.files.get("Tasks/Kid.md")?.fm["status"]).toBeUndefined();
+    await waitFor(() =>
+      expect(within(detail).getByLabelText("Column for [[Kid]]")).toHaveValue(""),
+    );
   });
 
   it("does not claim a card is done when the done column refused it", async () => {
@@ -5655,6 +5707,9 @@ describe("the detail panel reports a failed write", () => {
 
     await expectNotice(repo, /does not match it/);
     expect(repo.files.get("Tasks/Alpha.md")?.body).toBe(before);
+    await waitFor(() =>
+      expect(within(detail).getByLabelText("Column for Buy soil")).toHaveValue(""),
+    );
   });
 
   // The lane judges the line actually being moved. A line added above since the board was drawn
@@ -7066,17 +7121,6 @@ describe("a link that has to lose the theme's button shape (20260829.01, 2026082
         ".folia-scope .folia-muted",
         [".folia-scope .folia-title-reason", ".folia-scope .folia-title-step-reason"],
       ],
-      [
-        ".folia-scope .folia-icon-btn",
-        [".folia-scope .folia-mini", ".folia-scope .folia-column-menu-btn"],
-      ],
-      [
-        ".folia-scope .folia-icon-btn:hover:where(:not(:disabled))",
-        [
-          ".folia-scope .folia-action-done:hover:where(:not(:disabled))",
-          ".folia-scope .folia-action-delete:hover:where(:not(:disabled))",
-        ],
-      ],
     ] as const) {
       expect(ruleAt(base)).toBeGreaterThan(-1);
       for (const refinement of refinements) {
@@ -7085,19 +7129,14 @@ describe("a link that has to lose the theme's button shape (20260829.01, 2026082
     }
   });
 
-  it("keeps the column menu button's fade and leaves its size to the icon-button tier", () => {
-    // Written above `.folia-icon-btn` it declared nothing the base rule did not already declare,
-    // so the button drew at the base size and its opacity was switched without the fade. Scoped
-    // and moved below the base, the opacity and transition declarations land; the state rules
-    // follow it, so the button still shows on hover, on focus and while its menu is open. Its size
-    // is the base rule's, like the card quick actions beside it.
+  it("keeps the column menu button hidden until its column is hovered or it has focus", () => {
+    // The hiding rule and the revealing ones weigh the same, so the reveal has to come later.
     const own = rule(".folia-scope .folia-column-menu-btn");
-    expect(own).not.toContain("width:");
-    expect(own).not.toContain("height:");
+    expect(own).toContain("width: var(--folia-hit-md)");
     expect(own).toContain("opacity: var(--folia-opacity-hidden)");
     expect(own).toContain("transition: opacity");
-    // The three state selectors share one rule, so `at` (which anchors on a rule's own line) does
-    // not reach them; their position in the file is what matters here.
+    // The state selectors share one rule, so `ruleAt` (which anchors on a rule's own line) does not
+    // reach them; their position in the file is what matters here.
     expect(styles.indexOf(".folia-column:hover .folia-column-menu-btn")).toBeGreaterThan(
       ruleAt(".folia-scope .folia-column-menu-btn"),
     );

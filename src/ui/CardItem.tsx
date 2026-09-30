@@ -17,6 +17,7 @@ import {
   useUnreadComments,
 } from "./context";
 import { Icon } from "./icons";
+import { HostIconButton, HostProgressBar } from "./hostControls";
 import { useReducedMotion } from "./useReducedMotion";
 
 interface Props {
@@ -279,11 +280,17 @@ function CardItemInner({
         onClick={open}
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
-        // Unread comments are folded into the tile's OWN accessible name: everything inside this
-        // element is a descendant of a `role="button"`, so a label on the badge itself is never
-        // announced. The name is the only place a screen reader can hear that a card has something
-        // waiting on it.
-        aria-label={unread.kind === "none" ? card.title : `${card.title}, ${unreadWords(unread)}`}
+        // Subtask progress and unread comments are folded into the tile's OWN accessible name:
+        // everything inside this element is a descendant of a `role="button"`, so a label or role
+        // on the bar or the badge is never announced. The name is the only place a screen reader
+        // can hear them.
+        aria-label={[
+          card.title,
+          stats && stats.checklist > 0 ? progressWords(stats) : null,
+          unread.kind === "none" ? null : unreadWords(unread),
+        ]
+          .filter(Boolean)
+          .join(", ")}
         aria-current={selected ? "true" : undefined}
       >
         {editing != null ? (
@@ -323,15 +330,13 @@ function CardItemInner({
         {stats && stats.checklist > 0 && (
           <div
             className={"folia-progress" + (allDone ? " folia-is-complete" : "")}
-            title={`${stats.checklistDone} of ${stats.checklist} subtasks done`}
-            aria-label={`${stats.checklistDone} of ${stats.checklist} subtasks done`}
+            title={progressWords(stats)}
           >
-            <div className="folia-progress-track">
-              <div
-                className="folia-progress-fill"
-                style={{ width: `${(stats.checklistDone / stats.checklist) * 100}%` }}
-              />
-            </div>
+            <HostProgressBar
+              slotClassName="folia-progress-slot"
+              className="folia-progress-track"
+              percent={(stats.checklistDone / stats.checklist) * 100}
+            />
             <span className="folia-progress-label">
               {allDone ? <Icon name="check" /> : null}
               {stats.checklistDone}/{stats.checklist}
@@ -434,52 +439,35 @@ function CardItemInner({
       {showActions && (
         <div className="folia-card-actions">
           {canComplete && (
-            <button
-              className="folia-icon-btn folia-action-done"
-              aria-label={`Mark "${card.title}" done`}
-              title="Mark done"
-              onClick={(e) => {
-                e.stopPropagation();
-                actions.complete(card);
-              }}
-            >
-              <Icon name="check-circle" />
-            </button>
+            <HostIconButton
+              className="folia-card-action folia-action-done"
+              icon="circle-check"
+              label={`Mark "${card.title}" done`}
+              stopPropagation={["click"]}
+              onClick={() => actions.complete(card)}
+            />
           )}
-          <button
-            className="folia-icon-btn"
-            aria-label={
-              todoRef ? `Open note holding "${card.title}"` : `Open note for "${card.title}"`
-            }
-            title="Open note"
-            onClick={(e) => {
-              e.stopPropagation();
-              actions.openNote(notePath, e.nativeEvent);
-            }}
-            // A middle click on a button is an auxclick, never a click, so "open in a new tab" —
-            // the one Obsidian gesture that needs no modifier — would otherwise never arrive.
-            onAuxClick={(e) => {
-              if (e.button !== 1) return;
-              e.stopPropagation();
-              actions.openNote(notePath, e.nativeEvent);
-            }}
-          >
-            <Icon name="external-link" />
-          </button>
-          <button
-            className="folia-icon-btn folia-action-delete"
-            aria-label={todoRef ? `Remove todo "${card.title}"` : `Delete "${card.title}"`}
-            title={todoRef ? "Remove todo" : "Delete card"}
-            onClick={(e) => {
-              e.stopPropagation();
+          <HostIconButton
+            className="folia-card-action"
+            icon="external-link"
+            label={todoRef ? `Open note holding "${card.title}"` : `Open note for "${card.title}"`}
+            stopPropagation={["click"]}
+            // "Open in a new tab" by middle click, the one Obsidian gesture that needs no modifier.
+            middleClick
+            onClick={(evt) => actions.openNote(notePath, evt)}
+          />
+          <HostIconButton
+            className="folia-card-action folia-action-delete"
+            icon="trash-2"
+            label={todoRef ? `Remove todo "${card.title}"` : `Delete "${card.title}"`}
+            stopPropagation={["click"]}
+            onClick={() => {
               // The line as this tile reads it now: the removal stays about what was clicked, even
               // when the note moves on while the confirm is open.
               if (todoRef) void actions.removeTodo(notePath, todoRef.line);
               else void actions.remove(card.path);
             }}
-          >
-            <Icon name="trash" />
-          </button>
+          />
         </div>
       )}
     </div>
@@ -498,6 +486,11 @@ function cardMain(el: Element): HTMLElement {
 function commentsTitle(total: number, unread: UnreadState): string {
   const base = `${total} comment${total === 1 ? "" : "s"}`;
   return unread.kind === "none" ? base : `${base}, ${unreadWords(unread)}`;
+}
+
+/** "1 of 2 subtasks done". */
+function progressWords(stats: CardStats): string {
+  return `${stats.checklistDone} of ${stats.checklist} subtasks done`;
 }
 
 /** "2 unread comments" / "2 unread comments, one a reply to yours" / "1 unread comment, a reply to yours". */

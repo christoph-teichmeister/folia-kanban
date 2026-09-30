@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useBoardActions } from "./context";
 import { Icon } from "./icons";
+import { HostButton } from "./hostControls";
 
 export function AddColumn() {
   const a = useBoardActions();
@@ -40,22 +41,15 @@ export function AddColumn() {
         }}
       />
       <div className="folia-row-actions">
-        <button
-          className="folia-btn folia-btn-primary"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={submit}
-        >
-          Add
-        </button>
-        <button
+        <HostButton className="folia-btn" cta text="Add" keepFocus onClick={submit} />
+        <HostButton
           className="folia-btn"
+          text="Cancel"
           onClick={() => {
             setAdding(false);
             setTitle("");
           }}
-        >
-          Cancel
-        </button>
+        />
       </div>
     </div>
   );
