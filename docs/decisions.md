@@ -44,7 +44,7 @@ Only the dialog has a native form. Obsidian's `Modal` gives it the backdrop, the
 
 Until 0.4.2 the plugin wrapped `WorkspaceLeaf.prototype.setViewState` for the whole app and rewrote every `markdown` open of a board note into a board open, before the editor was drawn. It read the undocumented `eState` keys `line`, `subpath` and `match` to leave heading, block and search-result opens in the editor, and passed the undocumented `popstate` flag so neither swap between board and editor entered the navigation history. That was one global mutation of a core prototype, in the path of every plugin's leaves, that any Obsidian release could break silently.
 
-Now `redirectToBoard` in `src/main.ts` listens to `file-open` (the active tab changed its note) and `active-leaf-change` (a background or deferred tab came forward), and swaps a Markdown tab showing a board note to the board with `leaf.setViewState`. Each editor is decided about once per note, so switching back to a tab is not an open, while the same note opened again after the tab showed something else is. A tab still finishing its own open silently ignores a second `setViewState`, and nothing documented says when it is done, so the swap checks what the tab shows and tries again every 16 ms for up to two seconds. It never saves the editor first: mid-load, the editor can hold the previous note's text under the new note's name, and a save then would write that text into the board note. A note the metadata cache has not read yet is asked about again on that note's first `changed` event. Taking over the `md` extension was rejected because it would give every note to the board view.
+Now the plugin listens to `file-open` (the active tab changed its note) and `active-leaf-change` (a background or deferred tab came forward), and `redirectToBoard` in `src/obsidian/boardTabs.ts` swaps a Markdown tab showing a board note to the board with `leaf.setViewState`. Each editor is decided about once per note, so switching back to a tab is not an open, while the same note opened again after the tab showed something else is. A tab still finishing its own open silently ignores a second `setViewState`, and nothing documented says when it is done, so the swap checks what the tab shows and tries again every 16 ms for up to two seconds. It never saves the editor first: mid-load, the editor can hold the previous note's text under the new note's name, and a save then would write that text into the board note. A note the metadata cache has not read yet is asked about again on that note's first `changed` event. Taking over the `md` extension was rejected because it would give every note to the board view.
 
 What the documented route costs, measured on Obsidian 1.13.7 against the `examples` vault, as frames in which the editor was painted and the time from the first of them to the painted board:
 
@@ -86,7 +86,7 @@ So the documented answer is the README caveat under "Unread comments": stamps ar
 
 **Decided 2026-09-09. The race stays, because no hand can reach it.**
 
-`cardFolderFor` in `src/obsidian/boardNote.ts` picks the first free `Cards`, `Cards 1`, `Cards 2`… and `makeBoard` in `src/main.ts` writes that path into the note before creating the folder. Two guided setups interleaving across the one `await` between check and create would both claim `Cards` and end up sharing a folder, each board showing the other's cards. Backlog entry 20260826.05 recorded this in full.
+`cardFolderFor` in `src/obsidian/boardNote.ts` picks the first free `Cards`, `Cards 1`, `Cards 2`… and `makeBoard` in `src/obsidian/boardSetup.ts` writes that path into the note before creating the folder. Two guided setups interleaving across the one `await` between check and create would both claim `Cards` and end up sharing a folder, each board showing the other's cards. Backlog entry 20260826.05 recorded this in full.
 
 Each setup is a separate user gesture, a palette confirmation or a menu click, and the window between them is a single `await`. The sequential case, two boards created one after the other in the same folder, already gets `Cards` and `Cards 1`. An atomic claim would replace a path whose value is its simplicity, to guard against a timing no person produces.
 
@@ -311,7 +311,7 @@ The detail panel and the edit-column dialog are Obsidian's `Modal`, and the menu
 
 **Decided 2026-09-30 (#94). 110ms for hover, reveal and state changes; 170ms for things that travel (a card's hover lift, a parked column's slide); `cubic-bezier(0.16, 1, 0.3, 1)` for both.**
 
-Obsidian documents no durations or curves; its `--anim-*` variables are not on the reference pages. Folding the two durations into one was considered and not done: it would speed up the card lift and the column slide, and nothing reported them as wrong. The drop animation in `src/ui/Board.tsx` is dnd-kit's, set in code: it copies the curve, which `test/themeGeometry.test.ts` holds equal to the stylesheet's, and runs 200ms, a third duration, set there because dnd-kit takes a number in code rather than a CSS value. Under `prefers-reduced-motion` every transition is shortened to 0.01ms rather than zero, so a `transitionend` still fires, and the drag motions are switched off through dnd-kit (see "Keep standard scrollbars and reduced-motion detection").
+Obsidian documents no durations or curves; its `--anim-*` variables are not on the reference pages. Folding the two durations into one was considered and not done: it would speed up the card lift and the column slide, and nothing reported them as wrong. The drop animation in `src/ui/BoardDragOverlay.tsx` is dnd-kit's, set in code: it copies the curve, which `test/themeGeometry.test.ts` holds equal to the stylesheet's, and runs 200ms, a third duration, set there because dnd-kit takes a number in code rather than a CSS value. Under `prefers-reduced-motion` every transition is shortened to 0.01ms rather than zero, so a `transitionend` still fires, and the drag motions are switched off through dnd-kit (see "Keep standard scrollbars and reduced-motion detection").
 
 **What would change this:** Obsidian documenting a motion scale, or a live report that one of the durations reads wrong.
 
@@ -635,7 +635,7 @@ Three things went with the hand-drawn bar. It no longer turns green when every s
 
 **Decided 2026-09-30 (#109). A vault event on a path the plugin wrote less than 2.5 seconds ago does not reload the board.**
 
-`markWrite` in `src/obsidian/vaultRepo.ts` stamps each path the repository writes into `recentWrites`, and `onChange` drops a `modify`, `create`, `delete` or `rename` on that path inside the window, because the write reloads the board itself. Obsidian's vault events carry the file and nothing about who changed it, so time is the only signal there is. The metadata cache's `changed` event on such a path still reloads the board, so an outside edit that lands inside the window arrives through the cache instead of being lost. `onFileOp` is left unfiltered on purpose: following a rename or delete is idempotent, and filtering it could only swallow a real one that lands inside the window.
+`markWrite` in `src/obsidian/noteWriter.ts` stamps each path the repository writes into `recentWrites`, and `onChange` (`watchVault` in `src/obsidian/vaultEvents.ts`) drops a `modify`, `create`, `delete` or `rename` on that path inside the window, because the write reloads the board itself. Obsidian's vault events carry the file and nothing about who changed it, so time is the only signal there is. The metadata cache's `changed` event on such a path still reloads the board, so an outside edit that lands inside the window arrives through the cache instead of being lost. `onFileOp` is left unfiltered on purpose: following a rename or delete is idempotent, and filtering it could only swallow a real one that lands inside the window.
 
 One outside change is still missed: a delete. Deleting a note raises no `changed`, and `onFileOp` only moves or clears the selected card, so a card someone else deletes within 2.5 seconds of a board write stays on the board until the next reload. It takes another actor deleting the very card the board just wrote, within that window, so it is recorded rather than chased.
 
@@ -651,7 +651,7 @@ Obsidian's `CachedMetadata` has `headings`, `sections` and `listItems`, which wo
 
 ## New names are judged the way Obsidian judges them
 
-**Decided 2026-09-30 (#109, after #78). Every new note or folder name goes through `pathTaken` in `src/obsidian/pathTaken.ts`: `uniqueNotePath` and the exported `cardFolderFor` in `src/obsidian/boardNote.ts`, and `uniquePath` in `src/obsidian/vaultRepo.ts`.**
+**Decided 2026-09-30 (#109, after #78). Every new note or folder name goes through `pathTaken` in `src/obsidian/pathTaken.ts`: `uniqueNotePath` and the exported `cardFolderFor` in `src/obsidian/boardNote.ts`; the card repository's `uniquePath` in `src/obsidian/vaultRepo.ts` names cards through `uniqueNotePath` too.**
 
 `pathTaken` follows `Vault.getAvailablePath`: a name is taken if any vault path matches it ignoring case, on every platform, Linux included, so a vault synced to macOS or Windows never holds two names for one file. A rename leaves its own file out, so a change of case alone is not a collision. Measured on Obsidian 1.13.7 on Linux: `adapter.insensitive` is `false`, yet `getAvailablePath('basic/Cards/plan the launch', 'md')` returns `plan the launch 1.md` while `Plan the launch.md` exists. The rule is copied because `getAvailablePath` is not in `obsidian.d.ts`, nor is its case-insensitive lookup (see "A card folder that matches only by letter case is used when it is the only one"), and the one documented allocator, `getAvailablePathForAttachment`, resolves against the attachment folder.
 
@@ -662,26 +662,26 @@ Obsidian's `CachedMetadata` has `headings`, `sections` and `listItems`, which wo
 **Decided 2026-09-30 (#109). These pieces look like re-implementations of something Obsidian has, and are not, or look hand-built and are already Obsidian's.**
 
 - **Drag and drop** (`@dnd-kit` in `src/ui/Board.tsx`, `Column.tsx` and `CardItem.tsx`): Obsidian's drag manager is not in `obsidian.d.ts`.
-- **The due-date field** (`<input type="date">` in `src/ui/CardDetail.tsx`): the API has no date component.
-- **Board panning** (`src/ui/Board.tsx`, the `boardPan` setting): the host has no panning facility.
+- **The due-date field** (`<input type="date">` in `src/ui/CardFields.tsx`): the API has no date component.
+- **Board panning** (`src/ui/boardPan.ts`, the `boardPan` setting): the host has no panning facility.
 - **The `/` shortcut's check for a field being typed in** (`bindSearchShortcut` in `src/view.tsx`, its handler in `src/ui/App.tsx`): a `Scope` knows nothing of editable targets and stops at the first match whatever the handler returns, so the handler declines the key itself, and the key is registered only while there is a search box to focus.
 - **The day-change check** (`RECHECK_MS` in `src/ui/useToday.ts`, once a minute): Obsidian has no "day changed" event.
 - **The filter grammar** (`parseFilter` in `src/model/filter.ts`): `prepareSimpleSearch` and `prepareFuzzySearch` match text and know nothing of `due:`, lanes or the board's other tokens.
 - **The `## History` lines** (`src/model/history.ts`): a log of what happened to the card, kept in its note, not an undo stack.
 - **`sanitizeFilename`** (`src/model/cardTitle.ts`): Obsidian exports no filename sanitiser.
-- **`.` and `..` in `card-folder`** (`cardFolderCandidates` and `resolveSegments` in `src/model/board.ts`, `relativeToFolder` in `src/model/pathOps.ts`): `normalizePath` tidies separators and leaves those segments alone.
-- **The property names in use** (`propertyNamesInUse` in `src/obsidian/vaultRepo.ts`, a walk over the frontmatter cache): `getAllPropertyInfos` is not in `obsidian.d.ts`.
+- **`.` and `..` in `card-folder`** (`cardFolderCandidates` and `resolveSegments` in `src/model/cardFolder.ts`, `relativeToFolder` in `src/model/pathOps.ts`): `normalizePath` tidies separators and leaves those segments alone.
+- **The property names in use** (`collectPropertyNames` in `src/obsidian/propertyNames.ts`, a walk over the frontmatter cache): `getAllPropertyInfos` is not in `obsidian.d.ts`.
 - **The settings write chain** (`pendingWrite` in `src/main.ts`): `saveData` does not serialise calls, and two in flight can land on disk in either order.
 - **The agent-access queues** (the `turn` chain in `createServer`, `src/obsidian/mcpHttpServer.ts`, and `enqueue` in `src/obsidian/mcpService.ts` for starting and stopping the server): Node's server takes requests concurrently, two board writes must never compute against the same snapshot, and the API has no async queue.
 - **`onChange` and `onFileOp` on the repository port** (`src/model/repo.ts`): a thin layer over `vault.on`, because an `EventRef` cannot cross into the model.
-- **`navigator.clipboard` and `crypto.getRandomValues`** (`src/main.ts` and `src/ui/App.tsx`; `newMcpToken` in `src/obsidian/mcpService.ts`): the API has no helper for either.
+- **`navigator.clipboard` and `crypto.getRandomValues`** (`src/main.ts` and `src/ui/cardActions.ts`; `newMcpToken` in `src/obsidian/mcpService.ts`): the API has no helper for either.
 - **No translations**: `getLanguage()` tells a plugin the app's language, but Obsidian has no string catalogue or loader for plugins.
 - **The `.theme-light` override** (`src/theme/tokens.css`, the only place it is used): a host class, and still inside "Folia uses only what Obsidian documents", because the developer docs' "Build a theme" page tells themes to define the documented variables under `.theme-dark` or `.theme-light`. The scheme classes are how those variables are scoped, and the board's own scheme-dependent values follow them the same way.
 - **Thin scrollbars and reduced motion**: see "Keep standard scrollbars and reduced-motion detection".
 - **Stacking inside the leaf**: see "Stacking inside the board is plain numbers".
-- **Inline `style=` values** (`src/ui/Board.tsx`, `Column.tsx`, `CardItem.tsx` and `CardDetail.tsx`): runtime data such as dnd-kit's transforms, a column's or context's colour and a measured height, not design.
+- **Inline `style=` values** (`src/ui/BoardDragOverlay.tsx`, `Column.tsx`, `CardItem.tsx` and `CardDetail.tsx`): runtime data such as dnd-kit's transforms, a column's or context's colour and a measured height, not design.
 - **`var(--color-${name})` for column colours** (`src/ui/columnColors.ts`): these are Obsidian's documented palette variables, picked by name.
 - **The inline status lines**: see "The board's inline status lines stay its own".
-- **Already native, only hand-built looking**: `renderMarkdown` in `src/obsidian/vaultRepo.ts` renders through `MarkdownRenderer` with a `Component` it loads and unloads, React mounts on the view's `contentEl`, the `/` shortcut is registered on the view's own `Scope`, and `refreshViews` in `src/main.ts` walks `getLeavesOfType`.
+- **Already native, only hand-built looking**: `renderMarkdown` in `src/obsidian/markdownRender.ts` renders through `MarkdownRenderer` with a `Component` it loads and unloads, React mounts on the view's `contentEl`, the `/` shortcut is registered on the view's own `Scope`, and `refreshViews` in `src/main.ts` walks `getLeavesOfType`.
 
 **What would change this:** the API gaining the piece a line says is missing, such as a typed drag manager, a date component, a day-changed event, a filename sanitiser, a `normalizePath` that resolves segments, a property registry or a translation API. That line then moves to the host, or earns its own entry if it stays.
