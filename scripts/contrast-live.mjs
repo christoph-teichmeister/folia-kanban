@@ -14,9 +14,11 @@
 // listed but not counted. docs/decisions.md, "Readable text beats the host's exact colour", has the
 // method. `--verbose` also lists every node that passed.
 //
-// Exits non-zero on any failure except two documented exceptions, each printed as such:
-// - in the light theme, an internal link Obsidian rendered into the dialog's description or
-//   a comment (the same section of docs/decisions.md);
+// Exits non-zero on any failure except the documented exceptions, each printed as such:
+// - Obsidian's own colours in the Markdown it rendered into the dialog's description or a comment,
+//   each only in the theme and down to the ratio it was measured at (the same section of
+//   docs/decisions.md): an internal link in light, a highlight in dark, and code-block token
+//   colours in light;
 // - text in a column the board note fades, while it is faded ("A column the board note fades").
 //   Each faded column is then measured again at its hover opacity, and that counts.
 //
@@ -31,8 +33,8 @@ import { chromium } from "playwright-core";
 const BOARD = "feature-showcase/Showcase Board.md";
 // Lets theme and panel transitions finish, so axe reads the final colours rather than a blend.
 const SETTLE_MS = 1000;
-const RENDERED_INTERNAL_LINK =
-  ":is(.folia-desc-rendered, .folia-comment-text).markdown-rendered a.internal-link";
+const RENDERED_MARKDOWN = ".folia-desc-rendered, .folia-comment-text";
+const RENDERED_INTERNAL_LINK = `:is(${RENDERED_MARKDOWN}) a.internal-link`;
 const HOST_EXCEPTION =
   'documented host exception (see docs/decisions.md, "Readable text beats the host\'s exact colour")';
 const THEMES = [
@@ -152,7 +154,7 @@ async function measure(scope) {
   // Nothing under the pointer, so no hover colour is measured as the resting one.
   await page.mouse.move(0, 0);
   return page.evaluate(
-    async ({ RENDERED_INTERNAL_LINK, scope }) => {
+    async ({ RENDERED_MARKDOWN, RENDERED_INTERNAL_LINK, scope }) => {
       const modal = document.querySelector(".folia-detail-modal");
       if (scope === "board" && modal) throw new Error("the detail dialog is open over the board");
       if (scope === "detail" && !modal) throw new Error("the detail dialog is not open");
@@ -180,6 +182,47 @@ async function measure(scope) {
           .slice(0, 3)
           .map((v) => Math.round(v).toString(16).padStart(2, "0"))
           .join("");
+      const same = (a, b) => rgba(a).join() === rgba(b).join();
+      // Which of Obsidian's own colour pairs this rendered-Markdown text is drawn in, if any, and
+      // only while it is drawn in exactly those live variables: a highlight's text and fill, or a
+      // code block's token colour on the code background.
+      const CODE_COLOURS = [
+        "normal",
+        "comment",
+        "function",
+        "important",
+        "keyword",
+        "operator",
+        "property",
+        "punctuation",
+        "string",
+        "tag",
+        "value",
+      ].map((name) => `--code-${name}`);
+      const hostPair = (el) => {
+        const style = getComputedStyle(el);
+        const mark = el.closest(`:is(${RENDERED_MARKDOWN}) mark`);
+        if (mark) {
+          const fill = getComputedStyle(mark);
+          return {
+            kind: "highlight",
+            fg: hex(rgba(style.getPropertyValue("--text-normal"))),
+            exact: same(fill.backgroundColor, fill.getPropertyValue("--text-highlight-bg")),
+          };
+        }
+        const pre = el.closest(`:is(${RENDERED_MARKDOWN}) pre`);
+        if (pre) {
+          const block = getComputedStyle(pre);
+          const background = block.getPropertyValue("--code-background");
+          return {
+            kind: "code",
+            fg: CODE_COLOURS.map((v) => hex(rgba(style.getPropertyValue(v)))),
+            bg: hex(rgba(background)),
+            exact: same(block.backgroundColor, background),
+          };
+        }
+        return null;
+      };
       const frames = () =>
         new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const probe = document.head.appendChild(document.createElement("style"));
@@ -352,7 +395,7 @@ async function measure(scope) {
       // A column the board note fades (`opacity` below 1) is exempt only while it is faded: not
       // hovered and not holding focus. Its revealed state is measured separately, and counts.
       const isFaded = (el) => {
-        const column = el.closest(".folia-column.is-faded");
+        const column = el.closest(".folia-column.folia-is-faded");
         return Boolean(
           column &&
           Number(getComputedStyle(column).opacity) < 1 &&
@@ -368,11 +411,12 @@ async function measure(scope) {
           const n = {
             target: node.target.join(" "),
             text: el?.textContent?.trim().slice(0, 40),
-            folia: Boolean(el?.closest(".folia-scope") && !el.closest(".markdown-rendered")),
+            folia: Boolean(el?.closest(".folia-scope") && !el.closest(RENDERED_MARKDOWN)),
             renderedLink: Boolean(el?.matches(RENDERED_INTERNAL_LINK)),
             hostLinkColor: el
               ? hex(rgba(getComputedStyle(el).getPropertyValue("--link-color")))
               : null,
+            hostPair: el ? hostPair(el) : null,
             faded: !revealed && Boolean(el && isFaded(el)),
             reason: node.any[0]?.message,
           };
@@ -395,7 +439,7 @@ async function measure(scope) {
         const revealed = [];
         let revealedChecked = 0;
         for (const column of include.flatMap((root) => [
-          ...root.querySelectorAll(".folia-column.is-faded"),
+          ...root.querySelectorAll(".folia-column.folia-is-faded"),
         ])) {
           const hoverOpacity = getComputedStyle(column).getPropertyValue(
             "--folia-col-hover-opacity",
@@ -418,7 +462,7 @@ async function measure(scope) {
         probe.remove();
       }
     },
-    { RENDERED_INTERNAL_LINK, scope },
+    { RENDERED_MARKDOWN, RENDERED_INTERNAL_LINK, scope },
   );
 }
 
@@ -451,14 +495,27 @@ try {
 const FADED_EXCEPTION =
   'documented faded-column exception (see docs/decisions.md, "A column the board note fades")';
 const fails = (n) => (n.axe ? true : n.pixels.unmeasured || n.pixels.ratio < n.pixels.required);
-// The host exception is only as wide as what was measured: Obsidian's own link colour, drawn
-// unchanged, no worse than the 4.25:1 it measured on the detail dialog's #ffffff.
+// Each host exception is only as wide as what was measured, in the one theme it was measured in,
+// with Obsidian's own colours drawn unchanged and no worse than the ratio found then: the link at
+// 4.25:1 on the detail dialog's #ffffff, the highlight at 4.15:1, the code tokens at 1.99:1.
 const HOST_EXCEPTION_FLOOR = 4.2;
-const isHostException = (row, n) =>
-  row.theme === "light" &&
-  n.renderedLink &&
-  n.axe?.fg === n.hostLinkColor &&
-  n.axe.ratio >= HOST_EXCEPTION_FLOOR;
+const HIGHLIGHT_FLOOR = 4.1;
+const CODE_TOKEN_FLOOR = 1.9;
+const isHostException = (row, n) => {
+  const pair = n.hostPair;
+  if (row.theme === "light" && n.renderedLink)
+    return n.axe?.fg === n.hostLinkColor && n.axe.ratio >= HOST_EXCEPTION_FLOOR;
+  if (row.theme === "dark" && pair?.kind === "highlight")
+    return pair.exact && n.axe?.fg === pair.fg && n.axe.ratio >= HIGHLIGHT_FLOOR;
+  if (row.theme === "light" && pair?.kind === "code")
+    return (
+      pair.exact &&
+      pair.fg.includes(n.axe?.fg) &&
+      n.axe.bg === pair.bg &&
+      n.axe.ratio >= CODE_TOKEN_FLOOR
+    );
+  return false;
+};
 const exception = (row, n) =>
   isHostException(row, n) ? HOST_EXCEPTION : n.faded ? FADED_EXCEPTION : null;
 const describe = (n) =>
