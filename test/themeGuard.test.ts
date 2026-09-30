@@ -477,3 +477,20 @@ describe("theme button contract", () => {
     reject(`Owned button signal ${name} must retain`);
   });
 });
+
+describe("theme guard forced-colours focus", () => {
+  it("rejects a focus rule that removes the outline", () => {
+    edit("src/theme/base.css", (s) => s + "\n.folia-new-field:focus {\n  outline: none;\n}\n");
+    reject("`.folia-new-field:focus` removes the outline on focus");
+  });
+
+  it("rejects an exemption whose rule no longer removes the outline", () => {
+    edit("src/theme/column-menu.css", (s) =>
+      s.replace(
+        ".folia-menu-field input:focus {\n  outline: none;",
+        ".folia-menu-field input:focus {",
+      ),
+    );
+    reject("exempts `.folia-menu-field input:focus`, which no longer removes an outline");
+  });
+});

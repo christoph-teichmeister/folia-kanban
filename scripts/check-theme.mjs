@@ -12,6 +12,7 @@
 //   E  an owned token whose value is already a documented default must alias that variable
 //   F  the eight column colour names match src/ui/columnColors.ts, and each is one Obsidian has
 //   G  JSX buttons have scoped resting faces; inherited raised shadows are explicit exceptions
+//   H  no rule removes the outline on :focus; a transparent one survives forced-colours mode
 //
 // What it deliberately does not police, so the gaps are chosen rather than discovered:
 //
@@ -28,11 +29,13 @@
 //     exempt — `filter: brightness(1.06)` is a design value and has a token.
 //   - The properties in UNITLESS_OK, whose numbers are counts the layout engine reads rather than
 //     sizes anyone chose, and the multipliers 0, 1, -1 and 2 inside a math function.
+//   - For rule H, an outline removed inside another at-rule, by `outline-width: 0`, or on
+//     `:focus-within`.
 //
 // Run: pnpm theme:check
 
 import { readFile, readdir } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, join, relative } from "node:path";
 import process from "node:process";
 import postcss from "postcss";
 import { checkButtons } from "./theme-buttons.mjs";
@@ -943,6 +946,53 @@ for (const [theme, declarations] of [[null, declared], ...themed]) {
 }
 
 await checkButtons(componentRoots, fail);
+
+// ------------------------------------------------------------------ rule H
+// A field that hides its outline on focus signals focus with its border and `--folia-ring`, and
+// forced-colours mode drops every box-shadow and repaints every border in one system colour. A
+// transparent outline draws nothing until that mode repaints it in a system colour, which
+// `outline: none` never is, so none is refused on a focus selector. The declaration is what is
+// read, not whether it wins the cascade.
+const FOCUS_OUTLINE_EXEMPT = new Map([
+  [".folia-search input:focus", "toolbar.css outlines the .folia-search:focus-within wrapper"],
+  [
+    ".folia-search input:focus-visible",
+    "toolbar.css outlines the .folia-search:focus-within wrapper",
+  ],
+  [".folia-menu-field input:focus", "leaves with the column menu's inline field (#89)"],
+  [".folia-field input:focus", "leaves with the column config dialog (#87)"],
+]);
+const FOCUS = /:focus(?:-visible)?(?![\w-])/;
+const noOutline = (rule) =>
+  rule.nodes.some(
+    (n) => n.type === "decl" && /^outline(-style)?$/i.test(n.prop) && /^(none|0)$/i.test(n.value),
+  );
+const stripped = new Map();
+for (const root of componentRoots) {
+  root.walkRules((rule) => {
+    if (rule.parent.type !== "root" || !noOutline(rule)) return;
+    for (const s of rule.selectors.map((s) => s.replace(/\s+/g, " ").trim())) {
+      if (FOCUS.test(s.replace(/:not\([^)]*\)/g, ""))) {
+        stripped.set(s, `${relative(".", root.source.input.from)}:${rule.source.start.line}`);
+      }
+    }
+  });
+}
+for (const [selector, where] of stripped) {
+  if (FOCUS_OUTLINE_EXEMPT.has(selector)) continue;
+  fail(
+    where,
+    `\`${selector}\` removes the outline on focus. Forced-colours mode drops the box-shadow and flattens the border that replace it, so the field would show no focus at all. Write \`outline: var(--folia-focus-ring-w) solid transparent\` instead: it draws nothing itself and is repainted in a system colour when colours are forced.`,
+  );
+}
+for (const selector of FOCUS_OUTLINE_EXEMPT.keys()) {
+  if (!stripped.has(selector)) {
+    fail(
+      "scripts/check-theme.mjs",
+      `rule H exempts \`${selector}\`, which no longer removes an outline on focus. Drop the exemption.`,
+    );
+  }
+}
 
 // ------------------------------------------------------------------------ report
 if (errors.length) {

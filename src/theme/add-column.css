@@ -36,7 +36,7 @@
   color: var(--text-normal);
 }
 .folia-scope .folia-add-column.is-editing input:focus {
-  outline: none;
+  outline: var(--folia-focus-ring-w) solid transparent;
   border-color: var(--folia-accent);
   box-shadow: var(--folia-ring);
 }

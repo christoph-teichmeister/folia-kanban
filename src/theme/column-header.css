@@ -40,6 +40,6 @@
    border deliberately does not: it is this column's own colour, and swapping it for the host's grey
    focus border would drop the identity cue at the one moment the user is renaming that column. */
 .folia-column-title-input:focus {
-  outline: none;
+  outline: var(--folia-focus-ring-w) solid transparent;
   box-shadow: var(--folia-ring);
 }

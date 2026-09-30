@@ -50,6 +50,10 @@ The five elevation shadows and the scrim use lighter light-mode values. Base val
 
 The component cycle check is conservative: it checks possible overlap with a token scope rather than evaluating selectors and the CSS cascade. A descendant inherits already-computed custom-property values, so an apparent dependency loop spanning ancestors and descendants is not itself a browser cycle. The guard still rejects an override that would close a loop if placed on the scope element. It is not a proof covering every combination of component selectors.
 
+## Focus in forced-colours mode
+
+A text field that hides its outline on `:focus` signals focus with its border and `--folia-ring`, and forced-colours mode (Windows High Contrast) drops every box-shadow and repaints every border in one system colour. So such a field writes `outline: var(--folia-focus-ring-w) solid transparent` rather than `none`: it draws nothing itself and is repainted in a system colour when colours are forced. `theme:check` refuses `outline: none` on a focus selector. It reads declarations, not the cascade: `.folia-desc` and `.folia-comment-edit` tie with `.folia-scope :focus-visible`, which loads later and draws the accent outline on them in every mode. The exemptions are the toolbar search field, which outlines its wrapper under `@media (forced-colors: active)` instead, and the column menu and column config fields, which show no focus in forced colours until #89 and #87 remove them.
+
 ## Button faces and specificity
 
 Button rules use `.folia-scope .folia-btn` and the same scope for their variants and states. The existing board and portal scopes provide enough specificity to beat the host plain-button rule without repeating a class. Keep base rules before their refinements; disabled hover exclusions use `:where()` so they do not outweigh selected states.

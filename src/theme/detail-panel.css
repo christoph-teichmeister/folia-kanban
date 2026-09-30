@@ -218,7 +218,7 @@
   border-color: var(--folia-border);
 }
 .folia-scope .folia-prop-input:focus {
-  outline: none;
+  outline: var(--folia-focus-ring-w) solid transparent;
   border-color: var(--folia-accent);
   box-shadow: var(--folia-ring);
 }
@@ -613,7 +613,7 @@
   padding: var(--folia-space-sm) var(--folia-space-md);
 }
 .folia-comment-edit:focus {
-  outline: none;
+  outline: var(--folia-focus-ring-w) solid transparent;
   border-color: var(--folia-accent);
   box-shadow: var(--folia-ring);
 }
