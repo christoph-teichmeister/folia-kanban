@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.6.0](https://github.com/stavarengo/folia-kanban/compare/0.5.0...0.6.0) (2026-09-30)
+
+### ⚠ BREAKING CHANGES
+
+* anything bound to a Folia Kanban command id stops working and has to be set up again: hotkeys, pinned command-palette entries, links that run a command, and other plugins' macros. folia-kanban:folia-open-kanban-board is now folia-kanban:open-board, folia-kanban:folia-create-board is now folia-kanban:create-board, and folia-kanban:folia-convert-note-to-board is now folia-kanban:convert-note-to-board.
+
+### Features
+
+* confirm destructive actions in Obsidian's own dialogs ([#121](https://github.com/stavarengo/folia-kanban/issues/121)) ([6ed9c06](https://github.com/stavarengo/folia-kanban/commit/6ed9c0633bbd987080a8e3f802018bd092dcff09)), closes [#87](https://github.com/stavarengo/folia-kanban/issues/87) [#20](https://github.com/stavarengo/folia-kanban/issues/20), references [#18](https://github.com/stavarengo/folia-kanban/issues/18)
+* draw the board's buttons, dropdowns and progress bar with Obsidian's own components ([#130](https://github.com/stavarengo/folia-kanban/issues/130)) ([b557a0e](https://github.com/stavarengo/folia-kanban/commit/b557a0ebf76177c1137ec2c05f2d25a6a52c2db2)), closes [#103](https://github.com/stavarengo/folia-kanban/issues/103)
+* show the card, todo and column menus as Obsidian's own menu ([#126](https://github.com/stavarengo/folia-kanban/issues/126)) ([558066b](https://github.com/stavarengo/folia-kanban/commit/558066be45d0f163f6d46bb54b893354fb4bc240))
+* use Obsidian's fuzzy type-ahead in every suggesting field ([409fe1c](https://github.com/stavarengo/folia-kanban/commit/409fe1c4536ef82004be6ec9fababce2b9425cdd)), closes [#93](https://github.com/stavarengo/folia-kanban/issues/93) [#16](https://github.com/stavarengo/folia-kanban/issues/16), references [#84](https://github.com/stavarengo/folia-kanban/issues/84)
+
+### Bug Fixes
+
+* card tags now match Obsidian's own reading of frontmatter tags ([1d627c3](https://github.com/stavarengo/folia-kanban/commit/1d627c30a75ed6372d382de4c6ad4375e349bbca))
+* drop the plugin prefix from command ids ([9d3f8f9](https://github.com/stavarengo/folia-kanban/commit/9d3f8f9be2b38c28b25f0843d8c53bb7bf2bb29d))
+* find a card folder whose letter case differs ([535af3e](https://github.com/stavarengo/folia-kanban/commit/535af3eb3d02eb1660b26b75c29d7a1da9cc4447))
+* honor vault link paths for cards ([8e2a92a](https://github.com/stavarengo/folia-kanban/commit/8e2a92a53ea88999482b825511ce0ea72d5a2bec))
+* hovering a link in the card detail panel no longer shows a page preview ([#124](https://github.com/stavarengo/folia-kanban/issues/124)) ([8b3df59](https://github.com/stavarengo/folia-kanban/commit/8b3df59c9dad62852a86dee46174181e11293c69)), closes [#101](https://github.com/stavarengo/folia-kanban/issues/101) [#81](https://github.com/stavarengo/folia-kanban/issues/81)
+* keep a ../ card folder relative in the case notice ([98fac9d](https://github.com/stavarengo/folia-kanban/commit/98fac9dc9c5c009f598fda81e3b74492f8d4f237))
+* keep text-field focus visible in forced-colours mode ([d106c9f](https://github.com/stavarengo/folia-kanban/commit/d106c9ffa9822066fa1aba386c52543d48825de1)), closes [#80](https://github.com/stavarengo/folia-kanban/issues/80), references [#87](https://github.com/stavarengo/folia-kanban/issues/87) [#89](https://github.com/stavarengo/folia-kanban/issues/89)
+* keep the board note's folder exact when matching case ([763b24d](https://github.com/stavarengo/folia-kanban/commit/763b24d77d15dea9faae5c8cecaf2559188fb616))
+* let a file block only its own card-folder reading ([8743577](https://github.com/stavarengo/folia-kanban/commit/8743577762cac441a1d512139546393f191838d2))
+* let an exact file block a case-only folder match ([7a3808d](https://github.com/stavarengo/folia-kanban/commit/7a3808d7c3a47d9f02a07dd45137eeee218fb808))
+* name the real "Open board" command in the empty board view ([f639fe7](https://github.com/stavarengo/folia-kanban/commit/f639fe7abb69b2c12615ace667dd97103135462e)), closes [#83](https://github.com/stavarengo/folia-kanban/issues/83)
+* open boards where the modifier keys say ([4c60515](https://github.com/stavarengo/folia-kanban/commit/4c60515947578f716a31143c1f1405c2d40d7e4f))
+* open the note a link points at when it is clicked in the card detail panel ([65e1d35](https://github.com/stavarengo/folia-kanban/commit/65e1d3509738dd1733c2f7c483102407365b053a)), closes [#82](https://github.com/stavarengo/folia-kanban/issues/82)
+* show the board's tooltips through Obsidian instead of the browser ([#132](https://github.com/stavarengo/folia-kanban/issues/132)) ([5f6c2d2](https://github.com/stavarengo/folia-kanban/commit/5f6c2d2b62fc4ea9276ae38ca9f4ce0c109497ff)), closes [#105](https://github.com/stavarengo/folia-kanban/issues/105)
+* stop reading and wearing Obsidian class names the developer docs do not publish ([#122](https://github.com/stavarengo/folia-kanban/issues/122)) ([05ef3df](https://github.com/stavarengo/folia-kanban/commit/05ef3dfd59f9d2bd9722163a972c7f3b72696a53)), closes [#92](https://github.com/stavarengo/folia-kanban/issues/92), references [#101](https://github.com/stavarengo/folia-kanban/issues/101)
+
+### Refactoring
+
+* draw the board's icons with Obsidian's own setIcon ([#131](https://github.com/stavarengo/folia-kanban/issues/131)) ([e395be4](https://github.com/stavarengo/folia-kanban/commit/e395be401854aec18800fd7e6bf7dcebd64f0091)), closes [#104](https://github.com/stavarengo/folia-kanban/issues/104)
+* let the adapter hand the model Obsidian's reading of frontmatter tags ([36fd558](https://github.com/stavarengo/folia-kanban/commit/36fd5585509182d12a569ee93880bb04eaeb3068))
+* read every link's note name through one split that matches parseLinktext ([4615997](https://github.com/stavarengo/folia-kanban/commit/46159975c56f25e3f22d0e556d2954007cedefc1))
+* type the board's setState result as ViewStateResult ([9dc213f](https://github.com/stavarengo/folia-kanban/commit/9dc213f407542dbc3bc65ee6f40099f969b65b3b))
+* use Obsidian vault helpers in adapter ([473fa6c](https://github.com/stavarengo/folia-kanban/commit/473fa6c5e7ecace1a73e680e2ac224fc031f1690))
+
+### Documentation
+
+* record why agent access stays on HTTP rather than the CLI handler ([#123](https://github.com/stavarengo/folia-kanban/issues/123)) ([fcd9872](https://github.com/stavarengo/folia-kanban/commit/fcd9872b519ec1f07e24bd47fb4dfe7786eee38d)), closes [#98](https://github.com/stavarengo/folia-kanban/issues/98)
+* record why area keeps its own reading and dates keep their own code ([9eea47a](https://github.com/stavarengo/folia-kanban/commit/9eea47ab86877829d21492a827fa4d83d5a0b697)), closes [#35](https://github.com/stavarengo/folia-kanban/issues/35)
+* record why the board-setup menu rows stay unsectioned ([0e4ecf7](https://github.com/stavarengo/folia-kanban/commit/0e4ecf71e78d84f83f3316a15537f95d6222a6d1))
+* say what actually depends on area being a tag ([1de2dcd](https://github.com/stavarengo/folia-kanban/commit/1de2dcdee0dfe724916a0f3216ee57cbe41781ae))
+* say why cards outside the adapter read tags as written ([eefeaf3](https://github.com/stavarengo/folia-kanban/commit/eefeaf3491a73f799f0f0afb6bfd97e291be9e6b))
+
+### Tests
+
+* pin tag, link and due-date readings before moving them onto Obsidian's helpers ([1f9f0c3](https://github.com/stavarengo/folia-kanban/commit/1f9f0c359276453e9140fe14194e0df32234dc60))
+
+### Build & Tooling
+
+* import Node's http statically and drop waiver 0005 ([#125](https://github.com/stavarengo/folia-kanban/issues/125)) ([82711a5](https://github.com/stavarengo/folia-kanban/commit/82711a5550e2b6de886e534b49b9c389c79487d5)), closes [#102](https://github.com/stavarengo/folia-kanban/issues/102), references [#102](https://github.com/stavarengo/folia-kanban/issues/102) [#102](https://github.com/stavarengo/folia-kanban/issues/102)
+
 ## [0.5.0](https://github.com/stavarengo/folia-kanban/compare/0.4.2...0.5.0) (2026-09-29)
 
 ### ⚠ BREAKING CHANGES
