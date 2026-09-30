@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.6.1](https://github.com/stavarengo/folia-kanban/compare/0.6.0...0.6.1) (2026-09-30)
+
+### Bug Fixes
+
+* drop stray bracket in AGENTS.md container check ([6093739](https://github.com/stavarengo/folia-kanban/commit/6093739dec17f54104421478af565798ec53156e))
+* size small print with Obsidian's --font-smaller and --font-smallest ([65cefe8](https://github.com/stavarengo/folia-kanban/commit/65cefe878d9f8b5efc64129aae80b551aaa499f8))
+
+### Refactoring
+
+* read Obsidian's documented CSS variables directly ([526d910](https://github.com/stavarengo/folia-kanban/commit/526d910d322b3044d05bd457f0fb3047f67a1d68))
+* split the files waiver 0004 exempted from the size and complexity limits ([#135](https://github.com/stavarengo/folia-kanban/issues/135)) ([51feadd](https://github.com/stavarengo/folia-kanban/commit/51feadd2fd74da8b928f1d69b8375c904c0df55f)), closes [#110](https://github.com/stavarengo/folia-kanban/issues/110) [#34](https://github.com/stavarengo/folia-kanban/issues/34)
+
+### Documentation
+
+* drop the forced-colors query the mobile decision still counted ([0399c36](https://github.com/stavarengo/folia-kanban/commit/0399c36fc47060d124e8e44b4e8d83a85f0c656d))
+* record why the owned echo guard, text parsers, path rule and other pieces stay owned ([149a08a](https://github.com/stavarengo/folia-kanban/commit/149a08a79d0836c66c93526137e9a5f007969f13))
+* remove a leftover conflict marker from the decisions log ([2e759c7](https://github.com/stavarengo/folia-kanban/commit/2e759c7faf1374d41b9285430d355d4888304b2b))
+
+### Styling
+
+* show inline code in card descriptions and comments in the theme's code font, not the one chosen in Settings ([f936606](https://github.com/stavarengo/folia-kanban/commit/f936606287440210961b8a3dd3971ff67be16611))
+
 ## [0.6.0](https://github.com/stavarengo/folia-kanban/compare/0.5.0...0.6.0) (2026-09-30)
 
 ### ⚠ BREAKING CHANGES
