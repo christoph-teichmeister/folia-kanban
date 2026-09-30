@@ -216,6 +216,15 @@ export interface CardRepository {
   renderMarkdown(el: HTMLElement, markdown: string, sourcePath: string): () => void;
 
   /**
+   * Follow a click on a link that {@link renderMarkdown} rendered, the way a click on a link
+   * anywhere else in the app is followed: the note opens where the click's modifiers ask, as in
+   * {@link openCard}. Only a link to a note is followed (see `vaultLinktext`); anything else keeps
+   * its default. `beforeOpen` runs once the click is claimed and before the note opens.
+   * Returns whether the click was claimed.
+   */
+  followLink(evt: MouseEvent, sourcePath: string, beforeOpen?: () => void): boolean;
+
+  /**
    * The frontmatter keys notes already use, read from the host's metadata index rather than by
    * parsing files here, split by whether the note lives in this board's card folder. Only the
    * adapter knows where that folder resolves to, which is why the split is made there and not by

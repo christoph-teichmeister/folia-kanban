@@ -426,3 +426,13 @@ Four shapes were built and compared live in both schemes: the button hidden on e
 The fill covers the tokens whose value a note can simply hold: `area`, `priority` (in the board's own spelling), `tag`, `assignee` (`me` through **Your name**), a literal due date and `due:today`. It leaves alone the tokens that describe a state (`is:`, `unread:`, `due:soon` and `overdue`), a place (`status:` is the column the write already names; `context:` is the subfolder a card lives in, and a new card is written straight into the card folder, which has none), an absence (`none`), and free text, which only the title can match. It does not have to decide which rules succeed: the filled card is put to the rule, and the control shows only where it would be drawn. Two values one property cannot hold at once (`area:a area:b`) therefore hide the control without a special case. Free text is the exception, set aside when the control is decided because there is no title yet: a `roadmap` lane keeps its button, and a title missing the word is refused on submit with the typed title left in the box.
 
 **What would change this:** a create form that can set any property before the note exists, which would let the add flow ask for what a state-reading rule needs rather than hide the control.
+
+## A same-note heading link in the card detail panel does not move
+
+**Decided 2026-09-30 (#82). A link in a card's description or comment opens its note like any other link in Obsidian, except a same-note `[[#Heading]]`, which does nothing.**
+
+A click is followed only when the anchor's `href` attribute names a note. An `href` with a URL scheme is left to the app, and one starting with `#` is left alone: that is how a tag, a footnote and a same-note heading all render, and nothing documented tells them apart without reading Obsidian's class names. Following the heading would also open the card's own note in another tab, at a heading the panel is already showing. `[[Note#Heading]]` renders without the leading `#`, so it opens the note at the heading.
+
+The `href` is passed on undecoded. Read live in Obsidian 1.12.7 and 1.13.7, it is the linktext exactly as the metadata cache records it (`A%20B`, `100% Done`), not a URL, and it equals `data-href`. A Markdown link arrives already decoded: `[x](A%20B.md)` renders as `A B.md`. Decoded, a link to a note named `A%20B` resolves to nothing, and a click would create a stray `A B`.
+
+**What would change this:** a documented way to tell a heading link from a tag or a footnote, or a way to scroll the card note in the panel itself. If a later Obsidian starts percent-encoding the `href`, the decode has to come back.

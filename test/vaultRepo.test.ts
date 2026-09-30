@@ -1135,6 +1135,99 @@ describe("the rest of the vault surface", () => {
     expect(app.opened).toEqual(Array(7).fill("basic/Cards/One.md"));
   });
 
+  describe("followLink", () => {
+    /** Renders `markdown`, and clicks through the adapter the way a rendered block's listener does. */
+    const rendered = async (markdown: string) => {
+      const { app, repo } = setup();
+      const el = document.createElement("div");
+      document.body.appendChild(el);
+      repo.renderMarkdown(el, markdown, "basic/Cards/One.md");
+      MarkdownRenderer.finishAll();
+      await vi.waitFor(() => expect(el.querySelector("a")).not.toBeNull());
+      const click = (target: Element, init: MouseEventInit = {}, beforeOpen?: () => void) => {
+        const evt = new MouseEvent("click", { bubbles: true, cancelable: true, ...init });
+        let claimed: boolean | undefined;
+        let prevented: boolean | undefined;
+        el.addEventListener(
+          "click",
+          (e) => {
+            claimed = repo.followLink(e, "basic/Cards/One.md", beforeOpen);
+            prevented = e.defaultPrevented;
+            // jsdom cannot navigate, and says so loudly for a link left to its default.
+            e.preventDefault();
+          },
+          { once: true },
+        );
+        target.dispatchEvent(evt);
+        return { claimed, prevented };
+      };
+      return { app, el, click };
+    };
+
+    it("opens the note a rendered link points at, where the modifiers ask", async () => {
+      const { app, el, click } = await rendered("see [[Two|the second]] for the rest");
+      const a = el.querySelector("a")!;
+
+      expect(click(a)).toEqual({ claimed: true, prevented: true });
+      expect(click(a, { ctrlKey: true })).toEqual({ claimed: true, prevented: true });
+
+      expect(app.linksOpened).toEqual([
+        { linktext: "Two", sourcePath: "basic/Cards/One.md", newLeaf: false },
+        { linktext: "Two", sourcePath: "basic/Cards/One.md", newLeaf: "tab" },
+      ]);
+      el.remove();
+    });
+
+    it("reads the link and its modifiers before handing over, then opens", async () => {
+      const { app, el, click } = await rendered("[[Two]]");
+      const a = el.querySelector("a")!;
+      const order: string[] = [];
+      click(a, { ctrlKey: true }, () => {
+        order.push(`before, ${app.linksOpened.length} opened`);
+        a.remove();
+      });
+      expect(order).toEqual(["before, 0 opened"]);
+      expect(app.linksOpened).toEqual([
+        { linktext: "Two", sourcePath: "basic/Cards/One.md", newLeaf: "tab" },
+      ]);
+      el.remove();
+    });
+
+    it("follows a click on something nested inside the link", async () => {
+      const { app, el, click } = await rendered("[[Two]]");
+      const a = el.querySelector("a")!;
+      a.innerHTML = "<code>Two</code>";
+
+      expect(click(a.firstElementChild!).claimed).toBe(true);
+      expect(app.linksOpened.map((l) => l.linktext)).toEqual(["Two"]);
+      el.remove();
+    });
+
+    it("only hands over a link an embedded note already followed", async () => {
+      const { app, el, click } = await rendered("[[Two]]");
+      const a = el.querySelector("a")!;
+      a.addEventListener("click", (e) => e.preventDefault(), { once: true });
+      let handedOver = false;
+      expect(click(a, {}, () => (handedOver = true)).claimed).toBe(true);
+      expect(handedOver).toBe(true);
+      expect(app.linksOpened).toEqual([]);
+      el.remove();
+    });
+
+    it("leaves in-note links, URLs and plain text to their default", async () => {
+      const { app, el, click } = await rendered("text [[Two]]");
+      for (const href of ["#Heading", "#tag", "https://example.com", "mailto:a@b.c"]) {
+        const a = document.createElement("a");
+        a.setAttribute("href", href);
+        el.appendChild(a);
+        expect(click(a)).toEqual({ claimed: false, prevented: false });
+      }
+      expect(click(el)).toEqual({ claimed: false, prevented: false });
+      expect(app.linksOpened).toEqual([]);
+      el.remove();
+    });
+  });
+
   it("previews a link the renderer itself produced, not one a test planted", async () => {
     const { app, repo } = setup();
     const el = document.createElement("div");

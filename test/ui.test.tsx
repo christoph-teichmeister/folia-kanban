@@ -1434,6 +1434,44 @@ describe("detail dialog", () => {
     expect(repo.opened).toEqual(["Tasks/Alpha.md"]);
   });
 
+  /** Plants an anchor in a rendered markdown block, since the fake renderer draws plain text. */
+  const plantLink = (container: Element, href: string) => {
+    const a = document.createElement("a");
+    a.setAttribute("href", href);
+    a.innerHTML = "<em>link</em>";
+    container.appendChild(a);
+    return a.firstElementChild as HTMLElement;
+  };
+
+  it("follows a link in the description after closing the dialog", async () => {
+    const { repo, user, detail, dialog } = await open();
+    const desc = detail.querySelector(".folia-desc-rendered")!;
+    await user.click(plantLink(desc, "Beta#Notes"));
+    expect(dialog.closed).toBe(true);
+    expect(repo.followed).toEqual([{ linktext: "Beta#Notes", sourcePath: "Tasks/Alpha.md" }]);
+  });
+
+  it("follows a link in a comment, resolved against the card", async () => {
+    const { repo, detail, dialog } = await open();
+    middleClick(plantLink(detail.querySelector(".folia-comment-text")!, "Beta"));
+    expect(dialog.closed).toBe(true);
+    expect(repo.followed).toEqual([{ linktext: "Beta", sourcePath: "Tasks/Alpha.md" }]);
+  });
+
+  it("leaves a tag or an external link to its default, without editing the description", async () => {
+    const { repo, user, detail, dialog } = await open();
+    const desc = detail.querySelector(".folia-desc-rendered")!;
+    // Past the panel, the default is the browser's; jsdom cannot navigate, and says so loudly.
+    const noNavigation = (e: Event) => e.preventDefault();
+    document.addEventListener("click", noNavigation);
+    await user.click(plantLink(desc, "#tag"));
+    await user.click(plantLink(desc, "https://example.com"));
+    expect(dialog.closed).toBe(false);
+    expect(repo.followed).toEqual([]);
+    expect(within(detail).queryByRole("textbox", { name: "Edit description" })).toBeNull();
+    document.removeEventListener("click", noNavigation);
+  });
+
   it("keeps one dialog from the create form to the card it creates", async () => {
     const user = userEvent.setup();
     const modals = fakeDetailModals();

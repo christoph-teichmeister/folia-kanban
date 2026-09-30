@@ -50,6 +50,21 @@ if (hasDom) {
       });
   }
 
+  // Obsidian's cross-window stand-ins for `instanceof` and `event.target`. Tests run in one
+  // window, so the plain forms are what they reduce to.
+  if (!Node.prototype.instanceOf) {
+    Node.prototype.instanceOf = function <T>(this: Node, type: new () => T): this is T {
+      return this instanceof type;
+    };
+  }
+  if (!("targetNode" in UIEvent.prototype)) {
+    Object.defineProperty(UIEvent.prototype, "targetNode", {
+      get(this: UIEvent) {
+        return this.target instanceof Node ? this.target : null;
+      },
+    });
+  }
+
   // jsdom doesn't implement the Pointer Capture API; stub it so pointer handlers that capture/release
   // (e.g. the board pan-scroll) don't throw under test.
   if (!Element.prototype.setPointerCapture) {

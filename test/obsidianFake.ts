@@ -115,9 +115,10 @@ export const MarkdownRenderer = {
         markdown,
         el,
         finish: () => {
-          // Obsidian renders `[[a wikilink]]` as an anchor carrying the link as written in
-          // `data-href`. Modelled because that anchor is what the hover-preview path reads; the
-          // rest of the markdown stays plain text, which is all any other test asks of it.
+          // Obsidian (1.13.7) renders `[[target|alias]]` as an anchor showing the alias and
+          // carrying the target, as written, in both `data-href` and `href`. Modelled because that
+          // anchor is what hover previews and link clicks read; the rest of the markdown stays
+          // plain text, which is all any other test asks of it.
           for (const part of markdown.split(/(\[\[[^\]]+\]\])/)) {
             const link = /^\[\[([^\]]+)\]\]$/.exec(part);
             if (!link?.[1]) {
@@ -125,9 +126,11 @@ export const MarkdownRenderer = {
               continue;
             }
             const a = el.ownerDocument.createElement("a");
+            const [target = "", alias] = link[1].split("|");
             a.className = "internal-link";
-            a.setAttribute("data-href", link[1]);
-            a.textContent = link[1];
+            a.setAttribute("data-href", target);
+            a.setAttribute("href", target);
+            a.textContent = alias ?? target;
             el.appendChild(a);
           }
           resolve();
@@ -565,6 +568,9 @@ export class FakeApp {
   readonly opened: string[] = [];
   /** Where each of those opens was asked to land, in `getLeaf`'s own vocabulary, same order. */
   readonly openedIn: (PaneType | boolean)[] = [];
+  /** Every link `followLink` asked the workspace to open, and where. */
+  readonly linksOpened: { linktext: string; sourcePath: string; newLeaf: PaneType | boolean }[] =
+    [];
   /** Every workspace event the adapter fired, so a test can read what it said. */
   readonly triggered: { name: string; args: unknown[] }[] = [];
   readonly workspace = {
@@ -575,6 +581,10 @@ export class FakeApp {
         return Promise.resolve();
       },
     }),
+    openLinkText: (linktext: string, sourcePath: string, newLeaf: PaneType | boolean) => {
+      this.linksOpened.push({ linktext, sourcePath, newLeaf });
+      return Promise.resolve();
+    },
     trigger: (name: string, ...args: unknown[]) => {
       this.triggered.push({ name, args });
     },

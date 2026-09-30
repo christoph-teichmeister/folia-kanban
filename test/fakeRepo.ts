@@ -4,6 +4,7 @@
 
 import type { CardRepository, PropertyNamesInUse, PropertySuggestSource } from "../src/model/repo";
 import { staleLine } from "../src/model/repo";
+import { vaultLinktext } from "../src/model/links";
 import type { FileOp } from "../src/model/pathOps";
 import type {
   Board,
@@ -465,6 +466,19 @@ export class FakeRepo implements CardRepository {
     return () => {
       if (this.attachedSuggest?.source === source) this.attachedSuggest = null;
     };
+  }
+
+  /** Every link `followLink` followed, with the note it was resolved against, in order. */
+  readonly followed: { linktext: string; sourcePath: string }[] = [];
+
+  followLink(evt: MouseEvent, sourcePath: string, beforeOpen?: () => void): boolean {
+    const target = evt.target instanceof Element ? evt.target : null;
+    const linktext = vaultLinktext(target?.closest("a")?.getAttribute("href") ?? null);
+    if (linktext === null) return false;
+    evt.preventDefault();
+    beforeOpen?.();
+    this.followed.push({ linktext, sourcePath });
+    return true;
   }
 
   renderMarkdown(el: HTMLElement, markdown: string): () => void {

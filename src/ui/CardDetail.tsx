@@ -374,6 +374,7 @@ function CommentItem({
   onSave: (v: string) => void;
   onDelete: () => void;
 }) {
+  const dialog = useContext(DetailDialogContext);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
   const commit = () => {
@@ -406,7 +407,12 @@ function CommentItem({
         />
       ) : (
         <div className="folia-comment-row">
-          <Markdown markdown={text} sourcePath={sourcePath} className="folia-comment-text" />
+          <Markdown
+            markdown={text}
+            sourcePath={sourcePath}
+            className="folia-comment-text"
+            onFollowLink={() => dialog?.close()}
+          />
           <button
             className="folia-icon-btn folia-mini"
             aria-label="Edit comment"
@@ -1774,6 +1780,7 @@ export function CardDetail({
                   markdown={body.description}
                   sourcePath={path}
                   className="folia-desc-rendered"
+                  onFollowLink={() => dialog?.close()}
                 />
                 <button
                   className="folia-icon-btn folia-mini folia-desc-edit"

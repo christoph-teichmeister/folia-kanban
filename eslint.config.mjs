@@ -77,11 +77,16 @@ export const a11yExceptions = [
     rules: { "jsx-a11y/no-noninteractive-element-interactions": "off" },
   },
   {
-    files: ["src/ui/CardDetail.tsx", "src/ui/CardItem.tsx", "src/ui/Column.tsx"],
+    files: [
+      "src/ui/CardDetail.tsx",
+      "src/ui/CardItem.tsx",
+      "src/ui/Column.tsx",
+      "src/ui/Markdown.tsx",
+    ],
     rules: { "jsx-a11y/no-static-element-interactions": "off" },
   },
   {
-    files: ["src/ui/CardDetail.tsx"],
+    files: ["src/ui/CardDetail.tsx", "src/ui/Markdown.tsx"],
     rules: { "jsx-a11y/click-events-have-key-events": "off" },
   },
 ];

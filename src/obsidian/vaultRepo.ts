@@ -35,6 +35,7 @@ import { buildBoard, claimInStep, resolveCardFolder } from "../model/board";
 import { normalizeColumns, scalarText, serializeColumns } from "../model/columns";
 import { mergePriorities, normalizePriorities, serializePriorities } from "../model/priorities";
 import { dateOnly, stamp } from "../model/dates";
+import { vaultLinktext } from "../model/links";
 import {
   SECTION,
   addSubcard as addSubcardText,
@@ -942,6 +943,27 @@ export class VaultRepository implements CardRepository, HoverParent {
     await this.app.workspace.getLeaf(Keymap.isModEvent(evt)).openFile(this.file(path));
   }
 
+  followLink(evt: MouseEvent, sourcePath: string, beforeOpen?: () => void): boolean {
+    // `instanceOf`, because a board in a pop-out window renders into that window's DOM, whose
+    // elements are not instances of this window's `Element`.
+    const target = evt.targetNode;
+    if (!target?.instanceOf(Element)) return false;
+    const linktext = vaultLinktext(target.closest("a")?.getAttribute("href") ?? null);
+    if (linktext === null) return false;
+    // A link inside an embedded note is followed by the embed, which claims the click before it
+    // gets here. Opening it again would open it twice.
+    if (evt.defaultPrevented) {
+      beforeOpen?.();
+      return true;
+    }
+    evt.preventDefault();
+    // Read before `beforeOpen`, which may take the link out of the document.
+    const newLeaf = Keymap.isModEvent(evt);
+    beforeOpen?.();
+    void this.app.workspace.openLinkText(linktext, sourcePath, newLeaf);
+    return true;
+  }
+
   /**
    * Give the container's rendered internal links the hover preview every other link in Obsidian
    * has. Page preview stays silent until the view is a registered source (`src/main.ts`) AND the
@@ -959,13 +981,9 @@ export class VaultRepository implements CardRepository, HoverParent {
     hoverListening.add(el);
     el.addEventListener("mouseover", (event: MouseEvent) => {
       // `closest`, because the pointer may be over a `<code>` or an `<em>` nested inside the
-      // anchor; `data-href` before `href`, because that is where Obsidian keeps the link as
-      // written, before it resolved it to a path.
+      // anchor; `data-href`, because that is where Obsidian keeps the link as written.
       const link = (event.target as HTMLElement | null)?.closest("a.internal-link");
       if (!(link instanceof HTMLElement)) return;
-      // `data-href` is where Obsidian's renderer keeps the link as written, before resolving it.
-      // Only that: an `href` on a rendered internal link is already resolved and percent-encoded,
-      // so falling back to it would ask Page preview to look up something nobody wrote.
       const linktext = link.getAttribute("data-href");
       const owner = hoverSources.get(el);
       if (!linktext || !owner) return;
