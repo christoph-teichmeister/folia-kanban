@@ -6,7 +6,7 @@ import { App as BoardApp, type BoardHost } from "./ui/App";
 import { openDetailModal } from "./obsidian/detailModal";
 import { VaultRepository } from "./obsidian/vaultRepo";
 import type { BoardSettings, SettingsPatch } from "./settings";
-import { VIEW_TYPE_KANBAN } from "./viewType";
+import { OPEN_BOARD_COMMAND_NAME, VIEW_TYPE_KANBAN } from "./viewType";
 
 /**
  * The board. It is a `FileView` rather than a plain `ItemView` so the leaf genuinely owns the
@@ -143,7 +143,7 @@ export class KanbanView extends FileView {
       this.root.render(
         <div className="folia-loading">
           Open a board note (any note with <code>folia-board: true</code> in its frontmatter), or
-          run the “Open Folia Kanban board” command.
+          run the “Folia Kanban: {OPEN_BOARD_COMMAND_NAME}” command.
         </div>,
       );
       return;

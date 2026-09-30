@@ -234,7 +234,7 @@ Doing it by hand still works, and it is worth knowing what the guided path write
    ```
 
 2. Put card notes (each with a `status` matching a column) in that folder.
-3. Open the board note the way you open any note — click it in the file explorer, follow a link, find it in search. It comes up as the board. (The command **“Open Folia Kanban board”** and the layout-grid ribbon icon still work, and are how you reach a board without going looking for its note.)
+3. Open the board note the way you open any note — click it in the file explorer, follow a link, find it in search. It comes up as the board. (The command **“Folia Kanban: Open board”** and the layout-grid ribbon icon still work, and are how you reach a board without going looking for its note.)
 
 The properties must be the **first** thing in the file — that is Obsidian's rule for a properties block, not ours, and a block that starts a few lines down is read as ordinary text, which is why a hand-written board can end up reporting “no board note found”. The commands above use Obsidian's own properties API and cannot get that wrong, which is the main reason to prefer them.
 

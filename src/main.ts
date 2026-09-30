@@ -14,7 +14,7 @@ import {
   type App,
 } from "obsidian";
 import { KanbanView } from "./view";
-import { VIEW_TYPE_KANBAN } from "./viewType";
+import { OPEN_BOARD_COMMAND_NAME, VIEW_TYPE_KANBAN } from "./viewType";
 import type { FileOp } from "./model/pathOps";
 import { remapPath } from "./model/pathOps";
 import { MCP_DEFAULT_BIND_ADDRESS, isLoopbackBindAddress } from "./bindAddress";
@@ -178,7 +178,7 @@ export default class FoliaKanbanPlugin extends Plugin {
     this.registerHoverLinkSource(VIEW_TYPE_KANBAN, { display: "Folia Kanban", defaultMod: false });
     this.addCommand({
       id: "folia-open-kanban-board",
-      name: "Open board",
+      name: OPEN_BOARD_COMMAND_NAME,
       callback: () => void this.activateView(),
     });
     this.registerBoardSetupActions();
