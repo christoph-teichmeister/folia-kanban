@@ -1,7 +1,6 @@
 # AGENTS.md - Folia Kanban
 
 > !`[ -f /.dockerenv ] || [ -f /run/.containerenv ] && echo "You are running inside a container" || echo "You are running directly on the host OS (not in a container)"]`
-> !`[ "$DEVCONTAINER" = "true" ] && echo "This is the devcontainer" || echo "This is NOT the devcontainer"`
 
 ## Basic Rule
 
