@@ -1,4 +1,5 @@
 import type { Card, CardStats, ContextConfig } from "../model/types";
+import { laneValue } from "../model/swimlanes";
 import type { UnreadState } from "../model/unread";
 import type { CardChip } from "./cardView";
 import { useBoardActions, useSubitemsCollapse } from "./context";
@@ -19,7 +20,8 @@ export function CardChips({
   chips: readonly CardChip[];
 }) {
   const ctxLabel = ctx?.label;
-  if (!ctxLabel && chips.length === 0) return null;
+  const owner = laneValue(card, "owner");
+  if (!ctxLabel && !owner && chips.length === 0) return null;
   return (
     <div className="folia-chips">
       {ctxLabel && (
@@ -28,6 +30,11 @@ export function CardChips({
           aria-label={`Context: ${ctx?.name ?? card.context}`}
         >
           {ctxLabel}
+        </span>
+      )}
+      {owner && (
+        <span className="folia-chip folia-chip-owner" aria-label={`Owner: ${owner}`}>
+          {owner}
         </span>
       )}
       {chips.map((c) => (

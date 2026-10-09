@@ -109,6 +109,8 @@ const FOLIA_PROPERTIES = [
   },
   { key: "card-folder", scope: "board" },
   { key: "card-title", scope: "board" },
+  // Fork addition: name of the card property that groups the board into horizontal lanes.
+  { key: "swimlanes", scope: "board" },
   { key: "folia-view", scope: "board" },
   { key: "columns", scope: "board" },
   { key: "priorities", scope: "board" },

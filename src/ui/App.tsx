@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import {
   useEffect,
   useLayoutEffect,
@@ -27,6 +28,7 @@ import { Board } from "./Board";
 import { DetailDialogContext } from "./detailDialog";
 import { Toolbar } from "./Toolbar";
 import { useToday } from "./useToday";
+import { Swimlanes } from "./Swimlanes";
 import { useBoardLoad } from "./useBoardLoad";
 import { useDetailPanel } from "./useDetailPanel";
 import { useBoardView } from "./useBoardView";
@@ -191,7 +193,7 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
           </div>
         )}
         <div className="folia-main" role="region" aria-label="Board">
-          <Board
+          <BoardOrLanes
             board={board}
             today={todayValue}
             selectedPath={panel.selected}
@@ -274,4 +276,10 @@ function useSearchShortcut(
       return true;
     });
   }, [host, boardShown, searchRef]);
+}
+
+/** The plain board, or one row of columns per `swimlanes` value (fork addition). */
+function BoardOrLanes(props: ComponentProps<typeof Board>) {
+  const by = props.board.config.swimlanes;
+  return by ? <Swimlanes by={by} {...props} /> : <Board {...props} />;
 }

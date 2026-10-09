@@ -47,6 +47,7 @@ export const BoardFrontmatterSchema = z.looseObject({
   card_folder: optionalConfigString,
   "card-title": optionalConfigString,
   card_title: optionalConfigString,
+  swimlanes: optionalConfigString,
   columns: z.unknown().optional(),
   priorities: z.unknown().optional(),
   relations: z.unknown().optional(),

@@ -67,6 +67,9 @@ export async function readBoardConfig(
     cardFolder,
     cardFolderRaw,
     titleMode,
+    ...(typeof fm["swimlanes"] === "string" && fm["swimlanes"].trim()
+      ? { swimlanes: fm["swimlanes"].trim() }
+      : {}),
     cardFolderExisting,
     cardFolderCaseMatches,
   };
