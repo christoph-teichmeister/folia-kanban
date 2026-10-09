@@ -1,0 +1,13 @@
+/* Fork addition: a collapsed column is a narrow strip: the title and card count, written vertically. */
+.folia-column.folia-is-folded {
+  flex: 0 0 auto;
+  width: auto;
+}
+.folia-scope .folia-column-fold {
+  writing-mode: vertical-rl;
+  min-height: 8rem;
+  height: 100%;
+  padding: var(--size-4-2) var(--size-4-1);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+}

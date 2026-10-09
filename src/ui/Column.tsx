@@ -5,8 +5,9 @@ import type { Board, ColumnDef } from "../model/types";
 import type { DragReloc } from "../model/board";
 import type { Filter } from "../model/filter";
 import { Icon } from "./icons";
+import { HostButton, HostIconButton } from "./hostControls";
 import { useReducedMotion } from "./useReducedMotion";
-import { useBoardActions } from "./context";
+import { useBoardActions, useColumnCollapse } from "./context";
 import { columnAccent, COLUMN_COLORS } from "./columnColors";
 import { CardComposer, useCardComposer } from "./CardComposer";
 import { ColumnCards } from "./ColumnCards";
@@ -43,7 +44,18 @@ interface Props {
   onAddCard: (columnId: string, title: string) => boolean;
 }
 
-export function Column({
+/** Open or folded (fork addition: folding is kept on this device, see `useColumnCollapse`). */
+export function Column(props: Props) {
+  const [folded, toggle] = useColumnCollapse(props.board.config.path, props.column.id);
+  return folded ? (
+    <FoldedColumn {...props} onExpand={toggle} />
+  ) : (
+    <OpenColumn {...props} onFold={toggle} />
+  );
+}
+
+function OpenColumn({
+  onFold: toggleFolded,
   column,
   cardPaths,
   board,
@@ -56,13 +68,13 @@ export function Column({
   isLast,
   dragReloc,
   onAddCard,
-}: Props) {
+}: Props & { onFold: () => void }) {
   // The column is itself a sortable item (header drag-reorder, #2). Its sortable id IS column.id,
   // which doubles as the body's droppable id — so a card dropped on this column still reports
   // over.id === column.id and resolveDrop keeps bucketing card drops unchanged. (No separate
   // useDroppable: that would register a second droppable under the same id and collide.)
   const reducedMotion = useReducedMotion();
-  const sortable = useSortable({ id: column.id, ...(reducedMotion ? { transition: null } : {}) });
+  const sortable = useSortable(sortableOptions(column.id, reducedMotion));
   const composer = useCardComposer(column, onAddCard);
   const titleEdit = useColumnTitleEdit(column, sortable.isDragging);
   const cards = useColumnCards({
@@ -75,12 +87,9 @@ export function Column({
     dragReloc,
   });
 
-  // Drop INTO a filter-lane stays minimal: the existing move path (App.onMove → moveCard) still sets
-  // the dropped card's `status` to THIS column's id, exactly as for a normal column. If the lane's
-  // rule keys off a different status the card may immediately fall out of the lane again — accepted
-  // (#1.6); the lane is a view, not an owner of membership. No special-casing here.
+  // Drop INTO a filter-lane stays minimal: the move path sets `status` to this column's id, and a
+  // lane is a view, not an owner of membership (#1.6).
   const overLimit = wipLimit != null && cards.count > wipLimit;
-
   return (
     <section
       // The column root IS the sortable node (header drag-reorder, #2) AND carries colcfg's #10
@@ -99,6 +108,7 @@ export function Column({
         count={cards.count}
         wipLimit={wipLimit}
         overLimit={overLimit}
+        onFold={toggleFolded}
       >
         <ColumnMenuButton
           column={column}
@@ -112,19 +122,14 @@ export function Column({
           card dropped anywhere on the column still reports over.id === column.id. `isOver` comes
           from useSortable and still drives the body drop highlight. */}
       <div className={"folia-column-body" + (sortable.isOver ? " folia-is-over" : "")}>
-        <ColumnCards
+        <ColumnBodyContent
           cards={cards}
           board={board}
           today={today}
           selectedPath={selectedPath}
           filter={filter}
+          composer={composer}
         />
-        {cards.paths.length === 0 &&
-          !composer.adding &&
-          // An empty lane that names its rule below already says why it is empty; "No matches" is
-          // left for a search, which the rule line does not explain.
-          (cards.takesAdds || cards.globalFiltering) && <EmptyColumn filtering={cards.filtering} />}
-        {composer.adding && <CardComposer composer={composer} fillNote={cards.fillNote} />}
       </div>
       {!composer.adding && (
         <ColumnFooter column={column} takesAdds={cards.takesAdds} onAdd={composer.start} />
@@ -231,6 +236,7 @@ function ColumnHeader({
   count,
   wipLimit,
   overLimit,
+  onFold,
   children,
 }: {
   column: ColumnDef;
@@ -239,6 +245,8 @@ function ColumnHeader({
   count: number;
   wipLimit: number | undefined;
   overLimit: boolean;
+  /** Fork addition: fold the column to a strip. */
+  onFold: () => void;
   /** The column's menu button. */
   children: ReactNode;
 }) {
@@ -275,6 +283,12 @@ function ColumnHeader({
         {overLimit && <Icon name="triangle-alert" />}
         {wipLimit != null ? `${count}/${wipLimit}` : count}
       </span>
+      <HostIconButton
+        className="folia-detail-icon folia-mini folia-column-fold-btn"
+        icon="chevrons-left"
+        label={`Collapse ${column.title}`}
+        onClick={onFold}
+      />
       {children}
     </header>
   );
@@ -364,4 +378,76 @@ function columnStyle(
       typeof column.hoverOpacity === "number" ? column.hoverOpacity : 1;
   }
   return style;
+}
+
+function sortableOptions(id: string, reducedMotion: boolean) {
+  return reducedMotion ? { id, transition: null } : { id };
+}
+
+/** Fork addition: a narrow strip keeps a collapsed column (and its drop target) visible without its cards. */
+function FoldedColumn({ onExpand, ...props }: Props & { onExpand: () => void }) {
+  const { column, board, cardPaths, filter, today, doneColumnId, dragReloc, wipLimit } = props;
+  const reducedMotion = useReducedMotion();
+  const sortable = useSortable(sortableOptions(column.id, reducedMotion));
+  const cards = useColumnCards({
+    column,
+    cardPaths,
+    board,
+    filter,
+    today,
+    doneColumnId,
+    dragReloc,
+  });
+  const overLimit = wipLimit != null && cards.count > wipLimit;
+  return (
+    <section
+      ref={sortable.setNodeRef}
+      className={columnClassName(column, overLimit, sortable.isDragging) + " folia-is-folded"}
+      data-testid="column"
+      data-column={column.id}
+      style={columnStyle(column, sortable.transform, sortable.transition)}
+    >
+      <HostButton
+        className="folia-btn folia-column-fold"
+        text={`${column.title} · ${cards.count}`}
+        aria-label={`Expand ${column.title} (${cards.count} cards)`}
+        onClick={onExpand}
+      />
+    </section>
+  );
+}
+
+/** The cards, the empty-column hint and the add-card composer of an open column. */
+function ColumnBodyContent({
+  cards,
+  board,
+  today,
+  selectedPath,
+  filter,
+  composer,
+}: {
+  cards: ReturnType<typeof useColumnCards>;
+  board: Board;
+  today: string;
+  selectedPath: string | null;
+  filter: Filter;
+  composer: ReturnType<typeof useCardComposer>;
+}) {
+  return (
+    <>
+      <ColumnCards
+        cards={cards}
+        board={board}
+        today={today}
+        selectedPath={selectedPath}
+        filter={filter}
+      />
+      {cards.paths.length === 0 &&
+        !composer.adding &&
+        // An empty lane that names its rule below already says why it is empty; "No matches" is
+        // left for a search, which the rule line does not explain.
+        (cards.takesAdds || cards.globalFiltering) && <EmptyColumn filtering={cards.filtering} />}
+      {composer.adding && <CardComposer composer={composer} fillNote={cards.fillNote} />}
+    </>
+  );
 }
