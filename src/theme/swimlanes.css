@@ -40,3 +40,16 @@
 .folia-lanes .folia-add-column {
   display: none;
 }
+
+/* Every column of a lane board has the same size: about six cards tall in the left section, about
+   three in a lane, and a column scrolls inside itself past that. Cards are only entered through the
+   inbox, so no other column offers "Add a card". */
+.folia-lane-left .folia-column {
+  height: 38rem;
+}
+.folia-lane .folia-column {
+  height: 19rem;
+}
+.folia-lanes .folia-column:not([data-column="inbox"]) .folia-column-add {
+  display: none;
+}

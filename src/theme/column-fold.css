@@ -7,6 +7,7 @@
     margin var(--folia-dur) var(--folia-ease),
     flex-basis calc(var(--folia-dur) * 1.5) var(--folia-ease),
     width calc(var(--folia-dur) * 1.5) var(--folia-ease),
+    height calc(var(--folia-dur) * 1.5) var(--folia-ease),
     max-height calc(var(--folia-dur) * 1.5) var(--folia-ease);
 }
 .folia-column > :not(.folia-column-fold-slot) {
@@ -18,6 +19,7 @@
   flex-basis: 2.75rem;
   width: 2.75rem;
   max-height: 9rem;
+  height: 9rem;
 }
 .folia-column.folia-is-folded > :not(.folia-column-fold-slot) {
   opacity: 0;
