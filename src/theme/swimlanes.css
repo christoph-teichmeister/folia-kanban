@@ -1,0 +1,67 @@
+/* Fork addition: a left section drawn once, then the lanes. The board fills the height of the view:
+   the left columns take all of it, the lanes share it equally, and every column scrolls inside
+   itself. One scroll box holds it all, so the columns of every lane stay aligned sideways. */
+.folia-lanes-root {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.folia-lanes {
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+  min-width: 100%;
+  height: 100%;
+}
+.folia-lane-left {
+  display: flex;
+  flex: 0 0 auto;
+  border-right: var(--border-width) solid var(--background-modifier-border);
+}
+.folia-lane-stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+.folia-lane {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 16rem;
+}
+.folia-lane + .folia-lane {
+  border-top: var(--border-width) solid var(--background-modifier-border);
+}
+.folia-lane-title {
+  position: sticky;
+  left: 0;
+  width: fit-content;
+  margin: 0;
+  padding: var(--size-4-2) var(--size-4-3) 0;
+  font-size: var(--font-ui-small);
+  text-transform: capitalize;
+}
+.folia-lanes .folia-board {
+  flex: 1 1 auto;
+  align-items: stretch;
+  min-height: 0;
+  height: auto;
+  overflow: visible;
+}
+.folia-lanes .folia-column {
+  max-height: none;
+}
+.folia-lanes .folia-add-column {
+  display: none;
+}
+/* A folded column stays as tall as its row, so only its width animates. */
+.folia-lanes .folia-column.folia-is-folded.folia-is-folded {
+  height: auto;
+  max-height: none;
+}
+/* Cards are only entered through the inbox, so no other column offers "Add a card". */
+.folia-lanes .folia-column:not([data-column="inbox"]) .folia-column-add {
+  display: none;
+}

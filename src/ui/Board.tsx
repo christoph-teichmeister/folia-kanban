@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useMemo, useRef, type ReactNode, type RefObject } from "react";
 import {
   DndContext,
   KeyboardSensor,
+  TouchSensor,
   MeasuringStrategy,
   useSensor,
   useSensors,
@@ -11,7 +12,8 @@ import {
   horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import type { Board as BoardModel, Card } from "../model/types";
+import type { Board as BoardModel, Card, ColumnDef } from "../model/types";
+import type { DragReloc } from "../model/board";
 import { applyReloc } from "../model/board";
 import { Column } from "./Column";
 import { AddColumn } from "./AddColumn";
@@ -33,6 +35,29 @@ interface Props {
   /** A card drop: the card as it was when it was picked up, and the id it was released over. */
   onMove: (card: Card, overId: string) => void;
   onAddCard: (columnId: string, title: string) => boolean;
+  /** Fork addition: lay the rows of columns out yourself (swimlanes); the board keeps one drag context. */
+  layout?: (row: (columns: ColumnDef[], key: string) => ReactNode) => ReactNode;
+}
+
+/** Pointer (mouse), touch (long-press) and keyboard sensors for dragging cards and columns. */
+function useBoardSensors(reducedMotion: boolean) {
+  return useSensors(
+    useSensor(PanAwarePointerSensor, {
+      // A short distance threshold lets a click stay a click (never hijacked into a drag) while a
+      // deliberate move past 5px crisply commits to a drag. The 5px also matches the column header's
+      // click-vs-drag threshold (§4) so card and column drags feel consistent.
+      activationConstraint: { distance: 5 },
+    }),
+    // Fork: long-press to pick a card up on touch screens; a plain swipe scrolls the board.
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 10 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      // Space picks up / drops; Enter is left free for opening a focused card.
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
+      // Moving a card past the edge scrolls its container; dnd-kit smooths that scroll by default.
+      scrollBehavior: reducedMotion ? "auto" : "smooth",
+    }),
+  );
 }
 
 export function Board({
@@ -44,6 +69,7 @@ export function Board({
   doneColumnId,
   onMove,
   onAddCard,
+  layout,
 }: Props) {
   const { boardPan } = useSettings();
   // Keep the module-scoped ref the sensor (and the pan handler) reads in sync with the live
@@ -52,21 +78,7 @@ export function Board({
 
   const columnIds = board.config.columns.map((c) => c.id);
   const reducedMotion = useReducedMotion();
-  const sensors = useSensors(
-    useSensor(PanAwarePointerSensor, {
-      // A short distance threshold lets a click stay a click (never hijacked into a drag) while a
-      // deliberate move past 5px crisply commits to a drag. The 5px also matches the column header's
-      // click-vs-drag threshold (§4) so card and column drags feel consistent.
-      activationConstraint: { distance: 5 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-      // Space picks up / drops; Enter is left free for opening a focused card.
-      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
-      // Moving a card past the edge scrolls its container; dnd-kit smooths that scroll by default.
-      scrollBehavior: reducedMotion ? "auto" : "smooth",
-    }),
-  );
+  const sensors = useBoardSensors(reducedMotion);
   const drag = useBoardDrag(board, columnIds, onMove);
   // Card sortables are namespaced `${columnId}::${card.path}` so a card mirrored into a cross-board
   // lane (#1) and its status column don't collide on one id. A column drag's active id is the bare
@@ -99,28 +111,27 @@ export function Board({
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       {...drag.handlers}
     >
-      <div className="folia-board" data-pan={boardPan} ref={boardRef}>
-        <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-          {board.config.columns.map((col, i) => (
-            <Column
-              key={col.id}
-              column={col}
-              cardPaths={effectiveColumns[col.id] ?? []}
-              board={board}
-              today={today}
-              selectedPath={selectedPath}
-              {...(wipLimits[col.id] !== undefined ? { wipLimit: wipLimits[col.id] } : {})}
-              filter={filter}
-              doneColumnId={doneColumnId}
-              isFirst={i === 0}
-              isLast={i === board.config.columns.length - 1}
-              {...(dragReloc ? { dragReloc } : {})}
-              onAddCard={onAddCard}
-            />
-          ))}
-        </SortableContext>
-        <AddColumn />
-      </div>
+      {(() => {
+        const row = (columns: ColumnDef[], key: string): ReactNode => (
+          <ColumnRow
+            key={key}
+            columns={columns}
+            all={board.config.columns}
+            cards={effectiveColumns}
+            shared={{ board, today, selectedPath, wipLimits, filter, doneColumnId, onAddCard }}
+            {...(dragReloc ? { dragReloc } : {})}
+            pan={boardPan}
+            {...(layout ? {} : { rowRef: boardRef })}
+          />
+        );
+        return layout ? (
+          <div className="folia-lanes-root" ref={boardRef}>
+            {layout(row)}
+          </div>
+        ) : (
+          row(board.config.columns, "all")
+        );
+      })()}
       {/* The guard only skips the pre-mount render, where no drag can be active. */}
       {boardRef.current && (
         <BoardDragOverlay
@@ -133,5 +144,58 @@ export function Board({
         />
       )}
     </DndContext>
+  );
+}
+
+/** One row of columns in a sortable context of its own (the whole board, or one lane). */
+function ColumnRow({
+  columns,
+  all,
+  cards,
+  shared,
+  dragReloc,
+  pan,
+  rowRef,
+}: {
+  columns: ColumnDef[];
+  all: ColumnDef[];
+  cards: Record<string, string[]>;
+  shared: Pick<
+    Props,
+    "board" | "today" | "selectedPath" | "wipLimits" | "filter" | "doneColumnId" | "onAddCard"
+  >;
+  dragReloc?: DragReloc;
+  pan: string;
+  /** Set on the plain board's row only: the element panning and the drag overlay anchor to. */
+  rowRef?: RefObject<HTMLDivElement>;
+}) {
+  const { board, today, selectedPath, wipLimits, filter, doneColumnId, onAddCard } = shared;
+  // A new array every render makes dnd-kit think the items changed and write an inline
+  // `transition: 0ms` on every column, which beats the stylesheet and kills the fold animation.
+  const key = columns.map((c) => c.id).join("|");
+  const ids = useMemo(() => key.split("|"), [key]);
+  return (
+    <div className="folia-board" data-pan={pan} {...(rowRef ? { ref: rowRef } : {})}>
+      <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
+        {columns.map((col) => (
+          <Column
+            key={col.id}
+            column={col}
+            cardPaths={cards[col.id] ?? []}
+            board={board}
+            today={today}
+            selectedPath={selectedPath}
+            {...(wipLimits[col.id] !== undefined ? { wipLimit: wipLimits[col.id] } : {})}
+            filter={filter}
+            doneColumnId={doneColumnId}
+            isFirst={col.id === all[0]?.id}
+            isLast={col.id === all[all.length - 1]?.id}
+            {...(dragReloc ? { dragReloc } : {})}
+            onAddCard={onAddCard}
+          />
+        ))}
+      </SortableContext>
+      {rowRef && <AddColumn />}
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useContext, useRef, type CSSProperties } from "react";
+import { useContext, useRef, useState, type CSSProperties } from "react";
 import type { Board, Card, CardBody } from "../model/types";
 import { descriptionRefusal } from "../model/card";
 import { CardComments } from "./CardComments";
@@ -191,6 +191,38 @@ function HistorySection({ body }: { body: CardBody | null }) {
   );
 }
 
+type Tab = "overview" | "comments" | "history";
+
+/** Fork addition: the row of buttons that picks which pane of the panel shows. */
+function PanelTabs({
+  tab,
+  onTab,
+  comments,
+}: {
+  tab: Tab;
+  onTab: (t: Tab) => void;
+  comments: number;
+}) {
+  const tabs: [Tab, string][] = [
+    ["overview", "Overview"],
+    ["comments", comments ? `Comments (${comments})` : "Comments"],
+    ["history", "History"],
+  ];
+  return (
+    <div className="folia-tabs" role="group" aria-label="Panel sections">
+      {tabs.map(([id, label]) => (
+        <HostButton
+          key={id}
+          className="folia-btn folia-tab"
+          text={label}
+          cta={tab === id}
+          onClick={() => onTab(id)}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** The open card, section by section, fed from the state `CardDetail` keeps. */
 function CardSections({
   path,
@@ -206,6 +238,7 @@ function CardSections({
   panel: CardPanelState;
 }) {
   const { body, reload, mutate, stillHere, focus, drafts } = panel;
+  const [tab, setTab] = useState<Tab>("overview");
   return (
     <>
       <CardTitleFields
@@ -216,51 +249,58 @@ function CardSections({
         overrideRef={focus.titleOverrideRef}
         mutate={mutate}
       />
-      <CardFields board={board} card={card} path={path} mutate={mutate} reload={reload} />
-      <CardProperties
-        card={card}
-        path={path}
-        form={panel.propertyForm}
-        mutate={mutate}
-        stillHere={stillHere}
-        deleting={panel.deleting}
-      />
-      <DescriptionSection
-        body={body}
-        path={path}
-        desc={panel.desc}
-        mutate={mutate}
-        stillHere={stillHere}
-      />
-      <CardSubtasks
-        board={board}
-        path={path}
-        body={body}
-        resolve={panel.resolve}
-        onNavigate={onNavigate}
-        mutate={mutate}
-        reload={reload}
-        todoDraft={drafts.todo}
-        subcardDraft={drafts.subcard}
-        subcardRef={focus.subcardRef}
-      />
-      <CardRelations
-        board={board}
-        card={card}
-        path={path}
-        choices={panel.choices}
-        onNavigate={onNavigate}
-        mutate={mutate}
-      />
-      <CardComments
-        body={body}
-        path={path}
-        readState={panel.readState}
-        draft={drafts.comment}
-        mutate={mutate}
-        stillHere={stillHere}
-      />
-      <HistorySection body={body} />
+      <PanelTabs tab={tab} onTab={setTab} comments={body?.comments.length ?? 0} />
+      <div className="folia-tab-pane" hidden={tab !== "overview"}>
+        <CardFields board={board} card={card} path={path} mutate={mutate} reload={reload} />
+        <CardProperties
+          card={card}
+          path={path}
+          form={panel.propertyForm}
+          mutate={mutate}
+          stillHere={stillHere}
+          deleting={panel.deleting}
+        />
+        <DescriptionSection
+          body={body}
+          path={path}
+          desc={panel.desc}
+          mutate={mutate}
+          stillHere={stillHere}
+        />
+        <CardSubtasks
+          board={board}
+          path={path}
+          body={body}
+          resolve={panel.resolve}
+          onNavigate={onNavigate}
+          mutate={mutate}
+          reload={reload}
+          todoDraft={drafts.todo}
+          subcardDraft={drafts.subcard}
+          subcardRef={focus.subcardRef}
+        />
+        <CardRelations
+          board={board}
+          card={card}
+          path={path}
+          choices={panel.choices}
+          onNavigate={onNavigate}
+          mutate={mutate}
+        />
+      </div>
+      <div className="folia-tab-pane" hidden={tab !== "comments"}>
+        <CardComments
+          body={body}
+          path={path}
+          readState={panel.readState}
+          draft={drafts.comment}
+          mutate={mutate}
+          stillHere={stillHere}
+        />
+      </div>
+      <div className="folia-tab-pane" hidden={tab !== "history"}>
+        <HistorySection body={body} />
+      </div>
     </>
   );
 }

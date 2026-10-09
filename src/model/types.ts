@@ -363,6 +363,10 @@ export interface BoardConfig {
   cardFolder: string;
   /** Where card titles come from (`card-title` in the board note). Default `auto`. */
   titleMode: TitleMode;
+  /** Fork addition: card property (`swimlanes` in the board note) that groups the board into lanes. */
+  swimlanes?: string;
+  /** Fork addition: column ids drawn once, left of the lanes (`swimlane-skip` in the board note). */
+  swimlaneSkip?: string[];
   /**
    * The priority values this board remembers (`priorities` in the board note), in the order the
    * board note lists them. This is the board's own vocabulary, not a fixed scale the plugin

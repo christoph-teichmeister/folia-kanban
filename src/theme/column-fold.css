@@ -1,0 +1,43 @@
+/* Fork addition: a folded column keeps its place and animates down to a narrow strip: the title and
+   card count, written vertically. The width, height and fade share the board's one duration. */
+.folia-column {
+  position: relative;
+  transition:
+    opacity var(--folia-dur) var(--folia-ease),
+    margin var(--folia-dur) var(--folia-ease),
+    flex-basis calc(var(--folia-dur) * 1.5) var(--folia-ease),
+    width calc(var(--folia-dur) * 1.5) var(--folia-ease),
+    height calc(var(--folia-dur) * 1.5) var(--folia-ease),
+    max-height calc(var(--folia-dur) * 1.5) var(--folia-ease);
+}
+.folia-column > :not(.folia-column-fold-slot) {
+  transition:
+    opacity var(--folia-dur-fast) ease,
+    visibility 0s linear;
+}
+.folia-column.folia-is-folded.folia-is-folded {
+  flex-basis: 2.75rem;
+  width: 2.75rem;
+  max-height: 9rem;
+  height: 9rem;
+}
+.folia-column.folia-is-folded > :not(.folia-column-fold-slot) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--folia-dur-fast) ease,
+    visibility 0s linear var(--folia-dur-fast);
+}
+.folia-column-fold-slot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+.folia-scope .folia-column-fold {
+  writing-mode: vertical-rl;
+  height: 100%;
+  width: 100%;
+  padding: var(--size-4-2) var(--size-4-1);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+}

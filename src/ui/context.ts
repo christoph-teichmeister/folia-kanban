@@ -96,6 +96,24 @@ export function useSubitemsCollapse(): SubitemsCollapse {
   );
 }
 
+/**
+ * Fork addition: whether a column is folded to a narrow strip, on this device only. It rides on
+ * `collapsedCards` under a key no card path can equal, so it is persisted, device-local and
+ * path-remap-safe without new plumbing. ponytail: own map if column state ever needs more.
+ */
+export function useColumnCollapse(boardPath: string, columnId: string): [boolean, () => void] {
+  const c = useContext(SettingsContext);
+  if (!c) throw new Error("SettingsContext missing");
+  const key = `column::${boardPath}::${columnId}`;
+  const { update } = c;
+  const folded = c.settings.collapsedCards[key] === true;
+  const toggle = () =>
+    update((s) => ({
+      collapsedCards: { ...s.collapsedCards, [key]: s.collapsedCards[key] !== true },
+    }));
+  return [folded, toggle];
+}
+
 /** A card's seen-marker frozen at one moment, for the card whose panel is open (see `unreadStateOf`). */
 export interface PinnedSeen {
   path: string;

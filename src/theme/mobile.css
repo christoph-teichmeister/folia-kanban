@@ -1,0 +1,31 @@
+/* Fork addition: touch layout. Obsidian puts `is-mobile` on the body of the phone and tablet apps. */
+/* Nothing is revealed by hovering on a touch screen, so the card and column controls stay visible. */
+body.is-mobile .folia-card-actions {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+body.is-mobile .folia-scope .folia-column-menu-btn {
+  opacity: 1;
+}
+/* One column nearly fills the screen and the board snaps from column to column. */
+body.is-mobile .folia-board {
+  scroll-snap-type: x proximity;
+}
+body.is-mobile .folia-column {
+  flex-basis: min(var(--folia-col-w), 85vw);
+  width: min(var(--folia-col-w), 85vw);
+  scroll-snap-align: start;
+}
+/* Finger-sized targets for the controls the board draws itself. */
+body.is-mobile .folia-scope .folia-card-action,
+body.is-mobile .folia-scope .folia-column-menu-btn {
+  width: var(--input-height);
+  height: var(--input-height);
+}
+/* Long-press picks a card up, so it must not also select text or raise the system callout. */
+body.is-mobile .folia-card {
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
+}

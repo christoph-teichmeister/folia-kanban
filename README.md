@@ -1,4 +1,6 @@
-# Folia Kanban
+# Folia Kanban (KB fork)
+
+> **Modified fork** of [stavarengo/folia-kanban](https://github.com/stavarengo/folia-kanban) (AGPL-3.0, (c) Rafael Stavarengo). Adds tabs (Overview / Comments / History) to the card panel and a `waiting-for` frontmatter property shown on cards in the Waiting column. Plugin id `folia-kanban-kb`.
 
 **Kanban from plain Markdown.**
 
@@ -366,7 +368,7 @@ Edits are surgical: body changes splice only the section they touch, and frontma
 
 ## Install
 
-**Requirements:** Obsidian **1.11.4+**, desktop only. Phones and tablets are not supported — see [Decisions](docs/decisions.md) for why, and what would change it.
+**Requirements:** Obsidian **1.11.4+**. This fork also loads on phones and tablets (touch layout, long-press to drag a card); agent access (MCP) stays desktop-only. Upstream is desktop only — see [Decisions](docs/decisions.md).
 
 ### From Community Plugins
 

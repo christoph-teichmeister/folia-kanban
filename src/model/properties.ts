@@ -86,6 +86,8 @@ const FOLIA_PROPERTIES = [
       "use update_card's own `title` field, which renames the note and its inbound links",
   },
   { key: "type", scope: "card", panelField: true },
+  // Fork addition: who or what a card in the Waiting column waits for. Plain text.
+  { key: "waiting-for", scope: "card", panelField: true },
   { key: "created", scope: "card", panelField: true },
   {
     key: "area",
@@ -107,6 +109,10 @@ const FOLIA_PROPERTIES = [
   },
   { key: "card-folder", scope: "board" },
   { key: "card-title", scope: "board" },
+  // Fork addition: name of the card property that groups the board into horizontal lanes.
+  { key: "swimlanes", scope: "board" },
+  // Fork addition: columns drawn once, left of the lanes, whatever a card's lane value is.
+  { key: "swimlane-skip", scope: "board" },
   { key: "folia-view", scope: "board" },
   { key: "columns", scope: "board" },
   { key: "priorities", scope: "board" },
@@ -242,4 +248,10 @@ export function editScalar(previous: ScalarValue, text: string): ScalarEdit {
   if (!/[eE]/.test(typed) && !Number.isSafeInteger(Math.trunc(n)))
     return { ok: false, reason: "This number has more digits than the property can keep exactly." };
   return { ok: true, value: n };
+}
+
+/** The card's `waiting-for` text, trimmed; empty when absent or not text. */
+export function waitingFor(fm: Record<string, unknown>): string {
+  const v = fm["waiting-for"];
+  return typeof v === "string" ? v.trim() : "";
 }

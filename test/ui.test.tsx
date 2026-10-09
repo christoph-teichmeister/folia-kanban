@@ -1197,6 +1197,7 @@ describe("property names suggest themselves (20260827.08)", () => {
       "due",
       "assignee",
       "title",
+      "waiting-for",
       "created",
       "tags",
       "context",
@@ -1212,6 +1213,7 @@ describe("property names suggest themselves (20260827.08)", () => {
       "due",
       "assignee",
       "title",
+      "waiting-for",
       "created",
       "blocks",
       "blocked-by",
@@ -5060,6 +5062,7 @@ describe("unread comments", () => {
     renderStateful(repo, DEFAULT_SETTINGS);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
     await user.type(within(detail).getByLabelText("Write a comment"), "on it{Enter}");
     const mine = (await within(detail).findByText("on it")).closest("li") as HTMLElement;
     // Edit the reader's own line: the text changes, the ownership must not.
@@ -5116,6 +5119,7 @@ describe("unread comments", () => {
     renderStateful(repo, DEFAULT_SETTINGS);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
     await user.type(within(detail).getByLabelText("Write a comment"), "ok{Enter}");
     await within(detail).findByText("ok");
     await user.type(within(detail).getByLabelText("Write a comment"), "ok{Enter}");
@@ -5996,6 +6000,7 @@ describe("an open detail panel follows its note", () => {
     render_(repo);
     await user.click(await screen.findByText("Two"));
     const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
     await within(detail).findByText("second");
     await user.click(within(detail).getAllByRole("button", { name: "Edit comment" })[1]!);
     await user.type(within(detail).getByRole("textbox", { name: "Edit comment" }), " edited");
@@ -6072,6 +6077,7 @@ describe("the detail panel keeps its drafts when a write fails or the note moves
     render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
     await within(detail).findByText("hi there");
     await user.click(within(detail).getByRole("button", { name: "Edit comment" }));
     const file = repo.files.get("Tasks/Alpha.md")!;
@@ -6166,6 +6172,7 @@ describe("the detail panel hands text back when a small write fails", () => {
     render_(repo);
     await user.click(await screen.findByText("Two"));
     const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
     await within(detail).findByText("second");
     await user.click(within(detail).getAllByRole("button", { name: "Edit comment" })[0]!);
     await user.type(within(detail).getByRole("textbox", { name: "Edit comment" }), " edited");
@@ -7578,6 +7585,27 @@ describe("a board read before a change can land after it (20260828.02)", () => {
     // Once the add-card flow's own load finally settles — too late to apply, but not lost — it
     // still opens the card it created.
     expect(await screen.findByRole("heading", { name: "Fresh card" })).toBeInTheDocument();
+  });
+});
+
+describe("folding a column (fork)", () => {
+  it("folds in place and leaves no inline transition that would cancel the animation", async () => {
+    const user = userEvent.setup();
+    renderStateful(
+      new FakeRepo(config, {
+        "Tasks/Alpha.md": { fm: { type: "task", status: "todo" }, body: "\n# Alpha\n" },
+      }),
+      DEFAULT_SETTINGS,
+    );
+    await screen.findByText("Alpha");
+    const column = document.querySelector('[data-column="todo"]') as HTMLElement;
+    await user.click(within(column).getByRole("button", { name: "Collapse Todo" }));
+    await waitFor(() => expect(column.classList.contains("folia-is-folded")).toBe(true));
+    expect(document.querySelector('[data-column="todo"]')).toBe(column); // same element: not remounted
+    expect(column.style.transition).toBe("");
+    await user.click(within(column).getByRole("button", { name: /^Expand Todo/ }));
+    await waitFor(() => expect(column.classList.contains("folia-is-folded")).toBe(false));
+    expect(column.style.transition).toBe("");
   });
 });
 

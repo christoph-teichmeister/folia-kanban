@@ -39,6 +39,26 @@ async function drawn(repo: FakeRepo, path: string): Promise<{ board: Board; card
   return { board, card };
 }
 
+describe("moveCardTo in a column without `order`", () => {
+  it("lands the card at the dropped slot instead of the top", async () => {
+    const repo = new FakeRepo(config, {
+      "Tasks/A.md": { fm: { status: "todo" }, body: "" },
+      "Tasks/B.md": { fm: { status: "todo" }, body: "" },
+      "Tasks/C.md": { fm: { status: "todo" }, body: "" },
+      "Tasks/D.md": { fm: { status: "todo" }, body: "" },
+    });
+    const { board, card } = await drawn(repo, "Tasks/D.md");
+    await moveCardTo(repo, board, { card, columnId: "todo", index: 2 });
+    const after = await repo.loadBoard();
+    expect(after.columns["todo"]?.map((p) => p.replace("Tasks/", ""))).toEqual([
+      "A.md",
+      "B.md",
+      "D.md",
+      "C.md",
+    ]);
+  });
+});
+
 describe("moveCardTo", () => {
   it("appends to the target column when no index is given", async () => {
     const repo = new FakeRepo(config, {

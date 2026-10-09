@@ -1,3 +1,4 @@
+import { waitingFor } from "../model/properties";
 import { memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -221,6 +222,9 @@ function CardFace({
         />
       ) : (
         <div className="folia-card-title">{card.title}</div>
+      )}
+      {card.frontmatter.status === "waiting" && waitingFor(card.frontmatter) && (
+        <div className="folia-card-waiting">⏳ {waitingFor(card.frontmatter)}</div>
       )}
       <CardChips card={card} ctx={view.ctx} chips={view.chips} />
       <CardProgress stats={card.stats} />

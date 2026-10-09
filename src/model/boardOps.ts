@@ -10,6 +10,7 @@ import type { MatchContext } from "./filter";
 import { laneRefusal } from "./lanes";
 import type { Board, Card, CardFrontmatter, SubItem } from "./types";
 import { moveCard, resolveDrop, syncSubtaskClaim } from "./board";
+import { columnEffectiveOrders } from "./cardOrder";
 import { samePriority } from "./priorities";
 import type { CardRepository } from "./repo";
 import { StaleLineError } from "./repo";
@@ -28,6 +29,26 @@ export interface MoveTarget {
 export interface DropTarget {
   card: Card;
   overId: string;
+}
+
+/**
+ * Fork fix: cards without `order` sort alphabetically AFTER every ordered card, so writing an order
+ * to the moved card alone would always send it to the top. Give the column's unordered cards the
+ * explicit order they already hold implicitly (same sequence, no visible change) before a move.
+ */
+async function materializeOrders(
+  repo: CardRepository,
+  board: Board,
+  list: string[],
+  moved: Card,
+): Promise<void> {
+  const others = list
+    .filter((p) => p !== moved.path)
+    .flatMap((p) => board.cards[p] ?? [])
+    .filter((c) => !c.todoRef);
+  for (const { card: c, eff } of columnEffectiveOrders(others)) {
+    if (typeof c.frontmatter.order !== "number") await repo.setFrontmatter(c.path, { order: eff });
+  }
 }
 
 /**
@@ -50,6 +71,8 @@ export async function moveCardTo(
   const index = target.index ?? (stays ? at : list.filter((p) => p !== card.path).length);
   const mutation = moveCard(board, card, columnId, index);
   if (!mutation) return false;
+  if (mutation.setFrontmatter?.["order"] !== undefined)
+    await materializeOrders(repo, board, list, card);
   await repo.applyMove(mutation);
   return true;
 }

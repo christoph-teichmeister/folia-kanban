@@ -21,3 +21,6 @@
 @import "./column-config.css";
 @import "./context-grouping.css";
 @import "./column-header.css";
+@import "./swimlanes.css";
+@import "./column-fold.css";
+@import "./mobile.css";

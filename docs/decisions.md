@@ -94,6 +94,8 @@ Each setup is a separate user gesture, a palette confirmation or a menu click, a
 
 ## Mobile is not supported, and the manifest now says so
 
+> **KB fork, 2026-10-09: reversed.** `isDesktopOnly` is `false`. The MCP server is imported lazily and only built on the desktop app, `src/theme/mobile.css` makes hover-revealed controls visible and larger under `body.is-mobile`, and cards are picked up by long-press (dnd-kit `TouchSensor`). Tested only in Obsidian's emulation and on the owner's phone. The upstream text below is kept as written.
+
 **Decided 2026-09-10. `isDesktopOnly: true`. Revised 2026-09-30 (#102): that flag is the only desktop gate; the code no longer checks `Platform.isDesktop`.**
 
 `manifest.json` used to declare `"isDesktopOnly": false`, which tells the community directory and every phone user that this plugin runs on a phone. Nothing was ever built for that. `src/theme/` has one media query, `prefers-reduced-motion`, and no `.is-mobile`, `.is-phone` or `.is-tablet` selector at all, where Obsidian's own stylesheet carries hundreds of rules keyed on those classes. Hit targets are fixed at 24, 26 and 30 pixels; several affordances — a card's hover actions, a column's menu — are revealed on hover, which a touch device has no way to produce. No test in the repository exercises a mobile viewport or platform class. The claim was a manifest default nobody had revisited, not a decision.

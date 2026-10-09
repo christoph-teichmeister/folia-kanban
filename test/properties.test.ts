@@ -31,13 +31,24 @@ describe("the keys Folia Kanban knows", () => {
         "context",
         "type",
         "created",
+        "waiting-for",
       ].sort(),
     );
   });
 
   it("hands the detail panel exactly the keys it edits through a control of its own", () => {
     expect([...PANEL_FIELD_KEYS].sort()).toEqual(
-      ["status", "priority", "due", "assignee", "order", "type", "created", "title"].sort(),
+      [
+        "status",
+        "priority",
+        "due",
+        "assignee",
+        "order",
+        "type",
+        "created",
+        "title",
+        "waiting-for",
+      ].sort(),
     );
   });
 
