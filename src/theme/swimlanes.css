@@ -41,14 +41,14 @@
   display: none;
 }
 
-/* Every column of a lane board has the same size: about six cards tall in the left section, about
-   three in a lane, and a column scrolls inside itself past that. Cards are only entered through the
-   inbox, so no other column offers "Add a card". */
+/* The left section's columns are as tall as their cards need (the cap only gives the fold something to
+   animate from); a lane's columns have one fixed height and scroll inside themselves. Cards are only
+   entered through the inbox, so no other column offers "Add a card". */
 .folia-lane-left .folia-column {
-  height: 38rem;
+  max-height: 50rem;
 }
 .folia-lane .folia-column {
-  height: 19rem;
+  height: 30rem;
 }
 .folia-lanes .folia-column:not([data-column="inbox"]) .folia-column-add {
   display: none;
