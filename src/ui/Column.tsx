@@ -9,11 +9,22 @@ import { HostButton, HostIconButton } from "./hostControls";
 import { useReducedMotion } from "./useReducedMotion";
 import { useBoardActions, useColumnCollapse } from "./context";
 import { plainColumnId } from "../model/swimlanes";
-import { columnAccent } from "./columnColors";
+import { columnAccent, COLUMN_COLORS } from "./columnColors";
 import { CardComposer, useCardComposer } from "./CardComposer";
 import { ColumnCards } from "./ColumnCards";
 import { ColumnMenuButton } from "./ColumnMenuButton";
 import { useColumnCards } from "./useColumnCards";
+
+// Stable per-column accent when the board hasn't assigned a color, so even a plain
+// `columns: [todo, doing, done]` board reads as colour-coded (easier to scan at a glance). Keyed by
+// the real column id (fork: the copies of a column in every lane share one colour).
+function autoColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  // `h % length` is always in range; the `?? COLUMN_COLORS[0]` only satisfies
+  // noUncheckedIndexedAccess (the const tuple's [0] is a known-defined palette colour).
+  return COLUMN_COLORS[h % COLUMN_COLORS.length] ?? COLUMN_COLORS[0];
+}
 
 interface Props {
   column: ColumnDef;
@@ -360,7 +371,9 @@ function columnStyle(
   transition: string | undefined,
 ): Record<string, string | number | undefined> {
   const style: Record<string, string | number | undefined> = {
-    ["--folia-col-accent" as string]: columnAccent(column.color || "var(--interactive-accent)"),
+    ["--folia-col-accent" as string]: columnAccent(
+      column.color || autoColor(plainColumnId(column.id)),
+    ),
     // Header drag-reorder (#2): the sortable's live transform/transition move the column as it
     // drags. `transition` is undefined when idle, which React simply omits.
     transform: CSS.Transform.toString(transform),

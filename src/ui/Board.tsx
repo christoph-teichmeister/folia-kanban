@@ -1,4 +1,4 @@
-import { useRef, type ReactNode, type RefObject } from "react";
+import { useMemo, useRef, type ReactNode, type RefObject } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -170,9 +170,13 @@ function ColumnRow({
   rowRef?: RefObject<HTMLDivElement>;
 }) {
   const { board, today, selectedPath, wipLimits, filter, doneColumnId, onAddCard } = shared;
+  // A new array every render makes dnd-kit think the items changed and write an inline
+  // `transition: 0ms` on every column, which beats the stylesheet and kills the fold animation.
+  const key = columns.map((c) => c.id).join("|");
+  const ids = useMemo(() => key.split("|"), [key]);
   return (
     <div className="folia-board" data-pan={pan} {...(rowRef ? { ref: rowRef } : {})}>
-      <SortableContext items={columns.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
+      <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
         {columns.map((col) => (
           <Column
             key={col.id}

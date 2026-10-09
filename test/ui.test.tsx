@@ -7588,6 +7588,27 @@ describe("a board read before a change can land after it (20260828.02)", () => {
   });
 });
 
+describe("folding a column (fork)", () => {
+  it("folds in place and leaves no inline transition that would cancel the animation", async () => {
+    const user = userEvent.setup();
+    renderStateful(
+      new FakeRepo(config, {
+        "Tasks/Alpha.md": { fm: { type: "task", status: "todo" }, body: "\n# Alpha\n" },
+      }),
+      DEFAULT_SETTINGS,
+    );
+    await screen.findByText("Alpha");
+    const column = document.querySelector('[data-column="todo"]') as HTMLElement;
+    await user.click(within(column).getByRole("button", { name: "Collapse Todo" }));
+    await waitFor(() => expect(column.classList.contains("folia-is-folded")).toBe(true));
+    expect(document.querySelector('[data-column="todo"]')).toBe(column); // same element: not remounted
+    expect(column.style.transition).toBe("");
+    await user.click(within(column).getByRole("button", { name: /^Expand Todo/ }));
+    await waitFor(() => expect(column.classList.contains("folia-is-folded")).toBe(false));
+    expect(column.style.transition).toBe("");
+  });
+});
+
 describe("column colour — what a board note paints", () => {
   const withColor = (color?: string): BoardConfig => ({
     ...config,
@@ -7608,11 +7629,15 @@ describe("column colour — what a board note paints", () => {
     expect(column.style.getPropertyValue("--folia-col-accent")).toBe("var(--color-green)");
   });
 
-  it("gives every column the theme accent when the note assigns no colour (fork: one colour for all)", async () => {
+  it("keeps the auto-colour a board already shows, which is what pins the palette's order", async () => {
+    // `autoColor` hashes a column id into COLUMN_COLORS, so the ARRAY ORDER decides what every
+    // column the note never assigned looks like. Reordering it would repaint those columns on every
+    // existing board with nothing stored to explain it, and no other check would notice: rule F
+    // compares the JSON mirror, which would be reordered along with it. This pins one id.
     render_(repoWith());
     await screen.findByText("Alpha");
     const column = document.querySelector('[data-column="todo"]') as HTMLElement;
-    expect(column.style.getPropertyValue("--folia-col-accent")).toBe("var(--interactive-accent)");
+    expect(column.style.getPropertyValue("--folia-col-accent")).toBe("var(--color-pink)");
   });
 
   it("reads a bare CSS colour keyword as the palette name it spells", async () => {
