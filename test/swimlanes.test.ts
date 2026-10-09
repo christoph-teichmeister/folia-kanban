@@ -20,12 +20,11 @@ const board = {
 describe("laneModel", () => {
   const m = laneModel(board, "owner", ["inbox"]);
 
-  it("orders lanes you, claude, ownerless and filters each lane's columns", () => {
-    expect(m.lanes.map((l) => l.value)).toEqual(["you", "claude", ""]);
-    expect(m.board.columns["next§you"]).toEqual(["b"]);
+  it("puts a card without owner in the you lane, orders lanes you, claude and filters each lane's columns", () => {
+    expect(m.lanes.map((l) => l.value)).toEqual(["you", "claude"]);
+    expect(m.board.columns["next§you"]).toEqual(["b", "c"]);
     expect(m.board.columns["doing§you"]).toEqual(["d"]);
     expect(m.board.columns["next§claude"]).toEqual(["a"]);
-    expect(m.board.columns["next§-"]).toEqual(["c"]);
   });
 
   it("draws skipped columns once, unfiltered, in front", () => {
@@ -38,16 +37,6 @@ describe("laneModel", () => {
     expect(plainColumnId("next§you")).toBe("next");
     expect(plainColumnId("inbox")).toBe("inbox");
     expect(laneOfColumnId("next§you")).toBe("you");
-    expect(laneOfColumnId("next§-")).toBe("");
     expect(laneOfColumnId("inbox")).toBeNull();
-  });
-
-  it("drops an empty ownerless lane", () => {
-    const only = {
-      config: { columns: [{ id: "next" }] },
-      cards: { a: card("a", "you") },
-      columns: { next: ["a"] },
-    } as unknown as Board;
-    expect(laneModel(only, "owner").lanes.map((l) => l.value)).toEqual(["you", "claude"]);
   });
 });

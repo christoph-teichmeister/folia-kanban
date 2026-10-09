@@ -7608,15 +7608,11 @@ describe("column colour — what a board note paints", () => {
     expect(column.style.getPropertyValue("--folia-col-accent")).toBe("var(--color-green)");
   });
 
-  it("keeps the auto-colour a board already shows, which is what pins the palette's order", async () => {
-    // `autoColor` hashes a column id into COLUMN_COLORS, so the ARRAY ORDER decides what every
-    // column the note never assigned looks like. Reordering it would repaint those columns on every
-    // existing board with nothing stored to explain it, and no other check would notice: rule F
-    // compares the JSON mirror, which would be reordered along with it. This pins one id.
+  it("gives every column the theme accent when the note assigns no colour (fork: one colour for all)", async () => {
     render_(repoWith());
     await screen.findByText("Alpha");
     const column = document.querySelector('[data-column="todo"]') as HTMLElement;
-    expect(column.style.getPropertyValue("--folia-col-accent")).toBe("var(--color-pink)");
+    expect(column.style.getPropertyValue("--folia-col-accent")).toBe("var(--interactive-accent)");
   });
 
   it("reads a bare CSS colour keyword as the palette name it spells", async () => {

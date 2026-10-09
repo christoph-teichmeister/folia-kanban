@@ -5,11 +5,11 @@
   transition:
     opacity var(--folia-dur) var(--folia-ease),
     margin var(--folia-dur) var(--folia-ease),
-    flex-basis var(--folia-dur) var(--folia-ease),
-    width var(--folia-dur) var(--folia-ease),
-    max-height var(--folia-dur) var(--folia-ease);
+    flex-basis calc(var(--folia-dur) * 1.5) var(--folia-ease),
+    width calc(var(--folia-dur) * 1.5) var(--folia-ease),
+    max-height calc(var(--folia-dur) * 1.5) var(--folia-ease);
 }
-.folia-column > :not(.folia-column-fold) {
+.folia-column > :not(.folia-column-fold-slot) {
   transition:
     opacity var(--folia-dur-fast) ease,
     visibility 0s linear;
@@ -19,16 +19,19 @@
   width: 2.75rem;
   max-height: 9rem;
 }
-.folia-column.folia-is-folded > :not(.folia-column-fold) {
+.folia-column.folia-is-folded > :not(.folia-column-fold-slot) {
   opacity: 0;
   visibility: hidden;
   transition:
     opacity var(--folia-dur-fast) ease,
     visibility 0s linear var(--folia-dur-fast);
 }
-.folia-scope .folia-column-fold {
+.folia-column-fold-slot {
   position: absolute;
   inset: 0;
+  display: flex;
+}
+.folia-scope .folia-column-fold {
   writing-mode: vertical-rl;
   height: 100%;
   width: 100%;

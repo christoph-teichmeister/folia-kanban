@@ -1,6 +1,6 @@
 import { useMemo, type ComponentProps } from "react";
 import { columnOf } from "../model/boardColumns";
-import { laneModel, laneOfColumnId, laneValue, plainColumnId } from "../model/swimlanes";
+import { cardLane, laneModel, laneOfColumnId, plainColumnId } from "../model/swimlanes";
 import type { Card } from "../model/types";
 import { Board } from "./Board";
 import { useRepo } from "./context";
@@ -19,10 +19,8 @@ export function Swimlanes({ by, ...props }: { by: string } & Props) {
   const move = (card: Card, overId: string) => {
     void (async () => {
       const lane = targetLane(props.board, by, card, overId);
-      if (lane !== null && lane !== laneValue(card, by)) {
-        if (lane === "") await repo.unsetFrontmatterKey(card.path, by);
-        else await repo.setFrontmatter(card.path, { [by]: lane });
-      }
+      if (lane !== null && lane !== cardLane(card, by))
+        await repo.setFrontmatter(card.path, { [by]: lane });
       onMove(card, plainColumnId(overId));
     })();
   };
@@ -40,13 +38,9 @@ export function Swimlanes({ by, ...props }: { by: string } & Props) {
           )}
           <div className="folia-lane-stack">
             {model.lanes.map((lane) => (
-              <section
-                key={lane.value}
-                className="folia-lane"
-                aria-label={lane.value || `No ${by}`}
-              >
+              <section key={lane.value} className="folia-lane" aria-label={lane.value}>
                 <h3 className="folia-lane-title">
-                  {lane.value || `No ${by}`} <span className="folia-muted">{lane.count}</span>
+                  {lane.value} <span className="folia-muted">{lane.count}</span>
                 </h3>
                 {row(lane.columns, lane.value)}
               </section>
@@ -66,5 +60,5 @@ function targetLane(board: Props["board"], by: string, card: Card, overId: strin
   if (!over || over.path === card.path) return null;
   const skipped = board.config.swimlaneSkip ?? [];
   const col = columnOf(board, overId);
-  return col !== null && skipped.includes(col) ? null : laneValue(over, by);
+  return col !== null && skipped.includes(col) ? null : cardLane(over, by);
 }
