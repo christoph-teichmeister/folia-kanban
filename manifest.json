@@ -1,10 +1,10 @@
 {
-  "id": "folia-kanban",
-  "name": "Folia Kanban",
-  "version": "0.6.1",
+  "id": "folia-kanban-kb",
+  "name": "Folia Kanban (KB)",
+  "version": "0.6.1-kb.1",
   "minAppVersion": "1.11.4",
-  "description": "A real Kanban board with drag-and-drop, nested subcards, comments, and history — every card is a plain Markdown file.",
-  "author": "Rafael Stavarengo",
-  "authorUrl": "https://github.com/stavarengo",
+  "description": "Fork of Folia Kanban with tabs in the card panel and a \"waiting for\" line.",
+  "author": "Rafael Stavarengo (fork: Christoph Teichmeister)",
+  "authorUrl": "https://github.com/christoph-teichmeister/folia-kanban",
   "isDesktopOnly": true
 }

@@ -1,4 +1,6 @@
-# Folia Kanban
+# Folia Kanban (KB fork)
+
+> **Modified fork** of [stavarengo/folia-kanban](https://github.com/stavarengo/folia-kanban) (AGPL-3.0, (c) Rafael Stavarengo). Adds tabs (Overview / Comments / History) to the card panel and a `waiting-for` frontmatter property shown on cards in the Waiting column. Plugin id `folia-kanban-kb`.
 
 **Kanban from plain Markdown.**
 

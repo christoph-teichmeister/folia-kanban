@@ -222,6 +222,9 @@ function CardFace({
       ) : (
         <div className="folia-card-title">{card.title}</div>
       )}
+      {card.frontmatter.status === "waiting" && String(card.frontmatter["waiting-for"] ?? "").trim() && (
+        <div className="folia-card-waiting">⏳ {String(card.frontmatter["waiting-for"]).trim()}</div>
+      )}
       <CardChips card={card} ctx={view.ctx} chips={view.chips} />
       <CardProgress stats={card.stats} />
       {!view.subitemsCollapsed && view.hasNextTodosPreview && (

@@ -86,6 +86,8 @@ const FOLIA_PROPERTIES = [
       "use update_card's own `title` field, which renames the note and its inbound links",
   },
   { key: "type", scope: "card", panelField: true },
+  // Fork addition: who or what a card in the Waiting column waits for. Plain text.
+  { key: "waiting-for", scope: "card", panelField: true },
   { key: "created", scope: "card", panelField: true },
   {
     key: "area",

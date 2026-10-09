@@ -141,6 +141,35 @@ function AssigneeField({
   );
 }
 
+/** The WAITING FOR field (fork addition): free text, committed on blur/Enter; empty removes the key. */
+function WaitingForField({
+  value,
+  onCommit,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+}) {
+  const { draft, setDraft, commit } = useFieldDraft(value, onCommit, trimmed);
+  return (
+    <label>
+      <span className="folia-prop-key">Waiting for</span>
+      <input
+        className="folia-prop-input"
+        value={draft}
+        placeholder="—"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+      />
+    </label>
+  );
+}
+
 /** The card's own fields: its column, priority, due date and assignee. */
 export function CardFields({
   board,
@@ -214,6 +243,16 @@ export function CardFields({
           onChange={(e) => void mutate(() => repo.setFrontmatter(path, { due: e.target.value }))}
         />
       </label>
+      <WaitingForField
+        value={String(fm["waiting-for"] ?? "")}
+        onCommit={(v) =>
+          void mutate(() =>
+            v === ""
+              ? repo.unsetFrontmatterKey(path, "waiting-for")
+              : repo.setFrontmatter(path, { "waiting-for": v }),
+          )
+        }
+      />
       {/* Both of these go through the shared action rather than `mutate`, for the reason the
         priority field does: the context menu writes this key too, and one copy of "an empty
         value removes the key" is the only way the two surfaces cannot drift apart. The action

@@ -1,4 +1,4 @@
-import { useContext, useRef, type CSSProperties } from "react";
+import { useContext, useRef, useState, type CSSProperties } from "react";
 import type { Board, Card, CardBody } from "../model/types";
 import { descriptionRefusal } from "../model/card";
 import { CardComments } from "./CardComments";
@@ -206,6 +206,13 @@ function CardSections({
   panel: CardPanelState;
 }) {
   const { body, reload, mutate, stillHere, focus, drafts } = panel;
+  const [tab, setTab] = useState<"overview" | "comments" | "history">("overview");
+  const nComments = body?.comments.length ?? 0;
+  const tabs = [
+    ["overview", "Overview"],
+    ["comments", nComments ? `Comments (${nComments})` : "Comments"],
+    ["history", "History"],
+  ] as const;
   return (
     <>
       <CardTitleFields
@@ -216,6 +223,18 @@ function CardSections({
         overrideRef={focus.titleOverrideRef}
         mutate={mutate}
       />
+      <div className="folia-tabs" role="group" aria-label="Panel sections">
+        {tabs.map(([id, label]) => (
+          <HostButton
+            key={id}
+            className="folia-btn folia-tab"
+            text={label}
+            cta={tab === id}
+            onClick={() => setTab(id)}
+          />
+        ))}
+      </div>
+      <div className="folia-tab-pane" hidden={tab !== "overview"}>
       <CardFields board={board} card={card} path={path} mutate={mutate} reload={reload} />
       <CardProperties
         card={card}
@@ -252,15 +271,20 @@ function CardSections({
         onNavigate={onNavigate}
         mutate={mutate}
       />
-      <CardComments
-        body={body}
-        path={path}
-        readState={panel.readState}
-        draft={drafts.comment}
-        mutate={mutate}
-        stillHere={stillHere}
-      />
-      <HistorySection body={body} />
+      </div>
+      <div className="folia-tab-pane" hidden={tab !== "comments"}>
+        <CardComments
+          body={body}
+          path={path}
+          readState={panel.readState}
+          draft={drafts.comment}
+          mutate={mutate}
+          stillHere={stillHere}
+        />
+      </div>
+      <div className="folia-tab-pane" hidden={tab !== "history"}>
+        <HistorySection body={body} />
+      </div>
     </>
   );
 }
