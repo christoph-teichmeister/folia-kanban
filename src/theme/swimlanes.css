@@ -1,14 +1,25 @@
-/* Fork addition: lanes share one horizontal scroll, so the columns of every lane stay aligned. */
-.folia-lanes {
+/* Fork addition: a left section drawn once, then the lanes; they share one scroll box so the
+   columns stay aligned. */
+.folia-lanes-root {
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
   overflow: auto;
   scrollbar-width: thin;
 }
-.folia-lane {
+.folia-lanes {
+  display: flex;
+  align-items: stretch;
   width: max-content;
   min-width: 100%;
+  min-height: 100%;
+}
+.folia-lane-left {
+  flex: 0 0 auto;
+  border-right: var(--border-width) solid var(--background-modifier-border);
+}
+.folia-lane-stack {
+  flex: 1 1 auto;
 }
 .folia-lane + .folia-lane {
   border-top: var(--border-width) solid var(--background-modifier-border);
@@ -25,9 +36,6 @@
 .folia-lanes .folia-board {
   overflow: visible;
   height: auto;
-}
-.folia-lanes .folia-column {
-  max-height: none;
 }
 .folia-lanes .folia-add-column {
   display: none;

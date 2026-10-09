@@ -111,6 +111,8 @@ const FOLIA_PROPERTIES = [
   { key: "card-title", scope: "board" },
   // Fork addition: name of the card property that groups the board into horizontal lanes.
   { key: "swimlanes", scope: "board" },
+  // Fork addition: columns drawn once, left of the lanes, whatever a card's lane value is.
+  { key: "swimlane-skip", scope: "board" },
   { key: "folia-view", scope: "board" },
   { key: "columns", scope: "board" },
   { key: "priorities", scope: "board" },

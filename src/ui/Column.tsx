@@ -8,6 +8,7 @@ import { Icon } from "./icons";
 import { HostButton, HostIconButton } from "./hostControls";
 import { useReducedMotion } from "./useReducedMotion";
 import { useBoardActions, useColumnCollapse } from "./context";
+import { plainColumnId } from "../model/swimlanes";
 import { columnAccent, COLUMN_COLORS } from "./columnColors";
 import { CardComposer, useCardComposer } from "./CardComposer";
 import { ColumnCards } from "./ColumnCards";
@@ -44,18 +45,18 @@ interface Props {
   onAddCard: (columnId: string, title: string) => boolean;
 }
 
-/** Open or folded (fork addition: folding is kept on this device, see `useColumnCollapse`). */
+/** Folding is kept on this device, see `useColumnCollapse`; a folded column keeps its place and animates shut. */
 export function Column(props: Props) {
-  const [folded, toggle] = useColumnCollapse(props.board.config.path, props.column.id);
-  return folded ? (
-    <FoldedColumn {...props} onExpand={toggle} />
-  ) : (
-    <OpenColumn {...props} onFold={toggle} />
+  const [folded, toggle] = useColumnCollapse(
+    props.board.config.path,
+    plainColumnId(props.column.id),
   );
+  return <OpenColumn {...props} folded={folded} onFold={toggle} />;
 }
 
 function OpenColumn({
-  onFold: toggleFolded,
+  folded,
+  onFold,
   column,
   cardPaths,
   board,
@@ -68,7 +69,7 @@ function OpenColumn({
   isLast,
   dragReloc,
   onAddCard,
-}: Props & { onFold: () => void }) {
+}: Props & { folded: boolean; onFold: () => void }) {
   // The column is itself a sortable item (header drag-reorder, #2). Its sortable id IS column.id,
   // which doubles as the body's droppable id — so a card dropped on this column still reports
   // over.id === column.id and resolveDrop keeps bucketing card drops unchanged. (No separate
@@ -96,11 +97,14 @@ function OpenColumn({
       // de-emphasis. setNodeRef is the sortable's droppable ref too, so a card dropped on this
       // column still reports over.id === column.id (no separate useDroppable).
       ref={sortable.setNodeRef}
-      className={columnClassName(column, overLimit, sortable.isDragging)}
+      className={
+        columnClassName(column, overLimit, sortable.isDragging) + (folded ? " folia-is-folded" : "")
+      }
       data-testid="column"
       data-column={column.id}
       style={columnStyle(column, sortable.transform, sortable.transition)}
     >
+      {folded && <FoldStrip column={column} count={cards.count} onExpand={onFold} />}
       <ColumnHeader
         column={column}
         titleEdit={titleEdit}
@@ -108,7 +112,7 @@ function OpenColumn({
         count={cards.count}
         wipLimit={wipLimit}
         overLimit={overLimit}
-        onFold={toggleFolded}
+        onFold={onFold}
       >
         <ColumnMenuButton
           column={column}
@@ -384,39 +388,6 @@ function sortableOptions(id: string, reducedMotion: boolean) {
   return reducedMotion ? { id, transition: null } : { id };
 }
 
-/** Fork addition: a narrow strip keeps a collapsed column (and its drop target) visible without its cards. */
-function FoldedColumn({ onExpand, ...props }: Props & { onExpand: () => void }) {
-  const { column, board, cardPaths, filter, today, doneColumnId, dragReloc, wipLimit } = props;
-  const reducedMotion = useReducedMotion();
-  const sortable = useSortable(sortableOptions(column.id, reducedMotion));
-  const cards = useColumnCards({
-    column,
-    cardPaths,
-    board,
-    filter,
-    today,
-    doneColumnId,
-    dragReloc,
-  });
-  const overLimit = wipLimit != null && cards.count > wipLimit;
-  return (
-    <section
-      ref={sortable.setNodeRef}
-      className={columnClassName(column, overLimit, sortable.isDragging) + " folia-is-folded"}
-      data-testid="column"
-      data-column={column.id}
-      style={columnStyle(column, sortable.transform, sortable.transition)}
-    >
-      <HostButton
-        className="folia-btn folia-column-fold"
-        text={`${column.title} · ${cards.count}`}
-        aria-label={`Expand ${column.title} (${cards.count} cards)`}
-        onClick={onExpand}
-      />
-    </section>
-  );
-}
-
 /** The cards, the empty-column hint and the add-card composer of an open column. */
 function ColumnBodyContent({
   cards,
@@ -449,5 +420,25 @@ function ColumnBodyContent({
         (cards.takesAdds || cards.globalFiltering) && <EmptyColumn filtering={cards.filtering} />}
       {composer.adding && <CardComposer composer={composer} fillNote={cards.fillNote} />}
     </>
+  );
+}
+
+/** The click target of a folded column: its title and card count, written vertically. */
+function FoldStrip({
+  column,
+  count,
+  onExpand,
+}: {
+  column: ColumnDef;
+  count: number;
+  onExpand: () => void;
+}) {
+  return (
+    <HostButton
+      className="folia-btn folia-column-fold"
+      text={`${column.title} · ${count}`}
+      aria-label={`Expand ${column.title} (${count} cards)`}
+      onClick={onExpand}
+    />
   );
 }

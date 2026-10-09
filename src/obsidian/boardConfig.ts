@@ -70,6 +70,13 @@ export async function readBoardConfig(
     ...(typeof fm["swimlanes"] === "string" && fm["swimlanes"].trim()
       ? { swimlanes: fm["swimlanes"].trim() }
       : {}),
+    ...(Array.isArray(fm["swimlane-skip"])
+      ? {
+          swimlaneSkip: (fm["swimlane-skip"] as unknown[]).filter(
+            (x): x is string => typeof x === "string",
+          ),
+        }
+      : {}),
     cardFolderExisting,
     cardFolderCaseMatches,
   };

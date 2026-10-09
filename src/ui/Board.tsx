@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -12,7 +12,8 @@ import {
   horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import type { Board as BoardModel, Card } from "../model/types";
+import type { Board as BoardModel, Card, ColumnDef } from "../model/types";
+import type { DragReloc } from "../model/board";
 import { applyReloc } from "../model/board";
 import { Column } from "./Column";
 import { AddColumn } from "./AddColumn";
@@ -34,6 +35,8 @@ interface Props {
   /** A card drop: the card as it was when it was picked up, and the id it was released over. */
   onMove: (card: Card, overId: string) => void;
   onAddCard: (columnId: string, title: string) => boolean;
+  /** Fork addition: lay the rows of columns out yourself (swimlanes); the board keeps one drag context. */
+  layout?: (row: (columns: ColumnDef[], key: string) => ReactNode) => ReactNode;
 }
 
 /** Pointer (mouse), touch (long-press) and keyboard sensors for dragging cards and columns. */
@@ -66,6 +69,7 @@ export function Board({
   doneColumnId,
   onMove,
   onAddCard,
+  layout,
 }: Props) {
   const { boardPan } = useSettings();
   // Keep the module-scoped ref the sensor (and the pan handler) reads in sync with the live
@@ -107,28 +111,27 @@ export function Board({
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       {...drag.handlers}
     >
-      <div className="folia-board" data-pan={boardPan} ref={boardRef}>
-        <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-          {board.config.columns.map((col, i) => (
-            <Column
-              key={col.id}
-              column={col}
-              cardPaths={effectiveColumns[col.id] ?? []}
-              board={board}
-              today={today}
-              selectedPath={selectedPath}
-              {...(wipLimits[col.id] !== undefined ? { wipLimit: wipLimits[col.id] } : {})}
-              filter={filter}
-              doneColumnId={doneColumnId}
-              isFirst={i === 0}
-              isLast={i === board.config.columns.length - 1}
-              {...(dragReloc ? { dragReloc } : {})}
-              onAddCard={onAddCard}
-            />
-          ))}
-        </SortableContext>
-        <AddColumn />
-      </div>
+      {(() => {
+        const row = (columns: ColumnDef[], key: string): ReactNode => (
+          <ColumnRow
+            key={key}
+            columns={columns}
+            all={board.config.columns}
+            cards={effectiveColumns}
+            shared={{ board, today, selectedPath, wipLimits, filter, doneColumnId, onAddCard }}
+            {...(dragReloc ? { dragReloc } : {})}
+            pan={boardPan}
+            {...(layout ? {} : { rowRef: boardRef })}
+          />
+        );
+        return layout ? (
+          <div className="folia-lanes-root" ref={boardRef}>
+            {layout(row)}
+          </div>
+        ) : (
+          row(board.config.columns, "all")
+        );
+      })()}
       {/* The guard only skips the pre-mount render, where no drag can be active. */}
       {boardRef.current && (
         <BoardDragOverlay
@@ -141,5 +144,54 @@ export function Board({
         />
       )}
     </DndContext>
+  );
+}
+
+/** One row of columns in a sortable context of its own (the whole board, or one lane). */
+function ColumnRow({
+  columns,
+  all,
+  cards,
+  shared,
+  dragReloc,
+  pan,
+  rowRef,
+}: {
+  columns: ColumnDef[];
+  all: ColumnDef[];
+  cards: Record<string, string[]>;
+  shared: Pick<
+    Props,
+    "board" | "today" | "selectedPath" | "wipLimits" | "filter" | "doneColumnId" | "onAddCard"
+  >;
+  dragReloc?: DragReloc;
+  pan: string;
+  /** Set on the plain board's row only: the element panning and the drag overlay anchor to. */
+  rowRef?: RefObject<HTMLDivElement>;
+}) {
+  const { board, today, selectedPath, wipLimits, filter, doneColumnId, onAddCard } = shared;
+  return (
+    <div className="folia-board" data-pan={pan} {...(rowRef ? { ref: rowRef } : {})}>
+      <SortableContext items={columns.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
+        {columns.map((col) => (
+          <Column
+            key={col.id}
+            column={col}
+            cardPaths={cards[col.id] ?? []}
+            board={board}
+            today={today}
+            selectedPath={selectedPath}
+            {...(wipLimits[col.id] !== undefined ? { wipLimit: wipLimits[col.id] } : {})}
+            filter={filter}
+            doneColumnId={doneColumnId}
+            isFirst={col.id === all[0]?.id}
+            isLast={col.id === all[all.length - 1]?.id}
+            {...(dragReloc ? { dragReloc } : {})}
+            onAddCard={onAddCard}
+          />
+        ))}
+      </SortableContext>
+      {rowRef && <AddColumn />}
+    </div>
   );
 }

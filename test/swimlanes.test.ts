@@ -1,31 +1,53 @@
 import { describe, it, expect } from "vitest";
-import { boardLanes } from "../src/model/swimlanes";
+import { laneModel, laneOfColumnId, plainColumnId } from "../src/model/swimlanes";
 import type { Board, Card } from "../src/model/types";
 
 const card = (path: string, owner?: unknown): Card =>
   ({ path, frontmatter: owner === undefined ? {} : { owner } }) as unknown as Card;
 
-describe("boardLanes", () => {
-  const board = {
-    cards: {
-      a: card("a", "claude"),
-      b: card("b", "you"),
-      c: card("c"),
-      d: card("d", ["you", "claude"]),
-    },
-    columns: { next: ["a", "b", "c"], doing: ["d"] },
-  } as unknown as Board;
+const board = {
+  config: { columns: [{ id: "inbox" }, { id: "next" }, { id: "doing" }] },
+  cards: {
+    a: card("a", "claude"),
+    b: card("b", "you"),
+    c: card("c"),
+    d: card("d", ["you", "claude"]),
+    e: card("e", "claude"),
+  },
+  columns: { inbox: ["e"], next: ["a", "b", "c"], doing: ["d"] },
+} as unknown as Board;
 
-  it("puts you first, claude next, ownerless last, columns filtered per lane", () => {
-    const lanes = boardLanes(board, "owner");
-    expect(lanes.map((l) => l.value)).toEqual(["you", "claude", ""]);
-    expect(lanes[0]?.columns).toEqual({ next: ["b"], doing: ["d"] });
-    expect(lanes[1]?.columns).toEqual({ next: ["a"], doing: [] });
-    expect(lanes[2]?.columns).toEqual({ next: ["c"], doing: [] });
+describe("laneModel", () => {
+  const m = laneModel(board, "owner", ["inbox"]);
+
+  it("orders lanes you, claude, ownerless and filters each lane's columns", () => {
+    expect(m.lanes.map((l) => l.value)).toEqual(["you", "claude", ""]);
+    expect(m.board.columns["next§you"]).toEqual(["b"]);
+    expect(m.board.columns["doing§you"]).toEqual(["d"]);
+    expect(m.board.columns["next§claude"]).toEqual(["a"]);
+    expect(m.board.columns["next§-"]).toEqual(["c"]);
   });
 
-  it("keeps you and claude lanes even when empty, drops an empty ownerless lane", () => {
-    const only = { cards: { a: card("a", "you") }, columns: { next: ["a"] } } as unknown as Board;
-    expect(boardLanes(only, "owner").map((l) => l.value)).toEqual(["you", "claude"]);
+  it("draws skipped columns once, unfiltered, in front", () => {
+    expect(m.left.map((c) => c.id)).toEqual(["inbox"]);
+    expect(m.board.columns["inbox"]).toEqual(["e"]);
+    expect(m.board.config.columns[0]?.id).toBe("inbox");
+  });
+
+  it("takes lane column ids apart again", () => {
+    expect(plainColumnId("next§you")).toBe("next");
+    expect(plainColumnId("inbox")).toBe("inbox");
+    expect(laneOfColumnId("next§you")).toBe("you");
+    expect(laneOfColumnId("next§-")).toBe("");
+    expect(laneOfColumnId("inbox")).toBeNull();
+  });
+
+  it("drops an empty ownerless lane", () => {
+    const only = {
+      config: { columns: [{ id: "next" }] },
+      cards: { a: card("a", "you") },
+      columns: { next: ["a"] },
+    } as unknown as Board;
+    expect(laneModel(only, "owner").lanes.map((l) => l.value)).toEqual(["you", "claude"]);
   });
 });
