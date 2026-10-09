@@ -11,7 +11,7 @@ import { isBoardFrontmatter } from "./viewMode";
 import type { BoardHost, BoardRef } from "../mcp/host";
 import type { CardRepository } from "../model/repo";
 import type { ServerInfo } from "../mcp/protocol";
-import { startMcpServer, type RunningMcpServer } from "./mcpHttpServer";
+import type { RunningMcpServer } from "./mcpHttpServer";
 import { VaultRepository } from "./vaultRepo";
 import type { KanbanSettings } from "../settings";
 
@@ -193,6 +193,8 @@ export class McpService {
   private async start(target: Target): Promise<void> {
     this.wanted = target;
     try {
+      // Fork: loaded on demand, so a phone (no Node `http`) never evaluates the module.
+      const { startMcpServer } = await import("./mcpHttpServer");
       this.running = await startMcpServer({
         host: vaultBoardHost(this.options),
         info: this.options.info,

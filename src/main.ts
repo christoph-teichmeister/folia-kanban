@@ -1,5 +1,5 @@
 import type { PaneType, TFile, WorkspaceLeaf } from "obsidian";
-import { Keymap, MarkdownView, Notice, Plugin } from "obsidian";
+import { Keymap, MarkdownView, Notice, Platform, Plugin } from "obsidian";
 import { KanbanView } from "./view";
 import { OPEN_BOARD_COMMAND_NAME, VIEW_TYPE_KANBAN } from "./viewType";
 import type { FileOp } from "./model/pathOps";
@@ -409,9 +409,10 @@ export default class FoliaKanbanPlugin extends Plugin {
     }
   }
 
-  /** Host the MCP server. Desktop-only is the manifest's `isDesktopOnly`, not a check here (see
-   *  `docs/decisions.md`, "Mobile is not supported"). */
+  /** Host the MCP server. Fork: the plugin also runs on mobile, where there is no Node `http`, so
+   *  agent access exists on the desktop app only. */
   private buildMcp(): void {
+    if (!Platform.isDesktopApp) return;
     this.mcp = new McpService({
       app: this.app,
       getSettings: () => this.settings,

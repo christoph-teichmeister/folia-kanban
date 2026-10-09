@@ -2,6 +2,7 @@ import { useRef } from "react";
 import {
   DndContext,
   KeyboardSensor,
+  TouchSensor,
   MeasuringStrategy,
   useSensor,
   useSensors,
@@ -35,6 +36,27 @@ interface Props {
   onAddCard: (columnId: string, title: string) => boolean;
 }
 
+/** Pointer (mouse), touch (long-press) and keyboard sensors for dragging cards and columns. */
+function useBoardSensors(reducedMotion: boolean) {
+  return useSensors(
+    useSensor(PanAwarePointerSensor, {
+      // A short distance threshold lets a click stay a click (never hijacked into a drag) while a
+      // deliberate move past 5px crisply commits to a drag. The 5px also matches the column header's
+      // click-vs-drag threshold (§4) so card and column drags feel consistent.
+      activationConstraint: { distance: 5 },
+    }),
+    // Fork: long-press to pick a card up on touch screens; a plain swipe scrolls the board.
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      // Space picks up / drops; Enter is left free for opening a focused card.
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
+      // Moving a card past the edge scrolls its container; dnd-kit smooths that scroll by default.
+      scrollBehavior: reducedMotion ? "auto" : "smooth",
+    }),
+  );
+}
+
 export function Board({
   board,
   today,
@@ -52,21 +74,7 @@ export function Board({
 
   const columnIds = board.config.columns.map((c) => c.id);
   const reducedMotion = useReducedMotion();
-  const sensors = useSensors(
-    useSensor(PanAwarePointerSensor, {
-      // A short distance threshold lets a click stay a click (never hijacked into a drag) while a
-      // deliberate move past 5px crisply commits to a drag. The 5px also matches the column header's
-      // click-vs-drag threshold (§4) so card and column drags feel consistent.
-      activationConstraint: { distance: 5 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-      // Space picks up / drops; Enter is left free for opening a focused card.
-      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
-      // Moving a card past the edge scrolls its container; dnd-kit smooths that scroll by default.
-      scrollBehavior: reducedMotion ? "auto" : "smooth",
-    }),
-  );
+  const sensors = useBoardSensors(reducedMotion);
   const drag = useBoardDrag(board, columnIds, onMove);
   // Card sortables are namespaced `${columnId}::${card.path}` so a card mirrored into a cross-board
   // lane (#1) and its status column don't collide on one id. A column drag's active id is the bare

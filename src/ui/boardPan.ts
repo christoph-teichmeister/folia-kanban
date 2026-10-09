@@ -17,6 +17,8 @@ export class PanAwarePointerSensor extends PointerSensor {
     {
       eventName: "onPointerDown" as const,
       handler: ({ nativeEvent }: { nativeEvent: PointerEvent }) => {
+        // Fork: touch drags go through the TouchSensor (long-press), so a swipe still scrolls.
+        if (nativeEvent.pointerType === "touch") return false;
         if (!nativeEvent.isPrimary || nativeEvent.button !== 0) return false;
         if (panModeRef.current === "shift" && nativeEvent.shiftKey) return false;
         return true;

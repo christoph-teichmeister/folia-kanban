@@ -1,10 +1,10 @@
 {
   "id": "folia-kanban-kb",
   "name": "Folia Kanban (KB)",
-  "version": "0.6.1-kb.1",
+  "version": "0.6.1-kb.2",
   "minAppVersion": "1.11.4",
   "description": "Fork of Folia Kanban with tabs in the card panel and a \"waiting for\" line.",
   "author": "Rafael Stavarengo (fork: Christoph Teichmeister)",
   "authorUrl": "https://github.com/christoph-teichmeister/folia-kanban",
-  "isDesktopOnly": true
+  "isDesktopOnly": false
 }

@@ -368,7 +368,7 @@ Edits are surgical: body changes splice only the section they touch, and frontma
 
 ## Install
 
-**Requirements:** Obsidian **1.11.4+**, desktop only. Phones and tablets are not supported — see [Decisions](docs/decisions.md) for why, and what would change it.
+**Requirements:** Obsidian **1.11.4+**. This fork also loads on phones and tablets (touch layout, long-press to drag a card); agent access (MCP) stays desktop-only. Upstream is desktop only — see [Decisions](docs/decisions.md).
 
 ### From Community Plugins
 
