@@ -46,7 +46,7 @@ function useBoardSensors(reducedMotion: boolean) {
       activationConstraint: { distance: 5 },
     }),
     // Fork: long-press to pick a card up on touch screens; a plain swipe scrolls the board.
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 10 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
       // Space picks up / drops; Enter is left free for opening a focused card.

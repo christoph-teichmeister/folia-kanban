@@ -23,3 +23,9 @@ body.is-mobile .folia-scope .folia-column-menu-btn {
   width: var(--input-height);
   height: var(--input-height);
 }
+/* Long-press picks a card up, so it must not also select text or raise the system callout. */
+body.is-mobile .folia-card {
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
+}
