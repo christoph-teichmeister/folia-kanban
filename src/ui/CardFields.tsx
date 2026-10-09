@@ -2,6 +2,7 @@ import { useId, useRef } from "react";
 import type { Board, Card } from "../model/types";
 import { syncSubcardLines } from "../model/board";
 import { assigneeValues, boardAssignees, sameAssignee, toggleAssignee } from "../model/assignees";
+import { waitingFor } from "../model/properties";
 import { priorityOptions } from "./cardView";
 import { useBoardActions, useRepo, useSettings } from "./context";
 import { HostButton, HostDropdown } from "./hostControls";
@@ -143,13 +144,26 @@ function AssigneeField({
 
 /** The WAITING FOR field (fork addition): free text, committed on blur/Enter; empty removes the key. */
 function WaitingForField({
-  value,
-  onCommit,
+  card,
+  path,
+  mutate,
 }: {
-  value: string;
-  onCommit: (v: string) => void;
+  card: Card;
+  path: string;
+  mutate: (fn: () => Promise<unknown>) => Promise<boolean>;
 }) {
-  const { draft, setDraft, commit } = useFieldDraft(value, onCommit, trimmed);
+  const repo = useRepo();
+  const commitValue = (v: string) =>
+    void mutate(() =>
+      v === ""
+        ? repo.unsetFrontmatterKey(path, "waiting-for")
+        : repo.setFrontmatter(path, { "waiting-for": v }),
+    );
+  const { draft, setDraft, commit } = useFieldDraft(
+    waitingFor(card.frontmatter),
+    commitValue,
+    trimmed,
+  );
   return (
     <label>
       <span className="folia-prop-key">Waiting for</span>
@@ -243,16 +257,7 @@ export function CardFields({
           onChange={(e) => void mutate(() => repo.setFrontmatter(path, { due: e.target.value }))}
         />
       </label>
-      <WaitingForField
-        value={String(fm["waiting-for"] ?? "")}
-        onCommit={(v) =>
-          void mutate(() =>
-            v === ""
-              ? repo.unsetFrontmatterKey(path, "waiting-for")
-              : repo.setFrontmatter(path, { "waiting-for": v }),
-          )
-        }
-      />
+      <WaitingForField card={card} path={path} mutate={mutate} />
       {/* Both of these go through the shared action rather than `mutate`, for the reason the
         priority field does: the context menu writes this key too, and one copy of "an empty
         value removes the key" is the only way the two surfaces cannot drift apart. The action

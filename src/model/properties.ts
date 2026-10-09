@@ -245,3 +245,9 @@ export function editScalar(previous: ScalarValue, text: string): ScalarEdit {
     return { ok: false, reason: "This number has more digits than the property can keep exactly." };
   return { ok: true, value: n };
 }
+
+/** The card's `waiting-for` text, trimmed; empty when absent or not text. */
+export function waitingFor(fm: Record<string, unknown>): string {
+  const v = fm["waiting-for"];
+  return typeof v === "string" ? v.trim() : "";
+}
