@@ -7588,6 +7588,49 @@ describe("a board read before a change can land after it (20260828.02)", () => {
   });
 });
 
+describe("a calmer comments tab (fork)", () => {
+  const comments = (n: number) =>
+    Array.from({ length: n }, (_, i) => `- _2026-06-13 09:0${i} @agent:_ note ${i + 1}`).join("\n");
+
+  it("folds all but the newest three behind one button, and brings them back", async () => {
+    const user = userEvent.setup();
+    const repo = new FakeRepo(config, {
+      "Tasks/Alpha.md": {
+        fm: { type: "task", status: "todo" },
+        body: `\n# Alpha\n\n## Comments\n${comments(6)}\n`,
+      },
+    });
+    renderStateful(repo, DEFAULT_SETTINGS);
+    await user.click(await screen.findByText("Alpha"));
+    const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
+    expect(within(detail).queryByText("note 3")).toBeNull();
+    expect(within(detail).getByText("note 4")).toBeTruthy();
+    await user.click(within(detail).getByRole("button", { name: /^Show 3 earlier comments/ }));
+    expect(within(detail).getByText("note 1")).toBeTruthy();
+    await user.click(within(detail).getByRole("button", { name: "Show only the newest" }));
+    expect(within(detail).queryByText("note 1")).toBeNull();
+  });
+
+  it("clamps a long comment behind Show more", async () => {
+    const user = userEvent.setup();
+    const long = "word ".repeat(100).trim();
+    const repo = new FakeRepo(config, {
+      "Tasks/Alpha.md": {
+        fm: { type: "task", status: "todo" },
+        body: `\n# Alpha\n\n## Comments\n- _2026-06-13 09:00 @agent:_ ${long}\n`,
+      },
+    });
+    renderStateful(repo, DEFAULT_SETTINGS);
+    await user.click(await screen.findByText("Alpha"));
+    const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
+    expect(detail.querySelector(".folia-comment-text.folia-is-clamped")).not.toBeNull();
+    await user.click(within(detail).getByRole("button", { name: "Show more" }));
+    expect(detail.querySelector(".folia-comment-text.folia-is-clamped")).toBeNull();
+  });
+});
+
 describe("folding a column (fork)", () => {
   it("folds in place and leaves no inline transition that would cancel the animation", async () => {
     const user = userEvent.setup();
