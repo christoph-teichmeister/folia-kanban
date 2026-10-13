@@ -35,7 +35,12 @@ class DetailModal extends Modal {
       (focused.tagName === "INPUT" || focused.tagName === "TEXTAREA")
     )
       focused.blur();
-    super.close();
+    // Fork: on a wide window the panel slides back out first (`.folia-is-closing`). Where nothing
+    // animates (a phone, reduced motion, tests without the Web Animations API) it closes at once.
+    this.modalEl.addClass("folia-is-closing");
+    const sliding = this.modalEl.getAnimations?.() ?? [];
+    if (sliding.length === 0) super.close();
+    else this.modalEl.win.setTimeout(() => super.close(), 180);
   }
 
   override onClose(): void {

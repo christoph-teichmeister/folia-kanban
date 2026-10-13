@@ -914,17 +914,28 @@
     height: 100%;
     max-height: none;
     border-radius: var(--radius-l) 0 0 var(--radius-l);
-    animation: folia-detail-slide var(--folia-dur) var(--folia-ease);
+    /* The curve of `--folia-ease`, written out: the tokens hang off `.folia-scope`, which is the
+       content inside this box, so the variable is undefined here. */
+    animation: folia-detail-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  /* Closing slides it back out; `detailModal.ts` waits for this before removing the dialog. */
+  .folia-detail-modal.folia-detail-modal.folia-is-closing {
+    animation: folia-detail-out 180ms cubic-bezier(0.7, 0, 0.84, 0) forwards;
   }
 }
-@keyframes folia-detail-slide {
+@keyframes folia-detail-in {
   from {
-    transform: translateX(var(--size-4-12));
-    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+@keyframes folia-detail-out {
+  to {
+    transform: translateX(100%);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .folia-detail-modal {
+  .folia-detail-modal.folia-detail-modal,
+  .folia-detail-modal.folia-detail-modal.folia-is-closing {
     animation: none;
   }
 }
