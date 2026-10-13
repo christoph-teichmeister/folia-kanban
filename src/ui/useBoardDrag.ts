@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   closestCorners,
+  pointerWithin,
   type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
@@ -9,6 +10,22 @@ import {
 import type { Board as BoardModel, Card } from "../model/types";
 import { planDrop, resolveDragReloc, splitCardDragId, type DragReloc } from "../model/board";
 import { useBoardActions } from "./context";
+
+/**
+ * Fork fix: a card drag targets what is under the pointer, a card before its column. Measured by
+ * the dragged card's corners (`closestCorners` alone), the target flipped as the make-room gap
+ * pushed cards down, so a drop landed wherever the last flip left it, often the top of the column.
+ * Off every droppable it falls back to the nearest corners.
+ */
+export function cardUnderPointer(
+  args: Parameters<CollisionDetection>[0],
+  columnIds: string[],
+): ReturnType<CollisionDetection> {
+  const hits = pointerWithin(args);
+  if (hits.length === 0) return closestCorners(args);
+  const cards = hits.filter((h) => !columnIds.includes(String(h.id)));
+  return cards.length > 0 ? cards : hits;
+}
 
 /**
  * A drag in flight on the board: what was picked up, the live make-room gap it has opened, and what
@@ -63,7 +80,7 @@ export function useBoardDrag(
           ),
         });
       }
-      return closestCorners(args);
+      return cardUnderPointer(args, columnIds);
     },
     [activeId, columnIds],
   );
