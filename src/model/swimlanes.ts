@@ -10,7 +10,7 @@ import type { Board, Card, ColumnDef } from "./types";
 const SEP = "§";
 const DEFAULT_LANE = "you";
 
-export interface Lane {
+interface Lane {
   /** The property value. */
   value: string;
   columns: ColumnDef[];
@@ -71,13 +71,15 @@ export function laneModel(board: Board, key: string, skip: readonly string[] = [
   const lanes = [...values]
     .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
     .map((value): Lane => {
-      const defs = laned.filter((c) => !c.lane || c.lane === value).map((c) => {
-        const id = `${c.id}${SEP}${value}`;
-        columns[id] = (board.columns[c.id] ?? []).filter(
-          (p) => cardLane(board.cards[p], key) === value,
-        );
-        return { ...c, id };
-      });
+      const defs = laned
+        .filter((c) => !c.lane || c.lane === value)
+        .map((c) => {
+          const id = `${c.id}${SEP}${value}`;
+          columns[id] = (board.columns[c.id] ?? []).filter(
+            (p) => cardLane(board.cards[p], key) === value,
+          );
+          return { ...c, id };
+        });
       return {
         value,
         columns: defs,

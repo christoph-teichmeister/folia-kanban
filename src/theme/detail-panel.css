@@ -899,3 +899,179 @@
   padding-left: 0;
   border-left: 0;
 }
+
+/* Fork addition: the panel as a roomy side panel. On a wide window the dialog docks to the right
+   edge at full height and slides in; on a phone it stays the host's full-screen dialog. Inside, the
+   card's text (tabbed) takes the left column and its fields a sticky sidebar on the right. */
+@media (min-width: 48rem) {
+  /* Doubled to outrank the host's own dialog placement. */
+  .folia-detail-modal.folia-detail-modal {
+    position: fixed;
+    inset-block: 0;
+    right: 0;
+    width: min(70rem, 92vw);
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    border-radius: var(--radius-l) 0 0 var(--radius-l);
+    animation: folia-detail-slide var(--folia-dur) var(--folia-ease);
+  }
+}
+@keyframes folia-detail-slide {
+  from {
+    transform: translateX(var(--size-4-12));
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .folia-detail-modal {
+    animation: none;
+  }
+}
+.folia-detail-modal .folia-detail-header {
+  padding: var(--size-4-4) var(--size-4-6);
+  padding-inline-end: calc(var(--size-4-6) + var(--folia-hit-md));
+}
+.folia-detail-modal .folia-detail-title {
+  font-size: calc(var(--font-ui-medium) * 1.2);
+}
+.folia-detail-modal .folia-detail-body {
+  padding: var(--size-4-4) var(--size-4-6) calc(var(--size-4-4) * 2);
+}
+.folia-detail-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  gap: calc(var(--size-4-4) * 2);
+  align-items: start;
+}
+.folia-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-5);
+  min-width: 0;
+}
+.folia-detail-main .folia-tab-pane {
+  gap: var(--size-4-6);
+}
+.folia-detail-aside {
+  position: sticky;
+  top: var(--size-4-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  padding: var(--size-4-4);
+  background: var(--background-secondary);
+  border: var(--border-width) solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+/* The sidebar is narrow, so its labels get a narrow gutter of their own. */
+.folia-detail-aside :is(.folia-prop-key, .folia-prop-add .folia-prop-input:first-child) {
+  flex-basis: 6.5rem;
+}
+.folia-detail-aside .folia-assignee-hint {
+  padding-left: calc(6.5rem + var(--size-4-2));
+}
+.folia-detail-aside :is(.folia-prop-input, .folia-status-slot) {
+  min-width: 0;
+}
+/* A narrow panel (a phone, a small window) stacks the fields above the text. */
+@container (max-width: 44rem) {
+  .folia-detail-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--size-4-5);
+  }
+  .folia-detail-aside {
+    position: static;
+    order: -1;
+  }
+}
+.folia-scope .folia-tab {
+  padding-inline: var(--size-4-4);
+}
+.folia-detail-main .folia-desc-rendered {
+  font-size: var(--font-ui-medium);
+  line-height: var(--line-height-normal);
+}
+.folia-detail-main .folia-desc {
+  min-height: 16rem;
+  font-family:
+    var(--font-monospace-theme), SFMono-Regular, "Cascadia Mono", "Roboto Mono", "DejaVu Sans Mono",
+    "Liberation Mono", Menlo, Monaco, Consolas, "Source Code Pro", monospace;
+  font-size: var(--font-ui-small);
+  padding: var(--size-4-3);
+}
+.folia-desc-hint {
+  align-self: center;
+  font-size: var(--font-smallest);
+  margin-left: auto;
+}
+.folia-detail-main .folia-desc-empty {
+  padding: var(--size-4-4);
+}
+
+/* Fork addition: comments read like a discussion thread. An avatar in the gutter, then a card with
+   the author's name, handle and date on one line and the comment below. */
+.folia-comments li.folia-comment {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--size-4-3);
+  padding: 0;
+  border-left: 0;
+  background: none;
+}
+.folia-comment-avatar {
+  flex: 0 0 auto;
+  width: calc(var(--size-4-4) * 2);
+  height: calc(var(--size-4-4) * 2);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  /* Tinted like the comment flags, so the letter keeps the theme's contrast. */
+  color: color-mix(in srgb, var(--interactive-accent) 55%, var(--text-normal));
+  background: color-mix(in oklch, var(--interactive-accent) 25%, transparent);
+}
+.folia-comment:not([data-author=""]) .folia-comment-avatar {
+  color: color-mix(in srgb, var(--color-orange) 55%, var(--text-normal));
+  background: color-mix(in oklch, var(--color-orange) 25%, transparent);
+}
+.folia-comment-card {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3) var(--size-4-4);
+  background: var(--background-secondary);
+  border: var(--border-width) solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+.folia-comment-unread .folia-comment-card {
+  border-color: var(--color-blue);
+  box-shadow: inset var(--folia-border-width-thick) 0 0 var(--color-blue);
+}
+.folia-comment-reply .folia-comment-card {
+  border-color: var(--color-purple);
+  box-shadow: inset var(--folia-border-width-thick) 0 0 var(--color-purple);
+}
+.folia-comment .folia-comment-head {
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--size-2-3) var(--size-4-2);
+}
+.folia-comment .folia-comment-author {
+  font-size: var(--font-ui-small);
+}
+.folia-comment-handle,
+.folia-comment .folia-ts {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+.folia-comment .folia-comment-text {
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+.folia-detail-main .folia-add-inline textarea {
+  min-height: 6rem;
+}

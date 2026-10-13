@@ -2615,7 +2615,10 @@ describe("card context menu", () => {
       },
     });
     render_(repo);
-    expect(await screen.findByText("feedback-needed")).toHaveAttribute("data-label", "feedback-needed");
+    expect(await screen.findByText("feedback-needed")).toHaveAttribute(
+      "data-label",
+      "feedback-needed",
+    );
     expect(screen.getByText("setup")).toHaveAttribute("data-label", "setup");
   });
 
@@ -5223,7 +5226,7 @@ describe("unread comments", () => {
     // The agent's "ok" keeps its tag; the reader's identical "ok" gets none.
     const flags = within(detail).getAllByText("new");
     expect(flags).toHaveLength(1);
-    expect(flags[0]?.closest("li")).toHaveTextContent("2026-06-13 09:00");
+    expect(flags[0]?.closest("li")).toHaveTextContent("@agent");
     // And the marker moved forward rather than being thrown away.
     await waitFor(() => expect(box.current.commentsSeen["Tasks/Alpha.md"]).toBe(`${repo.ts}#1`));
   });

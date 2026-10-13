@@ -44,12 +44,7 @@ describe("laneModel", () => {
 describe("laneModel: right-hand and lane-only columns", () => {
   const b = {
     config: {
-      columns: [
-        { id: "inbox" },
-        { id: "next" },
-        { id: "review", lane: "claude" },
-        { id: "done" },
-      ],
+      columns: [{ id: "inbox" }, { id: "next" }, { id: "review", lane: "claude" }, { id: "done" }],
     },
     cards: { a: card("a", "claude"), b: card("b"), c: card("c", "you") },
     columns: { inbox: [], next: ["b"], review: ["a"], done: ["c"] },

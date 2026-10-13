@@ -38,7 +38,12 @@ export function CardChips({
         </span>
       )}
       {chips.map((c) => (
-        <span key={c.key} className={`folia-chip folia-chip-${c.tone}`} aria-label={c.tooltip} data-label={c.label}>
+        <span
+          key={c.key}
+          className={`folia-chip folia-chip-${c.tone}`}
+          aria-label={c.tooltip}
+          data-label={c.label}
+        >
           {c.icon && <Icon name={c.icon} />}
           {c.label}
         </span>
