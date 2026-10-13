@@ -89,6 +89,14 @@ import { collectPropertyNames } from "./propertyNames";
 import { watchFileOps, watchVault } from "./vaultEvents";
 import { applyMove } from "./applyMove";
 
+/**
+ * Fork: every new card starts with the three parts a ticket needs. The user story and the
+ * Definition of done are description text; the tasks are the card's own `## Subtasks` (shown as
+ * Todos), left empty so no blank todo appears.
+ */
+export const NEW_CARD_SKELETON =
+  "\n## User story\n\nAs a …, I want … so that …\n\n## Definition of done\n\n- \n\n## Subtasks\n";
+
 export class VaultRepository implements CardRepository {
   private writer: NoteWriter;
   /**
@@ -303,7 +311,7 @@ export class VaultRepository implements CardRepository {
     this.writer.markWrite(path);
     // Create the body first, then let Obsidian serialize the frontmatter — never hand-build
     // YAML (an odd column id / title could otherwise produce malformed frontmatter).
-    const file = await this.app.vault.create(path, `# ${title}\n`);
+    const file = await this.app.vault.create(path, `# ${title}\n${NEW_CARD_SKELETON}`);
     await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
       fm["type"] = "task";
       fm["status"] = status;
