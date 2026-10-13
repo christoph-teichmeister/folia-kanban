@@ -103,6 +103,19 @@ export function resolveDragReloc(
 }
 
 /**
+ * Fork: a hover over the lower half of a card puts the gap AFTER it. Always inserting before the
+ * hovered card fed back on itself: the gap opened above the card, pushed it down under the pointer
+ * or away from it, and the target flipped on every measure. Opening below keeps the card in place.
+ * `columnPaths` is the target column as drawn, before the relocation.
+ */
+export function relocAfter(reloc: DragReloc, columnPaths: string[], activePath: string): DragReloc {
+  if (reloc.beforePath === null) return reloc;
+  const list = columnPaths.filter((p) => p !== activePath);
+  const at = list.indexOf(reloc.beforePath);
+  return at < 0 ? reloc : { ...reloc, beforePath: list[at + 1] ?? null };
+}
+
+/**
  * Reorder columns by moving the column `activeId` to the slot currently held by `overId`.
  * Pure: returns a new array, leaving the input untouched. A drop onto itself, an unknown id,
  * or a no-op move returns the original order (referentially the same array when nothing moves).

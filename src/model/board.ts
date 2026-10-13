@@ -32,6 +32,7 @@ export {
   makeCardDragId,
   moveColumn,
   planDrop,
+  relocAfter,
   resolveDragReloc,
   resolveDrop,
   splitCardDragId,

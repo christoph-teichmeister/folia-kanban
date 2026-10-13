@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  closestCenter,
   closestCorners,
   pointerWithin,
   type CollisionDetection,
@@ -8,23 +9,48 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import type { Board as BoardModel, Card } from "../model/types";
-import { planDrop, resolveDragReloc, splitCardDragId, type DragReloc } from "../model/board";
+import {
+  planDrop,
+  relocAfter,
+  resolveDragReloc,
+  splitCardDragId,
+  type DragReloc,
+} from "../model/board";
 import { useBoardActions } from "./context";
 
 /**
- * Fork fix: a card drag targets what is under the pointer, a card before its column. Measured by
- * the dragged card's corners (`closestCorners` alone), the target flipped as the make-room gap
- * pushed cards down, so a drop landed wherever the last flip left it, often the top of the column.
- * Off every droppable it falls back to the nearest corners.
+ * Fork fix: a card drag targets the card under the pointer. Over a column's empty space it takes the
+ * nearest card of that column (an empty column itself), off every droppable the nearest corners.
+ * Measured by the dragged card's corners alone, or with the column as a target of its own, the
+ * target flipped as the make-room gap moved cards, and a drop landed wherever the last flip left it.
  */
 export function cardUnderPointer(
   args: Parameters<CollisionDetection>[0],
   columnIds: string[],
 ): ReturnType<CollisionDetection> {
   const hits = pointerWithin(args);
-  if (hits.length === 0) return closestCorners(args);
   const cards = hits.filter((h) => !columnIds.includes(String(h.id)));
-  return cards.length > 0 ? cards : hits;
+  if (cards.length > 0) return cards;
+  const column = hits.find((h) => columnIds.includes(String(h.id)));
+  if (!column) return closestCorners(args);
+  const prefix = `${String(column.id)}::`;
+  const inColumn = args.droppableContainers.filter((c) => String(c.id).startsWith(prefix));
+  return inColumn.length > 0 ? closestCenter({ ...args, droppableContainers: inColumn }) : [column];
+}
+
+/** Fork: whether the dragged card's middle is below the middle of what it hovers. */
+function belowOver(e: DragOverEvent): boolean {
+  const dragged = e.active.rect.current.translated;
+  if (!dragged || !e.over) return false;
+  return dragged.top + dragged.height / 2 > e.over.rect.top + e.over.rect.height / 2;
+}
+
+/** Fork: the gap a hover asks for, below the hovered card when the dragged one is past its middle. */
+function hoverReloc(e: DragOverEvent, board: BoardModel, columnIds: string[]): DragReloc | null {
+  const id = String(e.active.id);
+  const hovered = resolveDragReloc(id, e.over ? String(e.over.id) : null, columnIds);
+  if (!hovered || !belowOver(e)) return hovered;
+  return relocAfter(hovered, board.columns[hovered.toColumn] ?? [], splitCardDragId(id).path);
 }
 
 /**
@@ -101,7 +127,7 @@ export function useBoardDrag(
     // `over === id`. That would parse back to fromColumn and read as same-column → collapse the
     // gap → re-measure → re-open: an oscillation loop under continuous measuring. Hold the gap.
     if (overId !== null && overId === id) return;
-    const next = resolveDragReloc(id, overId, columnIds);
+    const next = hoverReloc(e, board, columnIds);
     setDragReloc((prev) =>
       prev && next && sameReloc(prev, next)
         ? prev // unchanged target — keep the same object so the override doesn't re-render
@@ -145,7 +171,9 @@ export function useBoardDrag(
     activeCard,
     dragReloc,
     collisionDetection,
-    handlers: { onDragStart, onDragOver, onDragEnd, onDragCancel },
+    // Fork: moves too, not only hover changes, so crossing the middle of a card re-decides
+    // whether the gap opens before or after it.
+    handlers: { onDragStart, onDragOver, onDragMove: onDragOver, onDragEnd, onDragCancel },
   };
 }
 

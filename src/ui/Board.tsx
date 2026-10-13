@@ -108,7 +108,10 @@ export function Board({
       // Re-measure droppables continuously so the gap opened by `dragReloc` (a real layout shift in
       // the target column) is reflected mid-drag — otherwise dnd-kit keeps stale rects and the make-
       // room tween computes against the pre-gap layout.
-      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      // Fork: re-measure 50ms after the pointer moves. Without a frequency dnd-kit measures only when
+      // the set of droppables changes, and opening the make-room gap moves cards without changing
+      // that set, so hits were tested against where the cards stood before the gap.
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always, frequency: 50 } }}
       {...drag.handlers}
     >
       {(() => {
