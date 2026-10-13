@@ -1093,3 +1093,12 @@
   padding-top: var(--size-4-5);
   border-top: var(--border-width) solid var(--background-modifier-border);
 }
+
+/* Fork addition: more air between todos, and before the box that adds one. */
+.folia-detail-main .folia-subtasks {
+  gap: var(--size-4-3);
+  margin-bottom: var(--size-4-4);
+}
+.folia-detail-main .folia-subtask {
+  line-height: var(--line-height-normal);
+}
