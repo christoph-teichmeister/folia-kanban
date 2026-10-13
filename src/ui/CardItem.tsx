@@ -191,7 +191,7 @@ function CardFace({
   title: ReturnType<typeof useTitleEdit>;
   /** The sortable's attributes and listeners, or null for a tile that can't be dragged. */
   dragProps: object | null;
-  onOpen: () => void;
+  onOpen: (e: { target: EventTarget | null }) => void;
   onKeyDown: (e: KeyboardEvent) => void;
   onKeyUp: (e: KeyboardEvent) => void;
   selected: boolean;

@@ -1,11 +1,11 @@
-import { useContext, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Board, Card, CardBody } from "../model/types";
 import { descriptionRefusal } from "../model/card";
 import { CardComments } from "./CardComments";
 import { CardFields } from "./CardFields";
 import { CardProperties } from "./CardProperties";
 import { CardRelations } from "./CardRelations";
-import { useRepo } from "./context";
+import { useRepo, type PanelTab } from "./context";
 import { CreateCardForm, createColumnTitle, useCreateCard } from "./CreateCardForm";
 import { DetailDialogContext } from "./detailDialog";
 import { CardHeaderActions, DetailFrame, DetailScroll } from "./DetailFrame";
@@ -40,6 +40,8 @@ interface Props {
    * not a remount. (A remount would take every draft in the panel with it.)
    */
   focusSeq?: number;
+  /** Fork: the tab to show, applied on mount and again whenever `focusSeq` advances. */
+  openTab?: PanelTab;
 }
 
 type Mutate = (fn: () => Promise<unknown>) => Promise<boolean>;
@@ -200,7 +202,7 @@ function HistorySection({ body }: { body: CardBody | null }) {
   );
 }
 
-type Tab = "overview" | "comments" | "history";
+type Tab = PanelTab;
 
 /** Fork addition: the row of buttons that picks which pane of the panel shows. */
 function PanelTabs({
@@ -287,15 +289,21 @@ function CardSections({
   card,
   onNavigate,
   panel,
+  openTab = "overview",
+  focusSeq,
 }: {
   path: string;
   board: Board;
   card: Card;
   onNavigate: ((path: string) => void) | undefined;
   panel: CardPanelState;
+  openTab?: Tab | undefined;
+  focusSeq?: number | undefined;
 }) {
   const { body, reload, mutate, stillHere, focus, drafts } = panel;
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(openTab);
+  // A re-open of the card already showing keeps the mount, so the asked-for tab is applied here.
+  useEffect(() => setTab(openTab), [focusSeq]);
   return (
     <>
       <CardTitleFields
@@ -361,6 +369,7 @@ export function CardDetail({
   focusAddSubcard,
   focusTitleOverride,
   focusSeq,
+  openTab,
 }: Props) {
   // The board reloads on a debounce, so for a moment after this card's file is renamed or moved
   // the board still knows the card only under its old path. Keep showing what it last said about
@@ -423,7 +432,15 @@ export function CardDetail({
         }
         actions={<CardHeaderActions card={card} path={path} deleting={panel.deleting} />}
       >
-        <CardSections path={path} board={board} card={card} onNavigate={onNavigate} panel={panel} />
+        <CardSections
+          path={path}
+          board={board}
+          card={card}
+          onNavigate={onNavigate}
+          panel={panel}
+          openTab={openTab}
+          focusSeq={focusSeq}
+        />
       </DetailScroll>
     </DetailFrame>
   );

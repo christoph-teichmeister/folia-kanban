@@ -102,8 +102,10 @@ export function useTileEvents({
     if (e.key !== menuKey.current) return;
     e.currentTarget.ownerDocument.defaultView?.setTimeout(() => (menuKey.current = null));
   };
-  const open = () => {
-    if (!isDragging) actions.open(notePath);
+  // Fork: a click on the comment count opens the card straight on its Comments tab.
+  const open = (e?: { target: EventTarget | null }) => {
+    const onComments = e?.target instanceof Element && e.target.closest(".folia-card-comments");
+    if (!isDragging) actions.open(notePath, onComments ? "comments" : undefined);
   };
   // A right-click starts with a press; the contextmenu a key brings does not. The keyup may
   // never reach the card either (the OS-drawn menu takes it), so the press also forgets the key.

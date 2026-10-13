@@ -11,8 +11,11 @@ import type { Board as BoardModel } from "../model/types";
 import type { CardRepository } from "../model/repo";
 import { parseTodoPath } from "../model/board";
 import { remapPath } from "../model/pathOps";
-import type { BoardActions } from "./context";
+import type { BoardActions, PanelTab } from "./context";
 import { CardDetail } from "./CardDetail";
+
+/** Fork: the open counter below, with the tab an open asks for. */
+const FIRST_OPEN: { seq: number; tab: PanelTab } = { seq: 0, tab: "overview" };
 
 /**
  * Which card the detail panel shows, or which column's create form, and everything the panel is
@@ -43,7 +46,8 @@ export function useDetailPanel(
   openIdRef.current = openId;
   // Advances on every open, including a re-open of the card already showing. The panel's one-shot
   // focus actions ride on this instead of on a remount; see `openCard`.
-  const [focusSeq, setFocusSeq] = useState(0);
+  // Fork: it carries the tab that open asked for, applied on the same beat.
+  const [{ seq: focusSeq, tab: openTab }, setOpened] = useState(FIRST_OPEN);
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selected;
   const renamedTo = useSelectionFollowsFile(repo, board, selectedRef, setSelected);
@@ -51,7 +55,7 @@ export function useDetailPanel(
   // Opening a real card resets every add-card flow field so a stale create form can't resurface
   // when the panel later flips to create mode (e.g. the opened card is deleted out from under it).
   // Invariant: createColumn is null whenever a real card's details are on screen.
-  const openCard = useCallback((path: string) => {
+  const openCard = useCallback((path: string, tab: PanelTab = "overview") => {
     setFocusNew(false);
     setFocusAddSubcard(false);
     setFocusTitleOverride(false);
@@ -65,7 +69,7 @@ export function useDetailPanel(
     // mount alone, because remounting would throw away everything half-typed in it. The one-shot
     // focus actions still fire, on `focusSeq` rather than on the new mount.
     if (target !== selectedRef.current) setOpenId((n) => n + 1);
-    setFocusSeq((n) => n + 1);
+    setOpened((o) => ({ seq: o.seq + 1, tab }));
     setSelected(target);
   }, []);
 
@@ -123,6 +127,7 @@ export function useDetailPanel(
         focusAddSubcard,
         focusTitleOverride,
         focusSeq,
+        openTab,
       },
       {
         close: closeDetail,
@@ -141,7 +146,7 @@ export function useDetailPanel(
  * so the actions object they are part of keeps its identity.
  */
 function usePanelActions(
-  openCard: (path: string) => void,
+  openCard: (path: string, tab?: PanelTab) => void,
   set: {
     setSelected: Dispatch<SetStateAction<string | null>>;
     setCreateColumn: Dispatch<SetStateAction<string | null>>;
@@ -185,6 +190,7 @@ function panelFor(
     focusAddSubcard: boolean;
     focusTitleOverride: boolean;
     focusSeq: number;
+    openTab: PanelTab;
   },
   on: {
     close: () => void;
@@ -212,6 +218,7 @@ function panelFor(
       focusAddSubcard={p.focusAddSubcard}
       focusTitleOverride={p.focusTitleOverride}
       focusSeq={p.focusSeq}
+      openTab={p.openTab}
       onClose={on.close}
       onNavigate={on.navigate}
       onChanged={on.changed}

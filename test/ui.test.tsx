@@ -7693,3 +7693,27 @@ describe("column colour — what a board note paints", () => {
     expect(column.style.getPropertyValue("--folia-col-accent")).toBe("#9aa0a6");
   });
 });
+
+describe("fork: the comment badge opens the Comments tab", () => {
+  const panes = (detail: HTMLElement) => {
+    const [overview, comments] = detail.querySelectorAll<HTMLElement>(".folia-tab-pane");
+    return { overview: overview!, comments: comments! };
+  };
+
+  it("opens the card on Comments from the badge, on Overview from the title", async () => {
+    const user = userEvent.setup();
+    render_(makeRepo());
+    const tile = (await screen.findByText("Alpha")).closest<HTMLElement>(".folia-card")!;
+    await user.click(tile.querySelector<HTMLElement>(".folia-card-comments")!);
+    const detail = await screen.findByTestId("card-detail");
+    expect(panes(detail).comments.hidden).toBe(false);
+    expect(within(panes(detail).comments).getByText("hi there")).toBeInTheDocument();
+    expect(panes(detail).overview.hidden).toBe(true);
+
+    // A second open of the same card keeps the panel and switches the tab it asks for.
+    await user.click(within(tile).getByText("Alpha"));
+    expect(panes(detail).overview.hidden).toBe(false);
+    await user.click(tile.querySelector<HTMLElement>(".folia-card-comments")!);
+    expect(panes(detail).comments.hidden).toBe(false);
+  });
+});
