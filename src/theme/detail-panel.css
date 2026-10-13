@@ -1086,3 +1086,10 @@
 .folia-detail-main .folia-add-inline textarea {
   min-height: 6rem;
 }
+
+/* Fork addition: the Overview's sections (description, todos, relations) are told apart by a quiet
+   rule between them rather than by boxes. */
+.folia-detail-main .folia-tab-pane > .folia-section + .folia-section {
+  padding-top: var(--size-4-5);
+  border-top: var(--border-width) solid var(--background-modifier-border);
+}

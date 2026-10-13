@@ -63,7 +63,7 @@ describe("CardDetail", () => {
     await user.click(await screen.findByText("Bare", { selector: ".folia-card-title" }));
     const bare = await screen.findByTestId("card-detail");
     for (const text of [
-      "No subtasks yet.",
+      "No todos yet.",
       "Nothing linked yet.",
       "Nothing links here.",
       "No comments yet.",
