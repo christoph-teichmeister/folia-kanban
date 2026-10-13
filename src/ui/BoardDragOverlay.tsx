@@ -118,7 +118,7 @@ function CardGhost({
         {chips.length > 0 ? (
           <div className="folia-chips">
             {chips.map((c) => (
-              <span key={c.key} className={`folia-chip folia-chip-${c.tone}`}>
+              <span key={c.key} className={`folia-chip folia-chip-${c.tone}`} data-label={c.label}>
                 {c.label}
               </span>
             ))}

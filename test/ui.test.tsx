@@ -2607,6 +2607,18 @@ describe("card context menu", () => {
     });
   });
 
+  it("names each chip by its label so a stylesheet can pick out one tag", async () => {
+    const repo = new FakeRepo(config, {
+      "Tasks/First.md": {
+        fm: { type: "task", status: "todo", order: 1, tags: ["setup", "feedback-needed"] },
+        body: "\n# First\n",
+      },
+    });
+    render_(repo);
+    expect(await screen.findByText("feedback-needed")).toHaveAttribute("data-label", "feedback-needed");
+    expect(screen.getByText("setup")).toHaveAttribute("data-label", "setup");
+  });
+
   it("treats a whitespace-only priority as no priority at all", async () => {
     const repo = new FakeRepo(config, {
       "Tasks/First.md": {

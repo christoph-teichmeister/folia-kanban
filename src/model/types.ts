@@ -348,6 +348,8 @@ export interface ColumnDef {
    * Default `false`.
    */
   parked?: boolean;
+  /** Fork addition: on a swimlane board, the lane value this column is drawn in; other lanes skip it. */
+  lane?: string;
 }
 
 export interface BoardConfig {

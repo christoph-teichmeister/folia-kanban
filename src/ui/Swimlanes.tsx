@@ -46,6 +46,9 @@ export function Swimlanes({ by, ...props }: { by: string } & Props) {
               </section>
             ))}
           </div>
+          {model.right.length > 0 && (
+            <div className="folia-lane-right">{row(model.right, "right")}</div>
+          )}
         </div>
       )}
     />
