@@ -40,3 +40,33 @@ describe("laneModel", () => {
     expect(laneOfColumnId("inbox")).toBeNull();
   });
 });
+
+describe("laneModel: right-hand and lane-only columns", () => {
+  const b = {
+    config: {
+      columns: [
+        { id: "inbox" },
+        { id: "next" },
+        { id: "review", lane: "claude" },
+        { id: "done" },
+      ],
+    },
+    cards: { a: card("a", "claude"), b: card("b"), c: card("c", "you") },
+    columns: { inbox: [], next: ["b"], review: ["a"], done: ["c"] },
+  } as unknown as Board;
+  const m = laneModel(b, "owner", ["inbox", "done"]);
+
+  it("draws skipped columns after the last lane column once, on the right", () => {
+    expect(m.left.map((c) => c.id)).toEqual(["inbox"]);
+    expect(m.right.map((c) => c.id)).toEqual(["done"]);
+    expect(m.board.columns["done"]).toEqual(["c"]);
+    expect(m.board.config.columns.at(-1)?.id).toBe("done");
+  });
+
+  it("draws a lane-only column in its lane and nowhere else", () => {
+    const ids = (v: string) => m.lanes.find((l) => l.value === v)?.columns.map((c) => c.id);
+    expect(ids("you")).toEqual(["next§you"]);
+    expect(ids("claude")).toEqual(["next§claude", "review§claude"]);
+    expect(m.board.columns["review§claude"]).toEqual(["a"]);
+  });
+});

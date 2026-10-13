@@ -1,5 +1,7 @@
 // Fork addition: horizontal lanes. A board note with `swimlanes: owner` draws one row of columns per
-// value of that card property, and `swimlane-skip` names columns drawn once, left of the lanes.
+// value of that card property, and `swimlane-skip` names columns drawn once across all lanes: left of
+// them, or right of them when listed after the last lane column. A column with `lane: <value>` is
+// drawn only in that lane.
 // Lane columns get ids qualified with their lane (`next§you`) so one drag-and-drop context can hold
 // them all; `plainColumnId` and `laneOfColumnId` take the id apart again at the write boundary.
 
@@ -20,6 +22,7 @@ export interface LaneModel {
   board: Board;
   left: ColumnDef[];
   lanes: Lane[];
+  right: ColumnDef[];
 }
 
 /** A card's lane value: a string, or the first entry of a list; "" when absent. */
@@ -53,18 +56,22 @@ export function laneOfColumnId(id: string): string | null {
  */
 export function laneModel(board: Board, key: string, skip: readonly string[] = []): LaneModel {
   const skipped = new Set(skip);
-  const left = board.config.columns.filter((c) => skipped.has(c.id));
-  const laned = board.config.columns.filter((c) => !skipped.has(c.id));
+  const cols = board.config.columns;
+  const lastLaned = cols.reduce((n, c, i) => (skipped.has(c.id) ? n : i), -1);
+  const left = cols.filter((c, i) => skipped.has(c.id) && i < lastLaned);
+  const right = cols.filter((c, i) => skipped.has(c.id) && i > lastLaned);
+  const laned = cols.filter((c) => !skipped.has(c.id));
   const values = new Set<string>(["you", "claude"]);
+  for (const c of laned) if (c.lane) values.add(c.lane);
   for (const c of laned)
     for (const p of board.columns[c.id] ?? []) values.add(cardLane(board.cards[p], key));
   const rank = (v: string) => (v === "you" ? 0 : 1);
   const columns: Record<string, string[]> = {};
-  for (const c of left) columns[c.id] = board.columns[c.id] ?? [];
+  for (const c of [...left, ...right]) columns[c.id] = board.columns[c.id] ?? [];
   const lanes = [...values]
     .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
     .map((value): Lane => {
-      const defs = laned.map((c) => {
+      const defs = laned.filter((c) => !c.lane || c.lane === value).map((c) => {
         const id = `${c.id}${SEP}${value}`;
         columns[id] = (board.columns[c.id] ?? []).filter(
           (p) => cardLane(board.cards[p], key) === value,
@@ -77,6 +84,11 @@ export function laneModel(board: Board, key: string, skip: readonly string[] = [
         count: defs.reduce((n, d) => n + (columns[d.id]?.length ?? 0), 0),
       };
     });
-  const all = [...left, ...lanes.flatMap((l) => l.columns)];
-  return { board: { ...board, config: { ...board.config, columns: all }, columns }, left, lanes };
+  const all = [...left, ...lanes.flatMap((l) => l.columns), ...right];
+  return {
+    board: { ...board, config: { ...board.config, columns: all }, columns },
+    left,
+    lanes,
+    right,
+  };
 }

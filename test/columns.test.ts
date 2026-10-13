@@ -370,3 +370,13 @@ describe("serializeColumns key order — the order the keys land in the note", (
     expect(normalizeColumns(["  ", "todo"])).toEqual([{ id: "todo", title: "Todo" }]);
   });
 });
+
+describe("lane (fork addition)", () => {
+  it("reads a column's lane and writes it back", () => {
+    const [col] = normalizeColumns([{ id: "po-review", title: "PO Review", lane: " claude " }]);
+    expect(col).toEqual({ id: "po-review", title: "PO Review", lane: "claude" });
+    expect(serializeColumns([col as ColumnDef])).toEqual([
+      { id: "po-review", title: "PO Review", lane: "claude" },
+    ]);
+  });
+});

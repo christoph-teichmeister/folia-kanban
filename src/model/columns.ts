@@ -159,6 +159,7 @@ function readContentFields(obj: Record<string, unknown>, col: ColumnDef): void {
   if (typeof obj["color"] === "string") col.color = obj["color"];
   if (typeof obj["limit"] === "number" && Number.isFinite(obj["limit"])) col.limit = obj["limit"];
   if (typeof obj["filter"] === "string" && obj["filter"].trim()) col.filter = obj["filter"];
+  if (typeof obj["lane"] === "string" && obj["lane"].trim()) col.lane = obj["lane"].trim();
 }
 
 /** The fields that shape how a column shows its cards, each kept only when it is not the default. */
@@ -185,6 +186,7 @@ export function serializeColumns(columns: ColumnDef[]): Record<string, unknown>[
     if (c["color"]) out["color"] = c["color"];
     if (typeof c["limit"] === "number") out["limit"] = c["limit"];
     if (typeof c["filter"] === "string" && c["filter"].trim()) out["filter"] = c["filter"];
+    if (c["lane"]) out["lane"] = c["lane"];
     writeViewFields(c, out);
     return out;
   });
