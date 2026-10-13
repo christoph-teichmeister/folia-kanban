@@ -159,7 +159,9 @@ function useTileView(card: Card, today: string, hasSubcardChildren: boolean) {
   // preview (gated by the same `cardNextTodos` cap the list uses) and/or its subcard children
   // (rendered as a sibling `SubcardGroup` by the caller). No toggle when neither exists.
   const hasNextTodosPreview = cardNextTodos > 0 && (card.stats?.nextTodos.length ?? 0) > 0;
-  const hasNestedSubitems = hasSubcardChildren || hasNextTodosPreview;
+  // Fork: only subcards earn the toggle. The todo preview sits inside the tile, above where the
+  // toggle is drawn, so folding it from below read backwards; it simply stays visible.
+  const hasNestedSubitems = hasSubcardChildren;
   return {
     unread,
     chips,

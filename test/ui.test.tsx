@@ -1899,27 +1899,15 @@ describe("collapse/expand subitems", () => {
     expect(alphaTree.querySelector(".folia-subcard-group")).not.toBeNull();
   });
 
-  it("hides a card's own inline-todos preview when collapsed even with no subcards", async () => {
-    const user = userEvent.setup();
-    renderStateful(nextTodosRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
-    const card = (await screen.findByText("WithTodos")).closest(".folia-card") as HTMLElement;
-    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(2);
-
-    await user.click(within(card).getByRole("button", { name: 'Hide subitems for "WithTodos"' }));
-    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(0);
-  });
-
-  it("starts collapsed board-wide when subitemsDefault is 'collapsed'", async () => {
+  it("fork: a card whose only subitem is its todo preview has no toggle and keeps the preview", async () => {
     render_(nextTodosRepo(), {
       ...DEFAULT_SETTINGS,
       cardNextTodos: 2,
       subitemsDefault: "collapsed",
     });
     const card = (await screen.findByText("WithTodos")).closest(".folia-card") as HTMLElement;
-    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(0);
-    expect(
-      within(card).getByRole("button", { name: 'Show 3 subitems, 1 done, for "WithTodos"' }),
-    ).toBeInTheDocument();
+    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(2);
+    expect(within(card).queryByRole("button", { name: /subitems/ })).toBeNull();
   });
 
   it("column menu's collapse-all/expand-all applies to every card in that column, recursively", async () => {
@@ -1993,18 +1981,6 @@ describe("collapse/expand subitems", () => {
       "Tasks/Late.md",
       "Tasks/Root.md",
     ]);
-  });
-
-  it("column menu's collapse-all also reaches a card whose only subitem is an inline-todos preview", async () => {
-    const user = userEvent.setup();
-    renderStateful(nextTodosRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
-    const todoCol = (await screen.findByText("Todo")).closest("section") as HTMLElement;
-    expect(todoCol.querySelectorAll(".folia-card-next-todo")).toHaveLength(2);
-
-    await user.click(within(todoCol).getByRole("button", { name: /Column options/ }));
-    await user.click(screen.getByRole("menuitem", { name: "Collapse all subitems" }));
-
-    expect(todoCol.querySelectorAll(".folia-card-next-todo")).toHaveLength(0);
   });
 
   it("a file-name rename carries the card's collapsed override to its new path", async () => {
