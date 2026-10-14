@@ -29,3 +29,28 @@ body.is-mobile .folia-card {
   user-select: none;
   touch-action: manipulation;
 }
+/* The card buttons sit in the card as a plain row under its content, not floating over it. A
+   floating, blurred cluster gets its own compositor layer, and in the side-scrolling board the
+   phone's WebView drew those layers loose from their cards and skipped painting the cards of
+   columns scrolled into view. No layer, no blur, no shadow. */
+body.is-mobile .folia-card-actions {
+  position: static;
+  justify-content: flex-end;
+  padding: 0 var(--size-2-1) var(--size-2-1);
+  background: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  transition: none;
+}
+body.is-mobile .folia-card-title,
+body.is-mobile .folia-card--no-complete .folia-card-title {
+  padding-right: 0;
+}
+/* Obsidian's floating navbar covers the bottom of the view; keep the column ends ("Add a card")
+   above it. ponytail: 6.5rem is the navbar's 80px plus its offset, read from Obsidian 1.11's
+   app.css; its own --view-bottom-spacing is undocumented, so the theme guard keeps it out. */
+body.is-mobile .folia-board:not(.folia-lanes .folia-board),
+body.is-mobile .folia-lanes-root {
+  box-sizing: border-box;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 6.5rem);
+}
