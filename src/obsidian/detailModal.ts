@@ -5,6 +5,10 @@
 import { Modal, Scope, type App } from "obsidian";
 import type { DetailModalHandle } from "../ui/App";
 
+// Fork: the docked panel's width, dragged at its left edge, kept for this vault on this device.
+const WIDTH_KEY = "folia-kanban.detail-width";
+const MIN_WIDTH = 480;
+
 class DetailModal extends Modal {
   private closed = false;
 
@@ -16,6 +20,48 @@ class DetailModal extends Modal {
     this.modalEl.addClass("folia-detail-modal");
     // The portal leaves the board root, and every `--folia-*` token hangs off `folia-scope`.
     this.contentEl.addClass("folia-scope", "folia-detail-modal-content");
+    this.addResizeHandle();
+  }
+
+  /**
+   * Only where the panel docks to the right edge (the `48rem` of `detail-panel.css`); a phone keeps
+   * the host's full-screen dialog. Dragging sets the width inline, over the stylesheet's default; a
+   * double click goes back to that default.
+   */
+  private addResizeHandle(): void {
+    const win = this.modalEl.win;
+    if (!win.matchMedia("(min-width: 48rem)").matches) return;
+    const clamp = (px: number): number =>
+      Math.round(Math.min(Math.max(px, MIN_WIDTH), win.innerWidth * 0.98));
+    const saved: unknown = this.app.loadLocalStorage(WIDTH_KEY);
+    if (typeof saved === "number") this.modalEl.setCssStyles({ width: `${clamp(saved)}px` });
+
+    const handle = this.modalEl.createDiv({ cls: "folia-detail-resize" });
+    handle.setAttribute("aria-hidden", "true");
+    handle.addEventListener("pointerdown", (down) => {
+      down.preventDefault();
+      handle.setPointerCapture(down.pointerId);
+      this.modalEl.addClass("folia-is-resizing");
+      let width = this.modalEl.getBoundingClientRect().width;
+      const move = (e: PointerEvent): void => {
+        width = clamp(win.innerWidth - e.clientX);
+        this.modalEl.setCssStyles({ width: `${width}px` });
+      };
+      const up = (): void => {
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", up);
+        handle.removeEventListener("pointercancel", up);
+        this.modalEl.removeClass("folia-is-resizing");
+        this.app.saveLocalStorage(WIDTH_KEY, width);
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", up);
+      handle.addEventListener("pointercancel", up);
+    });
+    handle.addEventListener("dblclick", () => {
+      this.modalEl.setCssStyles({ width: "" });
+      this.app.saveLocalStorage(WIDTH_KEY, null);
+    });
   }
 
   /**

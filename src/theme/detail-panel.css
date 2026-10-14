@@ -754,7 +754,8 @@
   min-height: var(--size-4-12);
   resize: vertical;
   font: inherit;
-  font-size: var(--font-ui-small);
+  /* Fork: the size a comment is shown at, so editing does not shrink it. */
+  font-size: var(--font-ui-medium);
   /* Matches .folia-comment-text's pinned line-height, for the same reason as
      .folia-desc above. */
   line-height: var(--line-height-normal);
@@ -918,6 +919,23 @@
     /* The curve of `--folia-ease`, written out: the tokens hang off `.folia-scope`, which is the
        content inside this box, so the variable is undefined here. */
     animation: folia-detail-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  /* The left edge is a drag handle for the width (`detailModal.ts`). */
+  .folia-detail-resize {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: var(--size-4-2);
+    cursor: ew-resize;
+    z-index: 2;
+  }
+  .folia-detail-resize:hover,
+  .folia-detail-modal.folia-is-resizing .folia-detail-resize {
+    background: color-mix(in oklch, var(--interactive-accent) 40%, transparent);
+  }
+  /* While dragging, the text underneath is not selected. */
+  .folia-detail-modal.folia-is-resizing {
+    user-select: none;
   }
   /* Closing slides it back out; `detailModal.ts` waits for this before removing the dialog. */
   .folia-detail-modal.folia-detail-modal.folia-is-closing {
@@ -1086,6 +1104,8 @@
 }
 .folia-detail-main .folia-add-inline textarea {
   min-height: 6rem;
+  /* The size a comment is shown at, so what is typed reads like what is saved. */
+  font-size: var(--font-ui-medium);
 }
 
 /* Fork addition: the Overview's sections (description, todos, relations) are told apart by a quiet
