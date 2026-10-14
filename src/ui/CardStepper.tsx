@@ -35,7 +35,7 @@ export function useRecordColumnOrder(
  * rule mirrors elsewhere steps through the column its status puts it in; a subcard drawn only
  * nested under its parent is in no column's list and has no neighbours.
  */
-export function columnNeighbours(
+function columnNeighbours(
   order: ColumnOrder | null,
   card: Card,
 ): { prev: string | null; next: string | null } {
