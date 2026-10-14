@@ -1110,3 +1110,35 @@
 .folia-detail-main .folia-subtask {
   line-height: var(--line-height-normal);
 }
+
+/* Fork addition: a card waiting for the PO's review opens on what to check and the two answers,
+   boxed like a callout so it reads as the thing to act on. */
+.folia-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  margin-bottom: var(--size-4-3);
+  padding: var(--size-4-3);
+  background: color-mix(in oklch, var(--interactive-accent) 10%, transparent);
+  border-left: calc(3 * var(--border-width)) solid var(--interactive-accent);
+  border-radius: var(--callout-radius);
+}
+.folia-review h3 {
+  margin: 0;
+  font-size: var(--font-smaller);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-accent);
+}
+.folia-review-text {
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+.folia-detail-main .folia-review .folia-add-inline textarea {
+  min-height: 3rem;
+}
+.folia-commands-approval {
+  margin-top: var(--size-4-2);
+  align-items: center;
+}
