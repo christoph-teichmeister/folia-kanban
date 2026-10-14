@@ -15,7 +15,10 @@ class ConfirmModal extends Modal {
   ) {
     super(app);
     this.setTitle(request.title);
-    this.contentEl.createEl("p", { text: request.message });
+    // Line breaks in the message are kept, so a list (the commands to approve) reads as one.
+    this.contentEl
+      .createEl("p", { text: request.message })
+      .setCssStyles({ whiteSpace: "pre-wrap" });
     // Cancel first and the action last, the order of Obsidian's own delete prompt. Being first, Cancel
     // also takes the dialog's first focus, so a stray Enter cancels rather than destroys.
     new Setting(this.contentEl)
