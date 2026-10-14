@@ -109,15 +109,20 @@ function wipLimitsOf(columns: readonly ColumnDef[] | undefined): Record<string, 
   return map;
 }
 
-/** The toolbar's "N of M". */
+/** Fork: the tag the toolbar's "Feedback needed" chip filters for, and counts. */
+export const FEEDBACK_TAG = "feedback-needed";
+const FEEDBACK_FILTER = parseFilter(`tag:${FEEDBACK_TAG}`);
+
+/** The toolbar's "N of M", and (fork) how many cards carry {@link FEEDBACK_TAG}. */
 function countCards(
   board: BoardModel | null,
   filter: Filter,
   matchCtx: MatchContext,
   settings: BoardSettings,
-): { total: number; match: number } {
+): { total: number; match: number; feedback: number } {
   let total = 0;
   let match = 0;
+  let feedback = 0;
   if (board) {
     const matchesFilter = (p: string) => {
       const c = board.cards[p];
@@ -138,7 +143,9 @@ function countCards(
     for (const path of Object.keys(board.cards)) {
       total++;
       if (visible.has(path) && matchesFilter(path)) match++;
+      const card = board.cards[path];
+      if (card && matchCard(card, FEEDBACK_FILTER, matchCtx)) feedback++;
     }
   }
-  return { total, match };
+  return { total, match, feedback };
 }

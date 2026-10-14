@@ -4,7 +4,14 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Card, CardStats, ContextConfig } from "../model/types";
 import { sameLine } from "../model/board";
-import { cardChips, cardUrgency, isCompletable, priorityTone, relationChips } from "./cardView";
+import {
+  cardChips,
+  cardUrgency,
+  isCompletable,
+  priorityTone,
+  relationChips,
+  staleChips,
+} from "./cardView";
 import {
   useBoardActions,
   useContexts,
@@ -150,6 +157,8 @@ function useTileView(card: Card, today: string, hasSubcardChildren: boolean) {
   const chips = [
     ...relationChips(relations),
     ...cardChips(card, today, actions.doneColumnId, actions.priorityScale),
+    // Fork: how long it has been sitting in Waiting/Doing.
+    ...staleChips(card, today, actions.columns),
   ];
   // Context grouping (#14): the card's folder-derived context + its (optional) config. The marker
   // is a left accent strip (inset clear of the priority bar) + a label badge, so cards sharing a
@@ -362,8 +371,15 @@ function sameStats(a?: CardStats, b?: CardStats): boolean {
     a.commentMarks.map((c) => `${c.timestamp}:${c.author ?? ""}`).join("\n") ===
       b.commentMarks.map((c) => `${c.timestamp}:${c.author ?? ""}`).join("\n") &&
     a.nextTodos.map((t) => `${t.index}:${t.text}`).join("\n") ===
-      b.nextTodos.map((t) => `${t.index}:${t.text}`).join("\n")
+      b.nextTodos.map((t) => `${t.index}:${t.text}`).join("\n") &&
+    // Fork: the stale marker reads it.
+    moveKey(a) === moveKey(b)
   );
+}
+
+/** Fork: `CardStats.lastMove` as one comparable string. */
+function moveKey({ lastMove }: CardStats): string {
+  return lastMove ? `${lastMove.timestamp}\n${lastMove.text}` : "";
 }
 
 /** The tile's reading of its checklist line, which is what its actions carry. */

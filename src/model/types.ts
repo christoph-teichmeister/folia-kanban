@@ -178,6 +178,8 @@ export interface CardStats {
    * happen to be placed while others are still waiting. The render layer takes the first N.
    */
   nextTodos: { text: string; index: number }[];
+  /** Fork: the newest `## History` line that moved the card (`isMoveLine`), if any. */
+  lastMove?: { timestamp: string; text: string } | undefined;
 }
 
 /** How aggressively non-move mutations append `## History` lines. Default `'moves'`. */

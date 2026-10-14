@@ -186,6 +186,7 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
           onChange={setQuery}
           matchCount={view.counts.match}
           totalCount={view.counts.total}
+          feedbackCount={view.counts.feedback}
           canFilterMine={settings.userName.trim() !== ""}
         />
         {board.cardFolderWarning && (
