@@ -54,3 +54,42 @@ body.is-mobile .folia-lanes-root {
   box-sizing: border-box;
   padding-bottom: calc(env(safe-area-inset-bottom) + 6.5rem);
 }
+/* A column clips its rounded corners with `overflow: hidden`, and every column body inside is its
+   own scroller. Chromium clips composited scrollers through a rounded-corner mask layer, a known
+   source of unpainted or flickering content on Android. On the phone the column does not clip;
+   the header rounds its own top corners instead. A folded column keeps the clip, it hides its
+   content inside a narrow strip. */
+body.is-mobile .folia-column:not(.folia-is-folded) {
+  overflow: visible;
+}
+body.is-mobile .folia-column-header {
+  border-radius: calc(var(--radius-l) - var(--folia-cue-thickness)) calc(var(--radius-l) - var(--folia-cue-thickness)) 0 0;
+}
+/* A tap leaves `:hover` stuck on the tapped element until the next tap elsewhere, so the card's
+   hover lift would stay on whatever card was touched last. */
+body.is-mobile .folia-card:hover:not(.folia-is-selected) {
+  border-color: var(--background-modifier-border);
+  box-shadow: var(--folia-shadow-card);
+}
+/* Controls in the card panel that only appear on hover would stay hidden on a touch screen. */
+body.is-mobile .folia-scope .folia-desc-edit,
+body.is-mobile .folia-comment-row .folia-mini,
+body.is-mobile :is(.folia-desc-rendered, .folia-comment-text) pre > button {
+  opacity: 1;
+}
+/* The card panel on a phone: the title gets its own row above the buttons, and the tabs wrap
+   instead of pushing the panel wider than the screen (it then scrolled sideways). */
+body.is-mobile .folia-detail-modal .folia-detail-header {
+  flex-wrap: wrap;
+  padding-inline-start: var(--size-4-3);
+  padding-inline-end: calc(var(--size-4-3) + var(--folia-hit-md));
+}
+body.is-mobile .folia-detail-header .folia-detail-title {
+  flex-basis: 100%;
+}
+body.is-mobile .folia-tabs {
+  flex-wrap: wrap;
+}
+body.is-mobile .folia-scope .folia-tab {
+  padding-inline: var(--size-4-2);
+}
