@@ -220,6 +220,8 @@ export interface BoardActions {
    * (`name`).
    */
   copyPath(path: string, form: CopyPathForm): void;
+  /** Fork: put `text` on the clipboard and say `done` in a notice (or why it could not). */
+  copyText(text: string, done: string): void;
   /**
    * Set a card's priority frontmatter (empty string clears it) and let the board note learn the
    * value. Resolves once the board has reloaded, so a caller with its own view to refresh (the

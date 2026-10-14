@@ -4,6 +4,7 @@ import { makeCardDragId, nestedCards, splitCardDragId, type DragReloc } from "..
 import { isEmptyFilter, matchCard, parseFilter, type Filter } from "../model/filter";
 import { drawnPaths, fallbackColumnOf, laneFill, takesNewCards } from "../model/lanes";
 import { describeFill, groupAndSortCards } from "./cardView";
+import { useRecordColumnOrder } from "./CardStepper";
 import { useBoardActions, useMatchContext } from "./context";
 
 /** What one column draws, counts and lets be dragged, under the board's search and a live drag. */
@@ -92,6 +93,7 @@ export function useColumnCards({
       scale: actions.priorityScale,
     },
   );
+  useRecordColumnOrder(column.id, groups);
 
   return {
     globalFiltering,

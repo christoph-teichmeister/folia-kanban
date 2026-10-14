@@ -25,6 +25,7 @@ import {
   type SettingsContextValue,
 } from "./context";
 import { Board } from "./Board";
+import { ColumnOrderContext } from "./CardStepper";
 import { DetailDialogContext } from "./detailDialog";
 import { Toolbar } from "./Toolbar";
 import { useToday } from "./useToday";
@@ -241,7 +242,13 @@ function BoardContexts({
           <ContextsContext.Provider value={contexts}>
             <RelationCountsContext.Provider value={relations}>
               <MatchContextContext.Provider value={matchCtx}>
-                <BoardRootContext.Provider value={root}>{children}</BoardRootContext.Provider>
+                <BoardRootContext.Provider value={root}>
+                  {/* Fork: a fresh map per board render, filled by the columns, read by the
+                      panel's previous/next (see `CardStepper.tsx`). */}
+                  <ColumnOrderContext.Provider value={new Map()}>
+                    {children}
+                  </ColumnOrderContext.Provider>
+                </BoardRootContext.Provider>
               </MatchContextContext.Provider>
             </RelationCountsContext.Provider>
           </ContextsContext.Provider>

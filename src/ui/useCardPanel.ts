@@ -1,9 +1,9 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Board, Card } from "../model/types";
 import { boardLinkResolver } from "../model/board";
 import { usePropertyForm } from "./CardProperties";
 import { relationChoices } from "./CardRelations";
-import { useSettings } from "./context";
+import { useSettings, type PanelTab } from "./context";
 import { useCardBody } from "./useCardBody";
 import { useCommentReadState } from "./useCommentReadState";
 import { useDescriptionDraft, useDescriptionEditor } from "./useDescriptionEditor";
@@ -26,6 +26,7 @@ export function useCardPanel({
   focusAddSubcard,
   focusTitleOverride,
   focusSeq,
+  openTab,
 }: {
   path: string;
   board: Board;
@@ -36,9 +37,14 @@ export function useCardPanel({
   focusAddSubcard: boolean | undefined;
   focusTitleOverride: boolean | undefined;
   focusSeq: number | undefined;
+  openTab: PanelTab | undefined;
 }) {
   const settings = useSettings();
   const deleting = useRef(false);
+  // Fork: the open tab, kept here so the header's previous/next can carry it to the next card.
+  const [tab, setTab] = useState<PanelTab>(openTab ?? "overview");
+  // A re-open of the card already showing keeps the mount, so the asked-for tab is applied here.
+  useEffect(() => setTab(openTab ?? "overview"), [focusSeq]);
   const descDraft = useDescriptionDraft();
   const { body, bodyPath, reload, mutate, stillHere } = useCardBody({
     path,
@@ -58,7 +64,13 @@ export function useCardPanel({
   // missing, and neither reading can bind a name to a card the other one refused.
   const resolve = useMemo(() => boardLinkResolver(board, path), [board, path]);
   const readState = useCommentReadState({ path, body, bodyPath, settings });
-  const focus = useDetailFocus({ isCreate, focusAddSubcard, focusTitleOverride, focusSeq });
+  const focus = useDetailFocus({
+    isCreate,
+    focusAddSubcard,
+    focusTitleOverride,
+    focusSeq,
+    openTab,
+  });
   const desc = useDescriptionEditor({
     isCreate,
     focusNew,
@@ -80,6 +92,8 @@ export function useCardPanel({
     drafts: { todo, subcard, comment },
     choices,
     resolve,
+    tab,
+    setTab,
   };
 }
 
