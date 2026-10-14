@@ -363,10 +363,9 @@
   margin-bottom: var(--size-4-2);
 }
 
-/* Rendered-description view: click anywhere to edit; pencil surfaces on hover. */
+/* Rendered-description view: read and select the text; the pencil (always shown) edits. */
 .folia-desc-view {
   position: relative;
-  cursor: text;
   border: var(--border-width) solid transparent;
   border-radius: var(--radius-s);
   padding: var(--size-4-1) var(--size-2-3);
@@ -384,23 +383,11 @@
   overflow-y: auto;
   scrollbar-width: thin;
 }
-.folia-desc-view:hover {
-  background: var(--background-modifier-hover);
-  border-color: var(--background-modifier-border);
-}
 
 .folia-desc-edit-slot {
   position: absolute;
   top: var(--size-4-1);
   right: var(--size-4-1);
-}
-.folia-scope .folia-desc-edit {
-  opacity: 0;
-  transition: opacity var(--folia-dur-fast) ease;
-}
-.folia-desc-view:hover .folia-desc-edit,
-.folia-desc-view:focus-within .folia-desc-edit {
-  opacity: 1;
 }
 .folia-desc-behind {
   margin: var(--size-2-3) 0 0;

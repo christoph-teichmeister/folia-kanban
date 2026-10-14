@@ -143,7 +143,7 @@ function DescriptionSection(props: DescriptionProps) {
       {desc.editing ? (
         <DescriptionEditorFields {...props} />
       ) : body && body.description.trim() ? (
-        // a11y exception (no-static-element-interactions, click-events-have-key-events): click-to-edit is a convenience; the keyboard path is the dedicated "Edit description" pencil button rendered below
+        // Fork: the text is for reading and copying; only the pencil below opens the editor.
         <div
           ref={desc.preview.viewRef}
           className="folia-desc-view"
@@ -152,10 +152,6 @@ function DescriptionSection(props: DescriptionProps) {
               ? ({ "--folia-desc-max-h": `${maxHeight}px` } as CSSProperties)
               : undefined
           }
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest("a")) return;
-            desc.beginFromPreview();
-          }}
         >
           <Markdown
             markdown={body.description}
@@ -168,7 +164,6 @@ function DescriptionSection(props: DescriptionProps) {
             slotClassName="folia-desc-edit-slot"
             icon="pencil"
             label="Edit description"
-            stopPropagation={["click"]}
             onClick={desc.beginFromPreview}
           />
         </div>

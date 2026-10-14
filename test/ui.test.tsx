@@ -541,7 +541,7 @@ describe("card detail", () => {
     expect(within(detail).getByText("Beta")).toBeInTheDocument(); // subcard link
   });
 
-  it("shows the description rendered, and clicking it reveals the editable textarea", async () => {
+  it("shows the description rendered, and only the pencil opens the editable textarea", async () => {
     const user = userEvent.setup();
     render_(makeRepo());
     await user.click(await screen.findByText("Alpha"));
@@ -553,8 +553,10 @@ describe("card detail", () => {
     expect(rendered).not.toHaveClass("markdown-rendered");
     expect(within(detail).queryByLabelText("Edit description")).not.toBeNull();
     expect(within(detail).queryByRole("textbox", { name: "Edit description" })).toBeNull();
-    // Clicking the rendered area flips to the raw textarea.
+    // Clicking the text leaves it readable (to select and copy); the pencil opens the editor.
     await user.click(rendered);
+    expect(within(detail).queryByRole("textbox", { name: "Edit description" })).toBeNull();
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     expect(await within(detail).findByRole("textbox", { name: "Edit description" })).toHaveValue(
       "Desc A",
     );
@@ -566,7 +568,7 @@ describe("card detail", () => {
     render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.click(await within(detail).findByText("Desc A"));
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     const box = within(detail).getByRole("textbox", { name: "Edit description" });
     const before = repo.files.get("Tasks/Alpha.md")!.body;
     await user.clear(box);
@@ -597,7 +599,7 @@ describe("card detail", () => {
     render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.click(await within(detail).findByText("Desc A"));
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     const box = within(detail).getByRole("textbox", { name: "Edit description" });
     await user.clear(box);
     await user.type(box, "Brand new body");
@@ -634,7 +636,7 @@ describe("card detail", () => {
     // jsdom reports 0 for layout; stub the preview wrapper's measured height so the capture is real.
     const view = rendered.closest(".folia-desc-view") as HTMLElement;
     Object.defineProperty(view, "offsetHeight", { configurable: true, value: 247 });
-    await user.click(rendered);
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     const box = within(detail).getByRole("textbox", { name: "Edit description" });
     expect(box.style.minHeight).toBe("247px"); // panel keeps its height, no jump
   });
@@ -649,7 +651,7 @@ describe("card detail", () => {
       configurable: true,
       value: 247,
     });
-    await user.click(rendered);
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     expect(within(detail).getByRole("textbox", { name: "Edit description" }).style.minHeight).toBe(
       "247px",
     );
@@ -660,7 +662,7 @@ describe("card detail", () => {
       configurable: true,
       value: 0,
     });
-    await user.click(back);
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     expect(within(detail).getByRole("textbox", { name: "Edit description" }).style.minHeight).toBe(
       "",
     );
