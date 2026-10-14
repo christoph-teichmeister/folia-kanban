@@ -4,7 +4,8 @@ import { syncSubcardLines } from "../model/board";
 import { assigneeValues, boardAssignees, sameAssignee, toggleAssignee } from "../model/assignees";
 import { waitingFor } from "../model/properties";
 import { priorityOptions } from "./cardView";
-import { useBoardActions, useRepo, useSettings } from "./context";
+import type { CardRepository } from "../model/repo";
+import { useBoardActions, useRepo, useSettings, type BoardActions } from "./context";
 import { HostButton, HostDropdown } from "./hostControls";
 import { trimmed, useFieldDraft } from "./useFieldDraft";
 import { useFreeTextSuggest } from "./useSuggest";
@@ -184,6 +185,25 @@ function WaitingForField({
   );
 }
 
+/**
+ * Fork: the panel's column change, shared by the Status field and the review buttons. False when
+ * a lane refuses it.
+ */
+export async function writeStatus(
+  to: { repo: CardRepository; actions: BoardActions; board: Board; card: Card; path: string },
+  status: string,
+): Promise<boolean> {
+  const { repo, actions, board, card, path } = to;
+  // A column change like any other, so a lane that would not draw the card refuses it here too.
+  if (actions.refusedByLane(status, card)) return false;
+  await repo.setFrontmatter(path, { status });
+  // If this card is somebody's subcard, its `- [ ] [[link]]` lines follow the column, as a
+  // dragged tile's would.
+  const sync = syncSubcardLines(board, path, status);
+  if (sync) await repo.applyMove(sync);
+  return true;
+}
+
 /** The card's own fields: its column, priority, due date and assignee. */
 export function CardFields({
   board,
@@ -222,16 +242,7 @@ export function CardFields({
           options={board.config.columns.map((c) => ({ value: c.id, label: c.title }))}
           value={String(fm.status ?? "")}
           onChange={(status) =>
-            void mutate(async () => {
-              // The panel's Status field is a column change like any other, so a lane that
-              // would not draw the card refuses it here too.
-              if (actions.refusedByLane(status, card)) return;
-              await repo.setFrontmatter(path, { status });
-              // If this card is somebody's subcard, its `- [ ] [[link]]` lines follow the
-              // column, as a dragged tile's would.
-              const sync = syncSubcardLines(board, path, status);
-              if (sync) await repo.applyMove(sync);
-            })
+            void mutate(() => writeStatus({ repo, actions, board, card, path }, status))
           }
         />
       </label>

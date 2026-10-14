@@ -11,6 +11,7 @@ import { DetailDialogContext } from "./detailDialog";
 import { CardHeaderActions, DetailFrame, DetailScroll } from "./DetailFrame";
 import { HostButton, HostIconButton } from "./hostControls";
 import { Markdown } from "./Markdown";
+import { CommandsApproval, ReviewBox, reviewedDescription } from "./ReviewActions";
 import { CardSubtasks } from "./SubtaskList";
 import { CardTitleFields } from "./TitleFields";
 import { useCardPanel, type CardPanelState } from "./useCardPanel";
@@ -61,6 +62,8 @@ interface DescriptionProps {
   desc: DescriptionEditor;
   mutate: Mutate;
   stillHere: () => boolean;
+  /** Fork: the part of the description to render, when not all of it; the editor keeps all of it. */
+  shown?: string | undefined;
 }
 
 /** The raw description editor, what stopped its last save, and Save / Revert. */
@@ -135,6 +138,7 @@ function DescriptionEditorFields({ body, path, desc, mutate, stillHere }: Descri
 /** The description: rendered by default, the raw editor once clicked, or an invitation to write one. */
 function DescriptionSection(props: DescriptionProps) {
   const { body, path, desc } = props;
+  const shown = props.shown ?? body?.description ?? "";
   const dialog = useContext(DetailDialogContext);
   const { maxHeight } = desc.preview;
   return (
@@ -142,7 +146,7 @@ function DescriptionSection(props: DescriptionProps) {
       <h3>Description</h3>
       {desc.editing ? (
         <DescriptionEditorFields {...props} />
-      ) : body && body.description.trim() ? (
+      ) : body && shown.trim() ? (
         // Fork: the text is for reading and copying; only the pencil below opens the editor.
         <div
           ref={desc.preview.viewRef}
@@ -154,7 +158,7 @@ function DescriptionSection(props: DescriptionProps) {
           }
         >
           <Markdown
-            markdown={body.description}
+            markdown={shown}
             sourcePath={path}
             className="folia-desc-rendered"
             onFollowLink={() => dialog?.close()}
@@ -246,13 +250,16 @@ function OverviewPane({
   const { body, reload, mutate, stillHere, focus, drafts } = panel;
   return (
     <>
+      <ReviewBox path={path} board={board} card={card} panel={panel} />
       <DescriptionSection
         body={body}
         path={path}
         desc={panel.desc}
         mutate={mutate}
         stillHere={stillHere}
+        shown={reviewedDescription(card, body)}
       />
+      <CommandsApproval path={path} card={card} panel={panel} />
       <CardSubtasks
         board={board}
         path={path}
