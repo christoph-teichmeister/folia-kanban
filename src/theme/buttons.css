@@ -41,3 +41,40 @@
 .folia-scope .folia-swatch-none:active:where(:not(:disabled, :focus-visible)) {
   outline-style: dashed;
 }
+
+/* Fork addition: a pointer over every control that acts on a click, and `not-allowed` over one that
+   is switched off. Obsidian draws its own buttons and icon buttons with `var(--cursor)`, which is
+   the plain arrow unless a snippet changes it. `:where` keeps this at the scope's weight, so the
+   grab, text and help cursors a component sets itself still win. */
+.folia-scope
+  :where(
+    .folia-btn,
+    .folia-link,
+    .folia-tab,
+    .folia-detail-icon,
+    .folia-detail-action,
+    .folia-card-action,
+    .folia-action-done,
+    .folia-action-delete,
+    .folia-column-fold,
+    .folia-column-fold-btn,
+    .folia-column-menu-btn,
+    .folia-comment-more,
+    .folia-assignee-me,
+    .folia-add-column,
+    .folia-column-add,
+    .folia-filter-chip,
+    .folia-card-parent-ref,
+    .folia-card-subitems-toggle,
+    .folia-title-value,
+    .folia-title-why,
+    .clickable-icon,
+    .task-list-item-checkbox,
+    input[type="checkbox"],
+    .dropdown
+  ) {
+  cursor: pointer;
+}
+.folia-scope :where(:disabled, [aria-disabled="true"], .is-disabled) {
+  cursor: not-allowed;
+}
