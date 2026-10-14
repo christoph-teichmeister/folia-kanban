@@ -93,3 +93,24 @@ body.is-mobile .folia-tabs {
 body.is-mobile .folia-scope .folia-tab {
   padding-inline: var(--size-4-2);
 }
+/* The toolbar wraps on a phone: in one row the last filter chips ran off the screen, unreachable. */
+body.is-mobile .folia-toolbar,
+body.is-mobile .folia-toolbar-filters {
+  flex-wrap: wrap;
+}
+/* A comment's edit and delete buttons go to a row under the text on a phone: beside it they left
+   the text a column three words wide. */
+body.is-mobile .folia-comment-row {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+body.is-mobile .folia-comment-row > .folia-comment-main {
+  flex: 1 0 100%;
+}
+body.is-mobile .folia-comment-row > .folia-detail-mini-slot {
+  margin-left: 0;
+}
+/* No Ctrl key on a phone keyboard; the Send button is the way there. */
+body.is-mobile .folia-kbd-hint {
+  display: none;
+}

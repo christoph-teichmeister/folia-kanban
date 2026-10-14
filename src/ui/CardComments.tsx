@@ -220,28 +220,43 @@ function CommentComposer({
   inputRef,
 }: CommentsProps) {
   const repo = useRepo();
+  const send = () => {
+    const text = draft.value.trim();
+    if (!text) return;
+    const floor = body?.comments.length ?? 0;
+    draft.send(text, () =>
+      mutate(async () => {
+        await repo.addComment(path, text);
+        if (stillHere()) readState.posted({ floor, text });
+      }),
+    );
+  };
   return (
     <div className="folia-add-inline">
       <textarea
         ref={inputRef}
         value={draft.value}
-        placeholder="Write a comment… (Ctrl+Enter sends)"
+        placeholder="Write a comment…"
         aria-label="Write a comment"
         onChange={(e) => draft.setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && draft.value.trim()) {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            const text = draft.value.trim();
-            const floor = body?.comments.length ?? 0;
-            draft.send(text, () =>
-              mutate(async () => {
-                await repo.addComment(path, text);
-                if (stillHere()) readState.posted({ floor, text });
-              }),
-            );
+            send();
           }
         }}
       />
+      {/* Fork: a phone keyboard has no Ctrl, so the button is the way to send there. */}
+      <div className="folia-row-actions folia-comment-send">
+        <span className="folia-kbd-hint folia-muted">Ctrl+Enter</span>
+        <HostButton
+          className="folia-btn"
+          text="Send"
+          cta
+          disabled={!draft.value.trim()}
+          onClick={send}
+        />
+      </div>
     </div>
   );
 }
