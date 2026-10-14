@@ -12,6 +12,7 @@ import { HostButton } from "./hostControls";
 
 import { hasToken, toggleToken, type FilterKey } from "../model/filter";
 import type { SearchField, Suggestion } from "../model/repo";
+import { FEEDBACK_TAG } from "./useBoardView";
 
 interface Props {
   /** The single source of truth: the raw search query string (#9). */
@@ -26,6 +27,8 @@ interface Props {
    * component is presentational, and everything else it draws arrives the same way.
    */
   canFilterMine: boolean;
+  /** Fork: how many cards carry the `feedback-needed` tag, for its quick filter. */
+  feedbackCount: number;
 }
 
 /** The §1 keys, with a one-line hint each, offered as suggestions. */
@@ -150,7 +153,7 @@ function useSearchField(
 }
 
 export const Toolbar = forwardRef<Pick<HTMLElement, "focus">, Props>(function Toolbar(
-  { query, onChange, matchCount, totalCount, canFilterMine },
+  { query, onChange, matchCount, totalCount, canFilterMine, feedbackCount },
   ref,
 ) {
   const box = useRef<HTMLDivElement>(null);
@@ -193,6 +196,11 @@ export const Toolbar = forwardRef<Pick<HTMLElement, "focus">, Props>(function To
         {chip("due", "soon", "calendar", "Due soon")}
         {chip("is", "blocked", "ban", "Blocked")}
         {chip("unread", "comments", "message-square", "Unread")}
+        {/* Fork: one click to the cards waiting on the user's answer. It is the ordinary `tag:`
+            token, so it works in lanes like any search. Hidden while no card carries the tag,
+            unless it is switched on (same reason as Mine above). */}
+        {(feedbackCount > 0 || hasToken(query, "tag", FEEDBACK_TAG)) &&
+          chip("tag", FEEDBACK_TAG, "circle-help", `Feedback needed (${feedbackCount})`)}
       </div>
 
       {active && (

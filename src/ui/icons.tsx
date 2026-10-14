@@ -13,6 +13,7 @@ export type IconName =
   | "triangle-alert"
   | "inbox"
   | "ban"
+  | "circle-help"
   | "octagon-alert"
   | "link"
   | "user"

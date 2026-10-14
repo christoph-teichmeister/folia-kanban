@@ -7719,3 +7719,44 @@ describe("fork: the comment badge opens the Comments tab", () => {
     expect(panes(detail).comments.hidden).toBe(false);
   });
 });
+
+describe("fork: Feedback needed quick filter", () => {
+  const tagged = (cfg: BoardConfig = config) =>
+    new FakeRepo(cfg, {
+      "Tasks/Ask.md": {
+        fm: { type: "task", status: "todo", owner: "claude", tags: ["setup", "feedback-needed"] },
+        body: "\n# Ask\n",
+      },
+      "Tasks/Quiet.md": { fm: { type: "task", status: "todo", owner: "you" }, body: "\n# Quiet\n" },
+    });
+
+  it("hides the chip while no card carries the tag", async () => {
+    render_(makeRepo());
+    await screen.findByText("Alpha");
+    expect(screen.queryByRole("button", { name: /Feedback needed/ })).toBeNull();
+  });
+
+  it("counts the tagged cards and toggles tag:feedback-needed", async () => {
+    const user = userEvent.setup();
+    render_(tagged());
+    await screen.findByText("Ask");
+    const chip = screen.getByRole("button", { name: "Feedback needed (1)" });
+    await user.click(chip);
+    expect(screen.getByLabelText("Search cards")).toHaveValue("tag:feedback-needed");
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(screen.queryByText("Quiet")).toBeNull());
+    expect(screen.getByText("Ask")).toBeInTheDocument();
+    await user.click(chip);
+    expect(screen.getByLabelText("Search cards")).toHaveValue("");
+    expect(await screen.findByText("Quiet")).toBeInTheDocument();
+  });
+
+  it("filters a board drawn in swimlanes too", async () => {
+    const user = userEvent.setup();
+    render_(tagged({ ...config, swimlanes: "owner" }));
+    await screen.findByText("Ask");
+    await user.click(screen.getByRole("button", { name: "Feedback needed (1)" }));
+    await waitFor(() => expect(screen.queryByText("Quiet")).toBeNull());
+    expect(screen.getByText("Ask")).toBeInTheDocument();
+  });
+});
