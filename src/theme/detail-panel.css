@@ -909,7 +909,8 @@
     position: fixed;
     inset-block: 0;
     right: 0;
-    width: min(70rem, 92vw);
+    /* Three quarters of the window on a wide screen, never narrower than 70rem, never wider than 92vw. */
+    width: min(92vw, max(70rem, 75vw));
     max-width: none;
     height: 100%;
     max-height: none;
