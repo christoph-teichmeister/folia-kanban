@@ -7,14 +7,20 @@ import type { UnreadState } from "../model/unread";
  * badge is never announced. The name is the only place a screen reader can hear them.
  */
 export function tileName(card: Card, unread: UnreadState): string {
+  return [card.title, tileExtras(card, unread)].filter(Boolean).join(", ");
+}
+
+/** The part of {@link tileName} after the title, or null when there is none. */
+export function tileExtras(card: Card, unread: UnreadState): string | null {
   const stats = card.stats;
-  return [
-    card.title,
-    stats && stats.checklist > 0 ? progressWords(stats) : null,
-    unread.kind === "none" ? null : unreadWords(unread),
-  ]
-    .filter(Boolean)
-    .join(", ");
+  return (
+    [
+      stats && stats.checklist > 0 ? progressWords(stats) : null,
+      unread.kind === "none" ? null : unreadWords(unread),
+    ]
+      .filter(Boolean)
+      .join(", ") || null
+  );
 }
 
 /**

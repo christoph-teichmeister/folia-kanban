@@ -1,5 +1,13 @@
 import { waitingFor } from "../model/properties";
-import { memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import {
+  memo,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Card, CardStats, ContextConfig } from "../model/types";
@@ -22,7 +30,7 @@ import {
   useUnreadComments,
 } from "./context";
 import { useReducedMotion } from "./useReducedMotion";
-import { tileName } from "./cardWords";
+import { tileExtras } from "./cardWords";
 import { useTileEvents } from "./useTileEvents";
 import {
   CardActions,
@@ -205,6 +213,9 @@ function CardFace({
   onKeyUp: (e: KeyboardEvent) => void;
   selected: boolean;
 }) {
+  const titleId = useId();
+  const extrasId = useId();
+  const extras = tileExtras(card, view.unread);
   return (
     // a11y exception (no-static-element-interactions): role + tabIndex come from the spread dnd attributes (sortable: role="button", tabIndex=0) or the explicit non-draggable branch
     <div
@@ -215,9 +226,17 @@ function CardFace({
       onClick={onOpen}
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
-      aria-label={tileName(card, view.unread)}
+      // Fork: named by its title and a hidden span with progress and unread words (`tileName`), not
+      // by `aria-label`: Obsidian shows every `aria-label` as a tooltip, and one over the whole tile
+      // chained from card to card while the pointer moved on.
+      aria-labelledby={extras ? `${titleId} ${extrasId}` : titleId}
       aria-current={selected ? "true" : undefined}
     >
+      {extras && (
+        <span id={extrasId} className="folia-sr-only">
+          {extras}
+        </span>
+      )}
       {title.editing != null ? (
         <input
           ref={title.inputRef}
@@ -232,7 +251,9 @@ function CardFace({
           onBlur={title.commit}
         />
       ) : (
-        <div className="folia-card-title">{card.title}</div>
+        <div id={titleId} className="folia-card-title">
+          {card.title}
+        </div>
       )}
       {card.frontmatter.status === "waiting" && waitingFor(card.frontmatter) && (
         <div className="folia-card-waiting">⏳ {waitingFor(card.frontmatter)}</div>

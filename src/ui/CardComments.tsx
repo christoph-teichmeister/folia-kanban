@@ -1,4 +1,4 @@
-import { useContext, useState, type Ref } from "react";
+import { useContext, useLayoutEffect, useRef, useState, type Ref } from "react";
 import type { CardBody } from "../model/types";
 import { useRepo, useSettings } from "./context";
 import { DetailDialogContext } from "./detailDialog";
@@ -47,13 +47,27 @@ function ClampedMarkdown({
   onFollowLink: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const long = text.length > CLAMP_OVER;
+  const [fits, setFits] = useState(false);
+  const mainRef = useRef<HTMLDivElement>(null);
+  // The length only picks the candidates; one that fits the clamp height anyway (a wide panel) gets
+  // no "Show more". jsdom measures every box as 0, so there nothing counts as fitting.
+  const candidate = text.length > CLAMP_OVER;
+  useLayoutEffect(() => {
+    const el = mainRef.current?.querySelector<HTMLElement>(".folia-comment-text");
+    if (!candidate || expanded || !el) return;
+    const measure = () => setFits(el.clientHeight > 0 && el.scrollHeight <= el.clientHeight + 1);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(el);
+    return () => observer?.disconnect();
+  }, [candidate, expanded, text]);
+  const long = candidate && !fits;
   return (
-    <div className="folia-comment-main">
+    <div className="folia-comment-main" ref={mainRef}>
       <Markdown
         markdown={text}
         sourcePath={sourcePath}
-        className={"folia-comment-text" + (long && !expanded ? " folia-is-clamped" : "")}
+        className={"folia-comment-text" + (candidate && !expanded ? " folia-is-clamped" : "")}
         onFollowLink={onFollowLink}
       />
       {long && (
