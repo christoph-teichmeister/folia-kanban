@@ -7720,7 +7720,7 @@ describe("fork: the comment badge opens the Comments tab", () => {
   });
 });
 
-describe("fork: Feedback needed quick filter", () => {
+describe("fork: Feedback needed quick filter and the stale marker", () => {
   const tagged = (cfg: BoardConfig = config) =>
     new FakeRepo(cfg, {
       "Tasks/Ask.md": {
@@ -7758,5 +7758,14 @@ describe("fork: Feedback needed quick filter", () => {
     await user.click(screen.getByRole("button", { name: "Feedback needed (1)" }));
     await waitFor(() => expect(screen.queryByText("Quiet")).toBeNull());
     expect(screen.getByText("Ask")).toBeInTheDocument();
+  });
+
+  it("marks a card that has sat in Doing for a week, dated by its move", async () => {
+    const repo = makeRepo();
+    repo.files.get("Tasks/Gamma.md")!.body =
+      "\n# Gamma\n\n## History\n- _2026-06-01 10:00:_ Moved from Todo to Doing\n";
+    render_(repo);
+    await screen.findByText("Gamma");
+    expect(screen.getByLabelText("12 days in Doing")).toHaveTextContent("12d");
   });
 });

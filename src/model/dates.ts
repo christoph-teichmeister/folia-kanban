@@ -19,7 +19,7 @@ export function stamp(d = new Date()): string {
 // ---------------------------------------------------------------------------
 
 /** Whole-day difference (target − today), both as YYYY-MM-DD. */
-function dayDelta(target: string, today: string): number | null {
+export function dayDelta(target: string, today: string): number | null {
   const t = Date.parse(target + "T00:00:00");
   const n = Date.parse(today + "T00:00:00");
   if (Number.isNaN(t) || Number.isNaN(n)) return null;

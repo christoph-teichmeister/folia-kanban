@@ -15,6 +15,7 @@ import { FrontmatterSchema, decode } from "./schemas";
 import { linkpath } from "./links";
 import { normalizeAuthor } from "./unread";
 import { bodyCr, joinLines } from "./lineEndings";
+import { isMoveLine } from "./history";
 
 // Where Obsidian's metadata reader, and so the properties Folia shows, says the frontmatter ends:
 // at the first line after the opening `---` that starts with `---`, the very next line included
@@ -406,6 +407,11 @@ export function cardStats(text: string): CardStats {
     nextTodos: b.subtasks
       .filter((s) => s.kind === "todo" && !s.done)
       .map((s) => ({ text: s.text, index: s.index })),
+    // Fork: the newest move only, for the tile's "days in this column" marker.
+    lastMove: [...b.history]
+      .reverse()
+      .map(({ timestamp, text }) => ({ timestamp, text }))
+      .find((h) => isMoveLine(h.text)),
   };
 }
 

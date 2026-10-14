@@ -7,8 +7,16 @@ import { dueInfo, type DueUrgency } from "../model/dates";
 import { matchCard, type Filter } from "../model/filter";
 import { dedupePriorities, priorityIndex } from "../model/priorities";
 import { BLOCKS } from "../model/relationships";
+import { STALE_AFTER_DAYS, STALE_COLUMNS, daysInColumn } from "../model/history";
 import { frontmatterTagValues, tagValues } from "../model/tags";
-import type { Card, CardFrontmatter, ColumnGroup, ColumnSort, RelationCount } from "../model/types";
+import type {
+  Card,
+  CardFrontmatter,
+  ColumnDef,
+  ColumnGroup,
+  ColumnSort,
+  RelationCount,
+} from "../model/types";
 import type { IconName } from "./icons";
 
 export type ChipTone =
@@ -485,6 +493,20 @@ function dueChip(due: string, today: string, done: boolean): CardChip {
     icon: info.urgency === "overdue" ? "triangle-alert" : "calendar",
     tooltip: "Due " + due,
   };
+}
+
+/**
+ * Fork: a quiet "12d" on a card that has stood in a stale-watched column (`STALE_COLUMNS`) for at
+ * least `STALE_AFTER_DAYS`, dated by the history line that moved it there. No such line, no chip.
+ */
+export function staleChips(card: Card, today: string, columns: readonly ColumnDef[]): CardChip[] {
+  const column = columns.find((c) => c.id === card.frontmatter.status);
+  if (!column || !STALE_COLUMNS.includes(column.id)) return [];
+  const days = daysInColumn(card.stats?.lastMove, column, today);
+  if (days === null || days < STALE_AFTER_DAYS) return [];
+  return [
+    { key: "stale", label: `${days}d`, tone: "muted", tooltip: `${days} days in ${column.title}` },
+  ];
 }
 
 /**
