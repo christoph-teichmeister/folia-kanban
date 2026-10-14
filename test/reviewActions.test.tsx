@@ -98,7 +98,16 @@ describe("PO review in the card panel", () => {
     repo = makeRepo();
     const detail = await open("Run it");
     expect(within(detail).queryByRole("region", { name: "PO review" })).toBeNull();
+    // Cancelled: nothing is written.
+    repo.answerConfirm = () => false;
     await userEvent.click(await within(detail).findByRole("button", { name: "Approve commands" }));
+    expect(repo.confirms.at(-1)?.message).toContain("run all of these commands");
+    expect(repo.confirms.at(-1)?.message).toContain("sudo systemctl restart x");
+    expect(repo.files.get("Tasks/Run it.md")!.body).not.toMatch(/approved all commands/);
+    expect(repo.files.get("Tasks/Run it.md")!.fm["tags"]).toContain("feedback-needed");
+    // Confirmed: the ok comment is written and the tag dropped.
+    repo.answerConfirm = () => true;
+    await userEvent.click(within(detail).getByRole("button", { name: "Approve commands" }));
     await waitFor(() => expect(repo.files.get("Tasks/Run it.md")!.fm["tags"]).toEqual(["setup"]));
     expect(repo.files.get("Tasks/Run it.md")!.body).toMatch(/_ ok, approved all commands\n/);
   });

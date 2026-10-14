@@ -148,8 +148,21 @@ function CommandsForm({ path, card, panel }: Omit<Props, "board">) {
   const repo = useRepo();
   const post = usePostComment(path, panel);
   const [except, setExcept] = useState("");
-  const approve = () =>
-    void panel
+  const commands = splitSection(panel.body?.description ?? "", COMMANDS_HEADING)?.section ?? "";
+  // Fork: the runner acts on the answer without asking again, so the list is shown once more
+  // before anything is written. Cancel is the dialog's default, so a stray click or Enter does nothing.
+  const confirm = () =>
+    repo.confirm({
+      title: "Approve commands",
+      message:
+        (except.trim()
+          ? `The board runner will run these commands except ${except.trim()}:`
+          : "The board runner will run all of these commands:") + `\n\n${commands}`,
+      cta: except.trim() ? "Approve the others" : "Approve all",
+    });
+  const approve = async () => {
+    if (!(await confirm())) return;
+    await panel
       .mutate(async () => {
         // The runner reads a reply starting with `ok` as the approval, so the text keeps that start.
         await post(except.trim() ? `ok except ${except.trim()}` : "ok, approved all commands");
@@ -157,6 +170,7 @@ function CommandsForm({ path, card, panel }: Omit<Props, "board">) {
         if (tags) await repo.setFrontmatter(path, { tags });
       })
       .then((ok) => ok && panel.stillHere() && setExcept(""));
+  };
   return (
     <div className="folia-commands-approval folia-add-inline folia-row-actions">
       <input
@@ -169,7 +183,7 @@ function CommandsForm({ path, card, panel }: Omit<Props, "board">) {
         className="folia-btn"
         text={except.trim() ? "Approve the others" : "Approve commands"}
         cta
-        onClick={approve}
+        onClick={() => void approve()}
       />
     </div>
   );
