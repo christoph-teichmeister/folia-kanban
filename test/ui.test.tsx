@@ -4897,7 +4897,7 @@ describe("unread comments", () => {
     // The tile's own name carries it too: everything in the tile is inside a role="button", so a
     // label on the badge alone would never be announced.
     expect(
-      within(alpha).getByLabelText("Alpha, 1 unread comment, a reply to yours"),
+      within(alpha).getByLabelText("Alpha 1 unread comment, a reply to yours"),
     ).toBeInTheDocument();
   });
 
@@ -4913,7 +4913,7 @@ describe("unread comments", () => {
       }),
     );
     expect(
-      await screen.findByLabelText("Alpha, 1 of 2 subtasks done, 1 unread comment"),
+      await screen.findByLabelText("Alpha 1 of 2 subtasks done, 1 unread comment"),
     ).toBeInTheDocument();
   });
 

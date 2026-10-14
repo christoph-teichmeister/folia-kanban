@@ -2,19 +2,20 @@ import type { Card, CardStats } from "../model/types";
 import type { UnreadState } from "../model/unread";
 
 /**
- * The tile's accessible name. Subtask progress and unread comments are folded into it: everything
- * inside the tile's face is a descendant of a `role="button"`, so a label or role on the bar or the
+ * The tile's accessible name after its title (the tile is labelled by both, `CardItem.tsx`).
+ * Subtask progress and unread comments are folded into it: everything inside the tile's face is a descendant of a `role="button"`, so a label or role on the bar or the
  * badge is never announced. The name is the only place a screen reader can hear them.
  */
-export function tileName(card: Card, unread: UnreadState): string {
+export function tileExtras(card: Card, unread: UnreadState): string | null {
   const stats = card.stats;
-  return [
-    card.title,
-    stats && stats.checklist > 0 ? progressWords(stats) : null,
-    unread.kind === "none" ? null : unreadWords(unread),
-  ]
-    .filter(Boolean)
-    .join(", ");
+  return (
+    [
+      stats && stats.checklist > 0 ? progressWords(stats) : null,
+      unread.kind === "none" ? null : unreadWords(unread),
+    ]
+      .filter(Boolean)
+      .join(", ") || null
+  );
 }
 
 /**
