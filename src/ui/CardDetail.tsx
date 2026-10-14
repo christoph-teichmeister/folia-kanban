@@ -5,11 +5,12 @@ import { CardComments } from "./CardComments";
 import { CardFields } from "./CardFields";
 import { CardProperties } from "./CardProperties";
 import { CardRelations } from "./CardRelations";
-import { useBoardActions, useRepo, type PanelTab } from "./context";
+import { useRepo, type PanelTab } from "./context";
 import { CreateCardForm, createColumnTitle, useCreateCard } from "./CreateCardForm";
+import { DescriptionHead } from "./DescriptionHead";
 import { DetailDialogContext } from "./detailDialog";
 import { CardHeaderActions, DetailFrame, DetailScroll } from "./DetailFrame";
-import { HostButton, HostIconButton } from "./hostControls";
+import { HostButton } from "./hostControls";
 import { Markdown } from "./Markdown";
 import { CommandsApproval, ReviewBox, reviewedDescription } from "./ReviewActions";
 import { CardSubtasks } from "./SubtaskList";
@@ -140,15 +141,16 @@ function DescriptionSection(props: DescriptionProps) {
   const { body, path, desc } = props;
   const shown = props.shown ?? body?.description ?? "";
   const dialog = useContext(DetailDialogContext);
-  const actions = useBoardActions();
   const { maxHeight } = desc.preview;
+  // The description as written when there is something to show, else null.
+  const written = body && shown.trim() ? body.description : null;
   return (
     <section className="folia-section">
-      <h3>Description</h3>
+      <DescriptionHead markdown={desc.editing ? null : written} onEdit={desc.beginFromPreview} />
       {desc.editing ? (
         <DescriptionEditorFields {...props} />
-      ) : body && shown.trim() ? (
-        // Fork: the text is for reading and copying; only the pencil below opens the editor.
+      ) : written != null ? (
+        // Fork: the text is for reading and copying; only the pencil above opens the editor.
         <div
           ref={desc.preview.viewRef}
           className="folia-desc-view"
@@ -163,21 +165,6 @@ function DescriptionSection(props: DescriptionProps) {
             sourcePath={path}
             className="folia-desc-rendered"
             onFollowLink={() => dialog?.close()}
-          />
-          {/* Fork: copies the Markdown as written, not the rendered text. */}
-          <HostIconButton
-            className="folia-detail-icon folia-mini folia-desc-copy"
-            slotClassName="folia-desc-copy-slot"
-            icon="copy"
-            label="Copy description"
-            onClick={() => actions.copyText(body.description, "Description copied")}
-          />
-          <HostIconButton
-            className="folia-detail-icon folia-mini folia-desc-edit"
-            slotClassName="folia-desc-edit-slot"
-            icon="pencil"
-            label="Edit description"
-            onClick={desc.beginFromPreview}
           />
         </div>
       ) : (

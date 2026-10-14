@@ -376,24 +376,28 @@
 /* #15: cap the rendered prose to the viewport-derived height (set inline as --folia-desc-max-h on
    mount/resize) and scroll it internally, so a long description never grows the panel past the
    screen. The fallback caps at calc(100vh - chrome) for the first paint before the measured value
-   lands. Scroll lives on the prose (not .folia-desc-view), so the pencil button — absolutely
-   positioned against the non-scrolling view box — stays pinned while the text scrolls. */
+   lands. Scroll lives on the prose (not .folia-desc-view); the copy and edit buttons sit in the
+   heading row above it. */
 .folia-desc-view .folia-desc-rendered {
   max-height: var(--folia-desc-max-h);
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
-.folia-desc-edit-slot {
-  position: absolute;
-  top: var(--size-4-1);
-  right: var(--size-4-1);
+/* Fork: a section heading with buttons on its right (the description's copy and edit). */
+.folia-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+  margin-bottom: var(--size-4-2);
 }
-/* Fork: the copy button, one small button and a gap left of the pencil. */
-.folia-desc-copy-slot {
-  position: absolute;
-  top: var(--size-4-1);
-  right: calc(var(--size-4-1) + var(--folia-hit-sm) + var(--size-2-1));
+.folia-section-head > h3 {
+  margin: 0;
+}
+.folia-section-head-actions {
+  display: flex;
+  gap: var(--size-2-1);
 }
 .folia-desc-behind {
   margin: var(--size-2-3) 0 0;
@@ -1147,4 +1151,14 @@
 .folia-commands-approval {
   margin-top: var(--size-4-2);
   align-items: center;
+}
+
+/* Fork addition: the comment box's Send button, right-aligned, with the keyboard shortcut beside it. */
+.folia-comment-send {
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: var(--size-2-3);
+}
+.folia-kbd-hint {
+  font-size: var(--font-ui-smaller);
 }

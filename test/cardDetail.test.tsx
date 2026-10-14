@@ -222,6 +222,25 @@ describe("fork: quick reply on the Comments tab", () => {
     await waitFor(() => expect(input).toHaveValue(""));
   });
 
+  it("sends with the Send button, which is off while the box is empty (a phone has no Ctrl)", async () => {
+    const user = userEvent.setup();
+    const repo = makeRepo();
+    repo.getUserName = () => "chris";
+    renderApp(repo);
+    await user.click(await screen.findByText("Alpha", { selector: ".folia-card-title" }));
+    const detail = await screen.findByTestId("card-detail");
+    await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
+    const button = within(detail).getByRole("button", { name: "Send" });
+    expect(button).toBeDisabled();
+    await user.type(within(detail).getByLabelText("Write a comment"), "from the phone");
+    await user.click(button);
+    await waitFor(() =>
+      expect(repo.files.get("Tasks/Alpha.md")!.body).toContain(
+        "- _2026-06-13 12:00 @chris:_ from the phone",
+      ),
+    );
+  });
+
   it("focuses the reply box when the comment badge opens the card", async () => {
     const user = userEvent.setup();
     renderApp(
