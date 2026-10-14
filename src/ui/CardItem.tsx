@@ -226,7 +226,7 @@ function CardFace({
       onClick={onOpen}
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
-      // Fork: named by its title and a hidden span with progress and unread words (`tileName`), not
+      // Fork: named by its title and a hidden span with progress and unread words (`tileExtras`), not
       // by `aria-label`: Obsidian shows every `aria-label` as a tooltip, and one over the whole tile
       // chained from card to card while the pointer moved on.
       aria-labelledby={extras ? `${titleId} ${extrasId}` : titleId}

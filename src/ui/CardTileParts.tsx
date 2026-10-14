@@ -7,7 +7,7 @@ import { commentsTitle, progressWords } from "./cardWords";
 import { Icon } from "./icons";
 import { HostIconButton, HostProgressBar } from "./hostControls";
 
-// The labels in these parts of the tile's face are never announced (see `tileName`): Obsidian shows
+// The labels in these parts of the tile's face are never announced (see `tileExtras`): Obsidian shows
 // an element's aria-label as its tooltip, and that is all they are for.
 
 export function CardChips({
