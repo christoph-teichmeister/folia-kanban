@@ -159,7 +159,9 @@ function useTileView(card: Card, today: string, hasSubcardChildren: boolean) {
   // preview (gated by the same `cardNextTodos` cap the list uses) and/or its subcard children
   // (rendered as a sibling `SubcardGroup` by the caller). No toggle when neither exists.
   const hasNextTodosPreview = cardNextTodos > 0 && (card.stats?.nextTodos.length ?? 0) > 0;
-  const hasNestedSubitems = hasSubcardChildren || hasNextTodosPreview;
+  // Fork: only subcards earn the toggle. The todo preview sits inside the tile, above where the
+  // toggle is drawn, so folding it from below read backwards; it simply stays visible.
+  const hasNestedSubitems = hasSubcardChildren;
   return {
     unread,
     chips,
@@ -189,7 +191,7 @@ function CardFace({
   title: ReturnType<typeof useTitleEdit>;
   /** The sortable's attributes and listeners, or null for a tile that can't be dragged. */
   dragProps: object | null;
-  onOpen: () => void;
+  onOpen: (e: { target: EventTarget | null }) => void;
   onKeyDown: (e: KeyboardEvent) => void;
   onKeyUp: (e: KeyboardEvent) => void;
   selected: boolean;

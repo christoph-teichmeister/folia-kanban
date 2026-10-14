@@ -541,7 +541,7 @@ describe("card detail", () => {
     expect(within(detail).getByText("Beta")).toBeInTheDocument(); // subcard link
   });
 
-  it("shows the description rendered, and clicking it reveals the editable textarea", async () => {
+  it("shows the description rendered, and only the pencil opens the editable textarea", async () => {
     const user = userEvent.setup();
     render_(makeRepo());
     await user.click(await screen.findByText("Alpha"));
@@ -553,8 +553,10 @@ describe("card detail", () => {
     expect(rendered).not.toHaveClass("markdown-rendered");
     expect(within(detail).queryByLabelText("Edit description")).not.toBeNull();
     expect(within(detail).queryByRole("textbox", { name: "Edit description" })).toBeNull();
-    // Clicking the rendered area flips to the raw textarea.
+    // Clicking the text leaves it readable (to select and copy); the pencil opens the editor.
     await user.click(rendered);
+    expect(within(detail).queryByRole("textbox", { name: "Edit description" })).toBeNull();
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     expect(await within(detail).findByRole("textbox", { name: "Edit description" })).toHaveValue(
       "Desc A",
     );
@@ -566,7 +568,7 @@ describe("card detail", () => {
     render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.click(await within(detail).findByText("Desc A"));
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     const box = within(detail).getByRole("textbox", { name: "Edit description" });
     const before = repo.files.get("Tasks/Alpha.md")!.body;
     await user.clear(box);
@@ -597,7 +599,7 @@ describe("card detail", () => {
     render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.click(await within(detail).findByText("Desc A"));
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     const box = within(detail).getByRole("textbox", { name: "Edit description" });
     await user.clear(box);
     await user.type(box, "Brand new body");
@@ -634,7 +636,7 @@ describe("card detail", () => {
     // jsdom reports 0 for layout; stub the preview wrapper's measured height so the capture is real.
     const view = rendered.closest(".folia-desc-view") as HTMLElement;
     Object.defineProperty(view, "offsetHeight", { configurable: true, value: 247 });
-    await user.click(rendered);
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     const box = within(detail).getByRole("textbox", { name: "Edit description" });
     expect(box.style.minHeight).toBe("247px"); // panel keeps its height, no jump
   });
@@ -649,7 +651,7 @@ describe("card detail", () => {
       configurable: true,
       value: 247,
     });
-    await user.click(rendered);
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     expect(within(detail).getByRole("textbox", { name: "Edit description" }).style.minHeight).toBe(
       "247px",
     );
@@ -660,7 +662,7 @@ describe("card detail", () => {
       configurable: true,
       value: 0,
     });
-    await user.click(back);
+    await user.click(within(detail).getByRole("button", { name: "Edit description" }));
     expect(within(detail).getByRole("textbox", { name: "Edit description" }).style.minHeight).toBe(
       "",
     );
@@ -1899,27 +1901,15 @@ describe("collapse/expand subitems", () => {
     expect(alphaTree.querySelector(".folia-subcard-group")).not.toBeNull();
   });
 
-  it("hides a card's own inline-todos preview when collapsed even with no subcards", async () => {
-    const user = userEvent.setup();
-    renderStateful(nextTodosRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
-    const card = (await screen.findByText("WithTodos")).closest(".folia-card") as HTMLElement;
-    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(2);
-
-    await user.click(within(card).getByRole("button", { name: 'Hide subitems for "WithTodos"' }));
-    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(0);
-  });
-
-  it("starts collapsed board-wide when subitemsDefault is 'collapsed'", async () => {
+  it("fork: a card whose only subitem is its todo preview has no toggle and keeps the preview", async () => {
     render_(nextTodosRepo(), {
       ...DEFAULT_SETTINGS,
       cardNextTodos: 2,
       subitemsDefault: "collapsed",
     });
     const card = (await screen.findByText("WithTodos")).closest(".folia-card") as HTMLElement;
-    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(0);
-    expect(
-      within(card).getByRole("button", { name: 'Show 3 subitems, 1 done, for "WithTodos"' }),
-    ).toBeInTheDocument();
+    expect(card.querySelectorAll(".folia-card-next-todo")).toHaveLength(2);
+    expect(within(card).queryByRole("button", { name: /subitems/ })).toBeNull();
   });
 
   it("column menu's collapse-all/expand-all applies to every card in that column, recursively", async () => {
@@ -1993,18 +1983,6 @@ describe("collapse/expand subitems", () => {
       "Tasks/Late.md",
       "Tasks/Root.md",
     ]);
-  });
-
-  it("column menu's collapse-all also reaches a card whose only subitem is an inline-todos preview", async () => {
-    const user = userEvent.setup();
-    renderStateful(nextTodosRepo(), { ...DEFAULT_SETTINGS, cardNextTodos: 2 });
-    const todoCol = (await screen.findByText("Todo")).closest("section") as HTMLElement;
-    expect(todoCol.querySelectorAll(".folia-card-next-todo")).toHaveLength(2);
-
-    await user.click(within(todoCol).getByRole("button", { name: /Column options/ }));
-    await user.click(screen.getByRole("menuitem", { name: "Collapse all subitems" }));
-
-    expect(todoCol.querySelectorAll(".folia-card-next-todo")).toHaveLength(0);
   });
 
   it("a file-name rename carries the card's collapsed override to its new path", async () => {
@@ -2615,7 +2593,10 @@ describe("card context menu", () => {
       },
     });
     render_(repo);
-    expect(await screen.findByText("feedback-needed")).toHaveAttribute("data-label", "feedback-needed");
+    expect(await screen.findByText("feedback-needed")).toHaveAttribute(
+      "data-label",
+      "feedback-needed",
+    );
     expect(screen.getByText("setup")).toHaveAttribute("data-label", "setup");
   });
 
@@ -5223,7 +5204,7 @@ describe("unread comments", () => {
     // The agent's "ok" keeps its tag; the reader's identical "ok" gets none.
     const flags = within(detail).getAllByText("new");
     expect(flags).toHaveLength(1);
-    expect(flags[0]?.closest("li")).toHaveTextContent("2026-06-13 09:00");
+    expect(flags[0]?.closest("li")).toHaveTextContent("@agent");
     // And the marker moved forward rather than being thrown away.
     await waitFor(() => expect(box.current.commentsSeen["Tasks/Alpha.md"]).toBe(`${repo.ts}#1`));
   });
@@ -7712,5 +7693,29 @@ describe("column colour — what a board note paints", () => {
     await screen.findByText("Alpha");
     const column = document.querySelector('[data-column="todo"]') as HTMLElement;
     expect(column.style.getPropertyValue("--folia-col-accent")).toBe("#9aa0a6");
+  });
+});
+
+describe("fork: the comment badge opens the Comments tab", () => {
+  const panes = (detail: HTMLElement) => {
+    const [overview, comments] = detail.querySelectorAll<HTMLElement>(".folia-tab-pane");
+    return { overview: overview!, comments: comments! };
+  };
+
+  it("opens the card on Comments from the badge, on Overview from the title", async () => {
+    const user = userEvent.setup();
+    render_(makeRepo());
+    const tile = (await screen.findByText("Alpha")).closest<HTMLElement>(".folia-card")!;
+    await user.click(tile.querySelector<HTMLElement>(".folia-card-comments")!);
+    const detail = await screen.findByTestId("card-detail");
+    expect(panes(detail).comments.hidden).toBe(false);
+    expect(within(panes(detail).comments).getByText("hi there")).toBeInTheDocument();
+    expect(panes(detail).overview.hidden).toBe(true);
+
+    // A second open of the same card keeps the panel and switches the tab it asks for.
+    await user.click(within(tile).getByText("Alpha"));
+    expect(panes(detail).overview.hidden).toBe(false);
+    await user.click(tile.querySelector<HTMLElement>(".folia-card-comments")!);
+    expect(panes(detail).comments.hidden).toBe(false);
   });
 });

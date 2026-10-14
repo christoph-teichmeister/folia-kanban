@@ -6,7 +6,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Vault, type App, type FileManager, type MetadataCache } from "obsidian";
-import { VaultRepository } from "../src/obsidian/vaultRepo";
+import { NEW_CARD_SKELETON, VaultRepository } from "../src/obsidian/vaultRepo";
 import type { Suggestion, SuggestSource } from "../src/model/repo";
 import { moveCardOver, moveCardTo, setCardPriority } from "../src/model/boardOps";
 import { planDrop } from "../src/model/board";
@@ -537,7 +537,7 @@ describe("creating cards", () => {
 
     // The note is created with the body ALONE — the keys below arrive through Obsidian's own
     // frontmatter writer, never as YAML this plugin built by hand.
-    expect(app.vault.created).toEqual([{ path, text: "# Fresh\n" }]);
+    expect(app.vault.created).toEqual([{ path, text: `# Fresh\n${NEW_CARD_SKELETON}` }]);
     expect(app.vault.text(path)).toContain("# Fresh");
     const fm = app.vault.frontmatter(path);
     expect(fm["type"]).toBe("task");

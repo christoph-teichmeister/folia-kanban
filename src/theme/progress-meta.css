@@ -47,6 +47,13 @@
   color: var(--color-purple);
   font-weight: var(--font-semibold);
 }
+/* Fork: the badge is its own target: a click opens the card on its Comments tab. */
+.folia-card-meta .folia-card-comments {
+  cursor: pointer;
+}
+.folia-card-meta .folia-card-comments:hover {
+  color: var(--text-accent);
+}
 .folia-unread-dot {
   width: var(--size-2-3);
   height: var(--size-2-3);

@@ -38,7 +38,12 @@ export function CardChips({
         </span>
       )}
       {chips.map((c) => (
-        <span key={c.key} className={`folia-chip folia-chip-${c.tone}`} aria-label={c.tooltip} data-label={c.label}>
+        <span
+          key={c.key}
+          className={`folia-chip folia-chip-${c.tone}`}
+          aria-label={c.tooltip}
+          data-label={c.label}
+        >
           {c.icon && <Icon name={c.icon} />}
           {c.label}
         </span>
@@ -93,7 +98,9 @@ export function CardMeta({ stats, unread }: { stats: CardStats | undefined; unre
       )}
       {stats.comments > 0 && (
         <span
-          className={unread.kind === "none" ? undefined : `folia-comments-${unread.kind}`}
+          className={
+            "folia-card-comments" + (unread.kind === "none" ? "" : ` folia-comments-${unread.kind}`)
+          }
           aria-label={commentsTitle(stats.comments, unread)}
         >
           <Icon name="message-square" /> {stats.comments}

@@ -222,12 +222,12 @@ export function CardSubtasks({
   const { path, mutate } = row;
   return (
     <section className="folia-section">
-      <h3>Subtasks &amp; subcards</h3>
+      <h3>Todos</h3>
       <ul className="folia-subtasks">
         {body?.subtasks.map((s) => (
           <SubtaskRow key={s.index} item={s} {...row} />
         ))}
-        {body && body.subtasks.length === 0 && <li className="folia-muted">No subtasks yet.</li>}
+        {body && body.subtasks.length === 0 && <li className="folia-muted">No todos yet.</li>}
       </ul>
       <AddInline
         draft={todoDraft}

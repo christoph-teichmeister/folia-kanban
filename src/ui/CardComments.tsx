@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import type { CardBody } from "../model/types";
-import { useRepo } from "./context";
+import { useRepo, useSettings } from "./context";
 import { DetailDialogContext } from "./detailDialog";
 import { HostButton, HostIconButton } from "./hostControls";
 import { Markdown } from "./Markdown";
@@ -12,6 +12,29 @@ const CLAMP_OVER = 360;
 /** Fork: with more comments than this, only the newest `KEEP_VISIBLE` show until "Show earlier" is pressed. */
 const COLLAPSE_OVER = 4;
 const KEEP_VISIBLE = 3;
+
+/** Fork: "2026-10-13 12:15" as "13 Oct 2026, 12:15"; anything else is shown as written. */
+export function commentDate(timestamp: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?$/.exec(timestamp);
+  if (!m) return timestamp;
+  const [, y, mo, d, h, mi] = m;
+  const day = new Date(Number(y), Number(mo) - 1, Number(d));
+  const date = day.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return h ? `${date}, ${h}:${mi}` : date;
+}
+
+/** Fork: who a comment is from. Unsigned comments are the person using the board. */
+export function commentWho(
+  author: string | null,
+  me: string,
+): { name: string; handle: string | null } {
+  if (!author) return { name: me || "You", handle: null };
+  return { name: author.charAt(0).toUpperCase() + author.slice(1), handle: author };
+}
 
 /** The rendered comment; a long one starts clamped behind "Show more". */
 function ClampedMarkdown({
@@ -44,6 +67,27 @@ function ClampedMarkdown({
   );
 }
 
+/** Fork: the line above a comment: who wrote it, their handle, and when. */
+function CommentHead({
+  author,
+  timestamp,
+  unread,
+}: {
+  author: string | null;
+  timestamp: string;
+  unread: false | "unread" | "reply";
+}) {
+  const who = commentWho(author, useSettings().userName.trim());
+  return (
+    <div className="folia-comment-head">
+      <span className="folia-comment-author">{who.name}</span>
+      {who.handle && <span className="folia-comment-handle">@{who.handle}</span>}
+      <span className="folia-ts">{commentDate(timestamp)}</span>
+      {unread && <span className="folia-comment-flag">{unread === "reply" ? "reply" : "new"}</span>}
+    </div>
+  );
+}
+
 /** One comment with inline edit + delete. View mode renders the text as markdown; edit shows the
  *  raw textarea (commits on Enter/blur). Keeps the timestamp and the author signature untouched. */
 function CommentItem({
@@ -71,56 +115,59 @@ function CommentItem({
     setEditing(false);
     if (draft.trim() && draft !== text) onSave(draft.trim());
   };
+  const who = commentWho(author, useSettings().userName.trim());
   return (
-    <li className={unread ? `folia-comment-${unread}` : undefined}>
-      <div className="folia-comment-head">
-        <span className="folia-ts">{timestamp}</span>
-        {author && <span className="folia-comment-author">@{author}</span>}
-        {unread && (
-          <span className="folia-comment-flag">{unread === "reply" ? "reply" : "new"}</span>
-        )}
-      </div>
-      {editing ? (
-        <textarea
-          className="folia-comment-edit"
-          value={draft}
-          autoFocus
-          aria-label="Edit comment"
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              commit();
-            }
-          }}
-        />
-      ) : (
-        <div className="folia-comment-row">
-          <ClampedMarkdown
-            text={text}
-            sourcePath={sourcePath}
-            onFollowLink={() => dialog?.close()}
-          />
-          <HostIconButton
-            className="folia-detail-icon folia-mini"
-            slotClassName="folia-detail-mini-slot"
-            icon="pencil"
-            label="Edit comment"
-            onClick={() => {
-              setDraft(text);
-              setEditing(true);
+    <li
+      className={"folia-comment" + (unread ? ` folia-comment-${unread}` : "")}
+      data-author={author ?? ""}
+    >
+      <span className="folia-comment-avatar" aria-hidden="true">
+        {who.name.charAt(0).toUpperCase()}
+      </span>
+      <div className="folia-comment-card">
+        <CommentHead author={author} timestamp={timestamp} unread={unread} />
+        {editing ? (
+          <textarea
+            className="folia-comment-edit"
+            value={draft}
+            autoFocus
+            aria-label="Edit comment"
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                commit();
+              }
             }}
           />
-          <HostIconButton
-            className="folia-detail-icon folia-mini"
-            slotClassName="folia-detail-mini-slot"
-            icon="trash-2"
-            label="Delete comment"
-            onClick={onDelete}
-          />
-        </div>
-      )}
+        ) : (
+          <div className="folia-comment-row">
+            <ClampedMarkdown
+              text={text}
+              sourcePath={sourcePath}
+              onFollowLink={() => dialog?.close()}
+            />
+            <HostIconButton
+              className="folia-detail-icon folia-mini"
+              slotClassName="folia-detail-mini-slot"
+              icon="pencil"
+              label="Edit comment"
+              onClick={() => {
+                setDraft(text);
+                setEditing(true);
+              }}
+            />
+            <HostIconButton
+              className="folia-detail-icon folia-mini"
+              slotClassName="folia-detail-mini-slot"
+              icon="trash-2"
+              label="Delete comment"
+              onClick={onDelete}
+            />
+          </div>
+        )}
+      </div>
     </li>
   );
 }

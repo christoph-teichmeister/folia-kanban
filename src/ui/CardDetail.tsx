@@ -1,11 +1,11 @@
-import { useContext, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Board, Card, CardBody } from "../model/types";
 import { descriptionRefusal } from "../model/card";
 import { CardComments } from "./CardComments";
 import { CardFields } from "./CardFields";
 import { CardProperties } from "./CardProperties";
 import { CardRelations } from "./CardRelations";
-import { useRepo } from "./context";
+import { useRepo, type PanelTab } from "./context";
 import { CreateCardForm, createColumnTitle, useCreateCard } from "./CreateCardForm";
 import { DetailDialogContext } from "./detailDialog";
 import { CardHeaderActions, DetailFrame, DetailScroll } from "./DetailFrame";
@@ -40,6 +40,8 @@ interface Props {
    * not a remount. (A remount would take every draft in the panel with it.)
    */
   focusSeq?: number;
+  /** Fork: the tab to show, applied on mount and again whenever `focusSeq` advances. */
+  openTab?: PanelTab;
 }
 
 type Mutate = (fn: () => Promise<unknown>) => Promise<boolean>;
@@ -96,7 +98,13 @@ function DescriptionEditorFields({ body, path, desc, mutate, stillHere }: Descri
           desc.preservedHeight != null ? { minHeight: `${desc.preservedHeight}px` } : undefined
         }
         onChange={(e) => draft.type(e.target.value)}
-        placeholder="Add a description…"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            save();
+          }
+        }}
+        placeholder="Write Markdown…"
         onFocus={desc.escape.claim}
         onBlur={desc.escape.release}
       />
@@ -116,6 +124,9 @@ function DescriptionEditorFields({ body, path, desc, mutate, stillHere }: Descri
       <div className="folia-row-actions">
         <HostButton className="folia-btn" text="Save" cta onClick={save} />
         <HostButton className="folia-btn" text="Revert" onClick={desc.close} />
+        <span className="folia-desc-hint folia-muted">
+          Markdown · Ctrl+Enter saves · Esc reverts
+        </span>
       </div>
     </>
   );
@@ -132,7 +143,7 @@ function DescriptionSection(props: DescriptionProps) {
       {desc.editing ? (
         <DescriptionEditorFields {...props} />
       ) : body && body.description.trim() ? (
-        // a11y exception (no-static-element-interactions, click-events-have-key-events): click-to-edit is a convenience; the keyboard path is the dedicated "Edit description" pencil button rendered below
+        // Fork: the text is for reading and copying; only the pencil below opens the editor.
         <div
           ref={desc.preview.viewRef}
           className="folia-desc-view"
@@ -141,10 +152,6 @@ function DescriptionSection(props: DescriptionProps) {
               ? ({ "--folia-desc-max-h": `${maxHeight}px` } as CSSProperties)
               : undefined
           }
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest("a")) return;
-            desc.beginFromPreview();
-          }}
         >
           <Markdown
             markdown={body.description}
@@ -157,7 +164,6 @@ function DescriptionSection(props: DescriptionProps) {
             slotClassName="folia-desc-edit-slot"
             icon="pencil"
             label="Edit description"
-            stopPropagation={["click"]}
             onClick={desc.beginFromPreview}
           />
         </div>
@@ -191,7 +197,7 @@ function HistorySection({ body }: { body: CardBody | null }) {
   );
 }
 
-type Tab = "overview" | "comments" | "history";
+type Tab = PanelTab;
 
 /** Fork addition: the row of buttons that picks which pane of the panel shows. */
 function PanelTabs({
@@ -223,8 +229,8 @@ function PanelTabs({
   );
 }
 
-/** The open card, section by section, fed from the state `CardDetail` keeps. */
-function CardSections({
+/** Fork: the Overview tab: the description, the subtasks and the card's relations. */
+function OverviewPane({
   path,
   board,
   card,
@@ -238,7 +244,61 @@ function CardSections({
   panel: CardPanelState;
 }) {
   const { body, reload, mutate, stillHere, focus, drafts } = panel;
-  const [tab, setTab] = useState<Tab>("overview");
+  return (
+    <>
+      <DescriptionSection
+        body={body}
+        path={path}
+        desc={panel.desc}
+        mutate={mutate}
+        stillHere={stillHere}
+      />
+      <CardSubtasks
+        board={board}
+        path={path}
+        body={body}
+        resolve={panel.resolve}
+        onNavigate={onNavigate}
+        mutate={mutate}
+        reload={reload}
+        todoDraft={drafts.todo}
+        subcardDraft={drafts.subcard}
+        subcardRef={focus.subcardRef}
+      />
+      <CardRelations
+        board={board}
+        card={card}
+        path={path}
+        choices={panel.choices}
+        onNavigate={onNavigate}
+        mutate={mutate}
+      />
+    </>
+  );
+}
+
+/** The open card, section by section, fed from the state `CardDetail` keeps. */
+function CardSections({
+  path,
+  board,
+  card,
+  onNavigate,
+  panel,
+  openTab = "overview",
+  focusSeq,
+}: {
+  path: string;
+  board: Board;
+  card: Card;
+  onNavigate: ((path: string) => void) | undefined;
+  panel: CardPanelState;
+  openTab?: Tab | undefined;
+  focusSeq?: number | undefined;
+}) {
+  const { body, reload, mutate, stillHere, focus, drafts } = panel;
+  const [tab, setTab] = useState<Tab>(openTab);
+  // A re-open of the card already showing keeps the mount, so the asked-for tab is applied here.
+  useEffect(() => setTab(openTab), [focusSeq]);
   return (
     <>
       <CardTitleFields
@@ -249,57 +309,44 @@ function CardSections({
         overrideRef={focus.titleOverrideRef}
         mutate={mutate}
       />
-      <PanelTabs tab={tab} onTab={setTab} comments={body?.comments.length ?? 0} />
-      <div className="folia-tab-pane" hidden={tab !== "overview"}>
-        <CardFields board={board} card={card} path={path} mutate={mutate} reload={reload} />
-        <CardProperties
-          card={card}
-          path={path}
-          form={panel.propertyForm}
-          mutate={mutate}
-          stillHere={stillHere}
-          deleting={panel.deleting}
-        />
-        <DescriptionSection
-          body={body}
-          path={path}
-          desc={panel.desc}
-          mutate={mutate}
-          stillHere={stillHere}
-        />
-        <CardSubtasks
-          board={board}
-          path={path}
-          body={body}
-          resolve={panel.resolve}
-          onNavigate={onNavigate}
-          mutate={mutate}
-          reload={reload}
-          todoDraft={drafts.todo}
-          subcardDraft={drafts.subcard}
-          subcardRef={focus.subcardRef}
-        />
-        <CardRelations
-          board={board}
-          card={card}
-          path={path}
-          choices={panel.choices}
-          onNavigate={onNavigate}
-          mutate={mutate}
-        />
-      </div>
-      <div className="folia-tab-pane" hidden={tab !== "comments"}>
-        <CardComments
-          body={body}
-          path={path}
-          readState={panel.readState}
-          draft={drafts.comment}
-          mutate={mutate}
-          stillHere={stillHere}
-        />
-      </div>
-      <div className="folia-tab-pane" hidden={tab !== "history"}>
-        <HistorySection body={body} />
+      {/* Fork: two columns. The text of the card (tabbed) on the left, its fields on the right. */}
+      <div className="folia-detail-columns">
+        <div className="folia-detail-main">
+          <PanelTabs tab={tab} onTab={setTab} comments={body?.comments.length ?? 0} />
+          <div className="folia-tab-pane" hidden={tab !== "overview"}>
+            <OverviewPane
+              path={path}
+              board={board}
+              card={card}
+              onNavigate={onNavigate}
+              panel={panel}
+            />
+          </div>
+          <div className="folia-tab-pane" hidden={tab !== "comments"}>
+            <CardComments
+              body={body}
+              path={path}
+              readState={panel.readState}
+              draft={drafts.comment}
+              mutate={mutate}
+              stillHere={stillHere}
+            />
+          </div>
+          <div className="folia-tab-pane" hidden={tab !== "history"}>
+            <HistorySection body={body} />
+          </div>
+        </div>
+        <aside className="folia-detail-aside" aria-label="Card properties">
+          <CardFields board={board} card={card} path={path} mutate={mutate} reload={reload} />
+          <CardProperties
+            card={card}
+            path={path}
+            form={panel.propertyForm}
+            mutate={mutate}
+            stillHere={stillHere}
+            deleting={panel.deleting}
+          />
+        </aside>
       </div>
     </>
   );
@@ -317,6 +364,7 @@ export function CardDetail({
   focusAddSubcard,
   focusTitleOverride,
   focusSeq,
+  openTab,
 }: Props) {
   // The board reloads on a debounce, so for a moment after this card's file is renamed or moved
   // the board still knows the card only under its old path. Keep showing what it last said about
@@ -379,7 +427,15 @@ export function CardDetail({
         }
         actions={<CardHeaderActions card={card} path={path} deleting={panel.deleting} />}
       >
-        <CardSections path={path} board={board} card={card} onNavigate={onNavigate} panel={panel} />
+        <CardSections
+          path={path}
+          board={board}
+          card={card}
+          onNavigate={onNavigate}
+          panel={panel}
+          openTab={openTab}
+          focusSeq={focusSeq}
+        />
       </DetailScroll>
     </DetailFrame>
   );
