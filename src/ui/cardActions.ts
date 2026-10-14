@@ -89,9 +89,22 @@ export function cardViewActions(
   d: CardActionDeps,
 ): Pick<
   BoardActions,
-  "openNote" | "copyPath" | "markCommentsSeen" | "moveWithinColumn" | "columnEdges"
+  "openNote" | "copyPath" | "copyText" | "markCommentsSeen" | "moveWithinColumn" | "columnEdges"
 > {
   const { repo, boardRef, notify } = d;
+  const copyText = (text: string, done: string) => {
+    // Not `navigator.clipboard?.writeText(…)`: where the API is missing, optional chaining
+    // short-circuits the whole chain and the click would do nothing at all, silently.
+    const clipboard = navigator.clipboard;
+    if (!clipboard) {
+      notify("This device gives the plugin no clipboard access", "error");
+      return;
+    }
+    void clipboard
+      .writeText(text)
+      .then(() => notify(done))
+      .catch(() => notify("Could not write to the clipboard", "error"));
+  };
   return {
     openNote: (path, evt) => void repo.openCard(path, evt),
     copyPath: (path, form) => {
@@ -102,18 +115,9 @@ export function cardViewActions(
         notify("This vault has no filesystem path on this device", "error");
         return;
       }
-      // Not `navigator.clipboard?.writeText(…)`: where the API is missing, optional chaining
-      // short-circuits the whole chain and the click would do nothing at all, silently.
-      const clipboard = navigator.clipboard;
-      if (!clipboard) {
-        notify("This device gives the plugin no clipboard access", "error");
-        return;
-      }
-      void clipboard
-        .writeText(text)
-        .then(() => notify(`Copied ${text}`))
-        .catch(() => notify("Could not write to the clipboard", "error"));
+      copyText(text, `Copied ${text}`);
     },
+    copyText,
     markCommentsSeen: (path, marker) =>
       d.onUpdateSettings((s) => {
         if ((s.commentsSeen[path] ?? "") === marker) return {};

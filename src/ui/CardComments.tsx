@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useState, type Ref } from "react";
 import type { CardBody } from "../model/types";
 import { useRepo, useSettings } from "./context";
 import { DetailDialogContext } from "./detailDialog";
@@ -188,20 +188,34 @@ interface CommentsProps {
   draft: InlineDraft;
   mutate: (fn: () => Promise<unknown>) => Promise<boolean>;
   stillHere: () => boolean;
+  /** Fork: the reply box, for the panel to focus when it opens on this tab. */
+  inputRef?: Ref<HTMLTextAreaElement>;
 }
 
-/** The box that adds a comment, on Enter; Shift+Enter starts a new line. */
-function CommentComposer({ body, path, readState, draft, mutate, stillHere }: CommentsProps) {
+/**
+ * The box that adds a comment, on Ctrl/Cmd+Enter; Enter alone starts a new line. Fork: Enter used
+ * to send; now a comment is sent with the keys the description editor saves with.
+ */
+function CommentComposer({
+  body,
+  path,
+  readState,
+  draft,
+  mutate,
+  stillHere,
+  inputRef,
+}: CommentsProps) {
   const repo = useRepo();
   return (
     <div className="folia-add-inline">
       <textarea
+        ref={inputRef}
         value={draft.value}
-        placeholder="Write a comment…"
+        placeholder="Write a comment… (Ctrl+Enter sends)"
         aria-label="Write a comment"
         onChange={(e) => draft.setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && draft.value.trim()) {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && draft.value.trim()) {
             e.preventDefault();
             const text = draft.value.trim();
             const floor = body?.comments.length ?? 0;

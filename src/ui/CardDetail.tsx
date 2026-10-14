@@ -1,11 +1,11 @@
-import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useContext, useRef, type CSSProperties } from "react";
 import type { Board, Card, CardBody } from "../model/types";
 import { descriptionRefusal } from "../model/card";
 import { CardComments } from "./CardComments";
 import { CardFields } from "./CardFields";
 import { CardProperties } from "./CardProperties";
 import { CardRelations } from "./CardRelations";
-import { useRepo, type PanelTab } from "./context";
+import { useBoardActions, useRepo, type PanelTab } from "./context";
 import { CreateCardForm, createColumnTitle, useCreateCard } from "./CreateCardForm";
 import { DetailDialogContext } from "./detailDialog";
 import { CardHeaderActions, DetailFrame, DetailScroll } from "./DetailFrame";
@@ -140,6 +140,7 @@ function DescriptionSection(props: DescriptionProps) {
   const { body, path, desc } = props;
   const shown = props.shown ?? body?.description ?? "";
   const dialog = useContext(DetailDialogContext);
+  const actions = useBoardActions();
   const { maxHeight } = desc.preview;
   return (
     <section className="folia-section">
@@ -162,6 +163,14 @@ function DescriptionSection(props: DescriptionProps) {
             sourcePath={path}
             className="folia-desc-rendered"
             onFollowLink={() => dialog?.close()}
+          />
+          {/* Fork: copies the Markdown as written, not the rendered text. */}
+          <HostIconButton
+            className="folia-detail-icon folia-mini folia-desc-copy"
+            slotClassName="folia-desc-copy-slot"
+            icon="copy"
+            label="Copy description"
+            onClick={() => actions.copyText(body.description, "Description copied")}
           />
           <HostIconButton
             className="folia-detail-icon folia-mini folia-desc-edit"
@@ -291,21 +300,14 @@ function CardSections({
   card,
   onNavigate,
   panel,
-  openTab = "overview",
-  focusSeq,
 }: {
   path: string;
   board: Board;
   card: Card;
   onNavigate: ((path: string) => void) | undefined;
   panel: CardPanelState;
-  openTab?: Tab | undefined;
-  focusSeq?: number | undefined;
 }) {
-  const { body, reload, mutate, stillHere, focus, drafts } = panel;
-  const [tab, setTab] = useState<Tab>(openTab);
-  // A re-open of the card already showing keeps the mount, so the asked-for tab is applied here.
-  useEffect(() => setTab(openTab), [focusSeq]);
+  const { body, reload, mutate, stillHere, focus, drafts, tab, setTab } = panel;
   return (
     <>
       <CardTitleFields
@@ -337,6 +339,7 @@ function CardSections({
               draft={drafts.comment}
               mutate={mutate}
               stillHere={stillHere}
+              inputRef={focus.commentRef}
             />
           </div>
           <div className="folia-tab-pane" hidden={tab !== "history"}>
@@ -393,6 +396,7 @@ export function CardDetail({
     focusAddSubcard,
     focusTitleOverride,
     focusSeq,
+    openTab,
   });
   const { panelRef, scrollRef, titleRef } = panel.focus;
 
@@ -432,17 +436,9 @@ export function CardDetail({
             {card.title}
           </h2>
         }
-        actions={<CardHeaderActions card={card} path={path} deleting={panel.deleting} />}
+        actions={<CardHeaderActions card={card} path={path} panel={panel} />}
       >
-        <CardSections
-          path={path}
-          board={board}
-          card={card}
-          onNavigate={onNavigate}
-          panel={panel}
-          openTab={openTab}
-          focusSeq={focusSeq}
-        />
+        <CardSections path={path} board={board} card={card} onNavigate={onNavigate} panel={panel} />
       </DetailScroll>
     </DetailFrame>
   );

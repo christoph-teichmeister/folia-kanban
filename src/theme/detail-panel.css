@@ -389,6 +389,12 @@
   top: var(--size-4-1);
   right: var(--size-4-1);
 }
+/* Fork: the copy button, one small button and a gap left of the pencil. */
+.folia-desc-copy-slot {
+  position: absolute;
+  top: var(--size-4-1);
+  right: calc(var(--size-4-1) + var(--folia-hit-sm) + var(--size-2-1));
+}
 .folia-desc-behind {
   margin: var(--size-2-3) 0 0;
   padding: var(--size-2-3) var(--size-4-2);

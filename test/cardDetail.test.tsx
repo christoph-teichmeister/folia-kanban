@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/ui/App";
 import { FakeRepo } from "./fakeRepo";
@@ -109,5 +109,132 @@ describe("CardDetail", () => {
     );
     await user.click(why);
     expect(detail.querySelector(".folia-title-trace")).toBeNull();
+  });
+});
+
+describe("fork: the panel steps through its column", () => {
+  const stepRepo = (extra: Partial<BoardConfig> = {}) =>
+    new FakeRepo(
+      { ...config, ...extra },
+      {
+        "Tasks/Alpha.md": { fm: { status: "todo", owner: "you" }, body: "\n" },
+        "Tasks/Beta.md": { fm: { status: "todo", owner: "claude" }, body: "\n" },
+        "Tasks/Delta.md": { fm: { status: "todo", owner: "you" }, body: "\n" },
+        "Tasks/Other.md": { fm: { status: "doing", owner: "you" }, body: "\n" },
+      },
+    );
+  const open = async (title: string) => {
+    await userEvent.click(await screen.findByText(title, { selector: ".folia-card-title" }));
+    return screen.findByRole("dialog", { name: title });
+  };
+  const prev = (d: HTMLElement) => within(d).getByLabelText(/^Previous card in column/);
+  const next = (d: HTMLElement) => within(d).getByLabelText(/^Next card in column/);
+
+  it("opens the card above or below, switched off at the ends, and keeps the tab", async () => {
+    const user = userEvent.setup();
+    renderApp(stepRepo());
+    let detail = await open("Alpha");
+    expect(prev(detail)).toHaveAttribute("aria-disabled", "true");
+    await user.click(within(detail).getByRole("button", { name: "Comments" }));
+    await user.click(next(detail));
+    detail = await screen.findByRole("dialog", { name: "Beta" });
+    const comments = detail.querySelectorAll<HTMLElement>(".folia-tab-pane")[1]!;
+    expect(comments.hidden).toBe(false);
+    await user.click(next(detail));
+    detail = await screen.findByRole("dialog", { name: "Delta" });
+    // Other sits in another column: Delta is the last of its own.
+    expect(next(detail)).toHaveAttribute("aria-disabled", "true");
+    await user.click(prev(detail));
+    await screen.findByRole("dialog", { name: "Beta" });
+  });
+
+  it("steps on Alt+Up / Alt+Down, over what the search leaves on the board", async () => {
+    const user = userEvent.setup();
+    renderApp(stepRepo());
+    // Only Alpha and Delta have an "l": Beta between them is not on the board.
+    await user.type(await screen.findByLabelText("Search cards"), "l");
+    const detail = await open("Alpha");
+    fireEvent.keyDown(within(detail).getByRole("heading", { name: "Alpha" }), {
+      key: "ArrowDown",
+      altKey: true,
+    });
+    const delta = await screen.findByRole("dialog", { name: "Delta" });
+    fireEvent.keyDown(delta, { key: "ArrowUp", altKey: true });
+    await screen.findByRole("dialog", { name: "Alpha" });
+  });
+
+  it("stays in the card's own lane on a board with lanes", async () => {
+    const user = userEvent.setup();
+    renderApp(stepRepo({ swimlanes: "owner" }));
+    const detail = await open("Alpha");
+    // Beta is in the claude lane, so the next card in Alpha's lane is Delta.
+    fireEvent.keyDown(detail, { key: "ArrowDown", altKey: true });
+    const gamma = await screen.findByRole("dialog", { name: "Delta" });
+    expect(next(gamma)).toHaveAttribute("aria-disabled", "true");
+    await user.click(prev(gamma));
+    await screen.findByRole("dialog", { name: "Alpha" });
+  });
+});
+
+describe("fork: copy the description", () => {
+  it("puts the Markdown as written on the clipboard and says so", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    const saved = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    try {
+      const repo = new FakeRepo(config, {
+        "Tasks/Alpha.md": { fm: { status: "todo" }, body: "\n# Alpha\n\nSome **bold** text\n" },
+      });
+      renderApp(repo);
+      await userEvent.click(await screen.findByText("Alpha", { selector: ".folia-card-title" }));
+      const detail = await screen.findByTestId("card-detail");
+      // fireEvent, not userEvent: `userEvent.setup()` installs a clipboard stub of its own.
+      fireEvent.click(await within(detail).findByLabelText("Copy description"));
+      expect(writeText).toHaveBeenCalledWith("Some **bold** text");
+      await waitFor(() =>
+        expect(repo.notices).toContainEqual({ message: "Description copied", tone: "success" }),
+      );
+    } finally {
+      if (saved) Object.defineProperty(navigator, "clipboard", saved);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+});
+
+describe("fork: quick reply on the Comments tab", () => {
+  it("keeps Enter for a new line, sends on Ctrl+Enter in the usual comment line", async () => {
+    const user = userEvent.setup();
+    const repo = makeRepo();
+    repo.getUserName = () => "chris";
+    renderApp(repo);
+    await user.click(await screen.findByText("Alpha", { selector: ".folia-card-title" }));
+    const detail = await screen.findByTestId("card-detail");
+    const input = within(detail).getByLabelText("Write a comment");
+    await user.type(input, "first line{Enter}second line");
+    expect(input).toHaveValue("first line\nsecond line");
+    expect(repo.files.get("Tasks/Alpha.md")!.body).not.toContain("first line");
+    await user.type(input, "{Control>}{Enter}{/Control}");
+    await waitFor(() =>
+      expect(repo.files.get("Tasks/Alpha.md")!.body).toContain(
+        "- _2026-06-13 12:00 @chris:_ first line\nsecond line",
+      ),
+    );
+    await waitFor(() => expect(input).toHaveValue(""));
+  });
+
+  it("focuses the reply box when the comment badge opens the card", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      new FakeRepo(config, {
+        "Tasks/Alpha.md": {
+          fm: { status: "todo" },
+          body: "\n# Alpha\n\n## Comments\n- _2026-06-12 08:00:_ hi there\n",
+        },
+      }),
+    );
+    const tile = (await screen.findByText("Alpha")).closest<HTMLElement>(".folia-card")!;
+    await user.click(tile.querySelector<HTMLElement>(".folia-card-comments")!);
+    const detail = await screen.findByTestId("card-detail");
+    await waitFor(() => expect(within(detail).getByLabelText("Write a comment")).toHaveFocus());
   });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { PanelTab } from "./context";
 
 /**
  * Where focus lands in the panel: on open, and on the one-shot actions the context menu asks for.
@@ -10,11 +11,13 @@ export function useDetailFocus({
   focusAddSubcard,
   focusTitleOverride,
   focusSeq,
+  openTab,
 }: {
   isCreate: boolean;
   focusAddSubcard: boolean | undefined;
   focusTitleOverride: boolean | undefined;
   focusSeq: number | undefined;
+  openTab: PanelTab | undefined;
 }) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   // The panel's scroller. Focus lands inside it on open, and every control the panel has sits inside
@@ -27,6 +30,7 @@ export function useDetailFocus({
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const subcardRef = useRef<HTMLInputElement | null>(null);
   const titleOverrideRef = useRef<HTMLInputElement | null>(null);
+  const commentRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Focus in on open. The dialog the panel is drawn in gives focus back to whatever had it when it
   // opened. The create form autofocuses its title input (a synchronous commit-phase focus), so
@@ -48,5 +52,10 @@ export function useDetailFocus({
     if (focusTitleOverride && !isCreate) titleOverrideRef.current?.focus();
   }, [focusSeq]);
 
-  return { panelRef, scrollRef, titleRef, subcardRef, titleOverrideRef };
+  // Fork: opened on the Comments tab (the tile's comment badge), focus goes on to the reply box.
+  useEffect(() => {
+    if (openTab === "comments" && !isCreate) commentRef.current?.focus();
+  }, [focusSeq]);
+
+  return { panelRef, scrollRef, titleRef, subcardRef, titleOverrideRef, commentRef };
 }

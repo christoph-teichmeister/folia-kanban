@@ -1,8 +1,10 @@
-import { useContext, type MutableRefObject, type ReactNode, type RefObject } from "react";
+import { useContext, type ReactNode, type RefObject } from "react";
 import type { Card } from "../model/types";
+import { CardStepButtons } from "./CardStepper";
 import { useBoardActions, useRepo } from "./context";
 import { DetailDialogContext } from "./detailDialog";
 import { HostIconButton } from "./hostControls";
+import type { CardPanelState } from "./useCardPanel";
 
 /**
  * The dialog element itself. Every branch of the panel renders through this one component, so
@@ -57,16 +59,20 @@ export function DetailScroll({
   );
 }
 
-/** What can be done to the open card as a whole: finish it, open its note, delete it. */
+/**
+ * What can be done to the open card as a whole: step to its neighbour (fork), finish it, open its
+ * note, delete it.
+ */
 export function CardHeaderActions({
   card,
   path,
-  deleting,
+  panel,
 }: {
   card: Card;
   path: string;
-  deleting: MutableRefObject<boolean>;
+  panel: CardPanelState;
 }) {
+  const { deleting } = panel;
   const repo = useRepo();
   const actions = useBoardActions();
   const dialog = useContext(DetailDialogContext);
@@ -79,6 +85,7 @@ export function CardHeaderActions({
   };
   return (
     <div className="folia-row-actions">
+      <CardStepButtons card={card} panel={panel} />
       {actions.doneColumnId && card.frontmatter.status !== actions.doneColumnId && (
         <HostIconButton
           className="folia-detail-icon folia-detail-action folia-action-done"

@@ -686,7 +686,10 @@ describe("card detail", () => {
     render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.type(within(detail).getByLabelText("Write a comment"), "new note{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "new note{Control>}{Enter}{/Control}",
+    );
     expect(await within(detail).findByText("new note")).toBeInTheDocument();
     expect(repo.files.get("Tasks/Alpha.md")!.body).toContain("new note");
   });
@@ -4982,7 +4985,10 @@ describe("unread comments", () => {
     renderStateful(repo, DEFAULT_SETTINGS);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.type(within(detail).getByLabelText("Write a comment"), "on it{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "on it{Control>}{Enter}{/Control}",
+    );
     await within(detail).findByText("on it");
     // The agent's line keeps the marker it opened with; the reader's own line gets none.
     const flags = within(detail).getAllByText("new");
@@ -5005,7 +5011,10 @@ describe("unread comments", () => {
     await waitFor(() =>
       expect(box.current.commentsSeen["Tasks/Alpha.md"]).toBe("2026-06-13 09:00#1"),
     );
-    await user.type(within(detail).getByLabelText("Write a comment"), "on it{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "on it{Control>}{Enter}{/Control}",
+    );
     await within(detail).findByText("on it");
     // Unsigned in the note, so to the tile it is nobody's — the marker has to cover it, or the
     // reader's own words light the badge.
@@ -5034,9 +5043,9 @@ describe("unread comments", () => {
     // The second Enter lands before the first post's reload has come back.
     const input = within(detail).getByLabelText("Write a comment");
     fireEvent.change(input, { target: { value: "first" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
     fireEvent.change(input, { target: { value: "second" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
     await within(detail).findByText("second");
     await within(detail).findByText("first");
     const flags = within(detail).getAllByText("new");
@@ -5056,7 +5065,10 @@ describe("unread comments", () => {
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
     await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
-    await user.type(within(detail).getByLabelText("Write a comment"), "on it{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "on it{Control>}{Enter}{/Control}",
+    );
     const mine = (await within(detail).findByText("on it")).closest("li") as HTMLElement;
     // Edit the reader's own line: the text changes, the ownership must not.
     await user.click(within(mine).getByRole("button", { name: "Edit comment" }));
@@ -5085,11 +5097,17 @@ describe("unread comments", () => {
     renderStateful(repo, DEFAULT_SETTINGS);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.type(within(detail).getByLabelText("Write a comment"), "yes{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "yes{Control>}{Enter}{/Control}",
+    );
     await within(detail).findByText("yes");
     // The agent answers with the same word while the panel is open; the next reload shows it.
     repo.files.get("Tasks/Alpha.md")!.body += `- _${repo.ts} @agent:_ yes\n`;
-    await user.type(within(detail).getByLabelText("Write a comment"), "great{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "great{Control>}{Enter}{/Control}",
+    );
     await within(detail).findByText("great");
     const lines = within(detail)
       .getAllByText("yes")
@@ -5113,9 +5131,15 @@ describe("unread comments", () => {
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
     await user.click(within(detail).getByRole("button", { name: /^Comments/ }));
-    await user.type(within(detail).getByLabelText("Write a comment"), "ok{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "ok{Control>}{Enter}{/Control}",
+    );
     await within(detail).findByText("ok");
-    await user.type(within(detail).getByLabelText("Write a comment"), "ok{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "ok{Control>}{Enter}{/Control}",
+    );
     await waitFor(() => expect(within(detail).getAllByText("ok")).toHaveLength(2));
     for (const el of within(detail).getAllByText("ok")) {
       const li = el.closest("li") as HTMLElement;
@@ -5171,7 +5195,10 @@ describe("unread comments", () => {
     renderStateful(repo, { ...DEFAULT_SETTINGS, userName: "Ana Maria" }, box);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.type(within(detail).getByLabelText("Write a comment"), "on it{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "on it{Control>}{Enter}{/Control}",
+    );
     await within(detail).findByText("on it");
     expect(repo.files.get("Tasks/Alpha.md")!.body).toContain(`_${repo.ts} @Ana-Maria:_ on it`);
     // Only the agent's line is new; the reader's own is recognised through its written signature.
@@ -5199,7 +5226,10 @@ describe("unread comments", () => {
     renderStateful(repo, DEFAULT_SETTINGS, box);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.type(within(detail).getByLabelText("Write a comment"), "ok{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "ok{Control>}{Enter}{/Control}",
+    );
     await waitFor(() => expect(within(detail).getAllByText("ok")).toHaveLength(2));
     // The agent's "ok" keeps its tag; the reader's identical "ok" gets none.
     const flags = within(detail).getAllByText("new");
@@ -6120,7 +6150,10 @@ describe("the detail panel hands text back when a small write fails", () => {
     render_(repo);
     await user.click(await screen.findByText("Alpha"));
     const detail = await screen.findByTestId("card-detail");
-    await user.type(within(detail).getByLabelText("Write a comment"), "long thought{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "long thought{Control>}{Enter}{/Control}",
+    );
     await expectNotice(repo, "cannot write");
     await waitFor(() =>
       expect(within(detail).getByLabelText("Write a comment")).toHaveValue("long thought"),
@@ -6614,7 +6647,10 @@ describe("the panel's section inputs belong to the card they were typed on (2026
 
     // The point of the drop: Enter on the second card writes to the second card, and the first
     // card never receives the text that was typed on it.
-    await user.type(within(gamma).getByLabelText("Write a comment"), "for Gamma{Enter}");
+    await user.type(
+      within(gamma).getByLabelText("Write a comment"),
+      "for Gamma{Control>}{Enter}{/Control}",
+    );
     await waitFor(() => expect(repo.files.get("Tasks/Gamma.md")!.body).toContain("for Gamma"));
     expect(repo.files.get("Tasks/Gamma.md")!.body).not.toContain("half a comment");
     expect(repo.files.get("Tasks/Alpha.md")!.body).not.toContain("half a comment");
@@ -6712,7 +6748,10 @@ describe("a rename under the open panel keeps what was typed in it (20260826.09)
     expect(within(detail).getByLabelText("Edit description")).toHaveValue("Desc A and more");
 
     // And the drafts still commit — to the card under its new name.
-    await user.type(within(detail).getByLabelText("Write a comment"), "{Enter}");
+    await user.type(
+      within(detail).getByLabelText("Write a comment"),
+      "{Control>}{Enter}{/Control}",
+    );
     await waitFor(() =>
       expect(repo.files.get("Tasks/Renamed.md")!.body).toContain("half a comment"),
     );
