@@ -17,8 +17,8 @@ import type { CardPanelState } from "./useCardPanel";
 
 const REVIEW_STATUS = "po-review";
 const REVIEW_HEADING = "For PO Review";
-const COMMANDS_HEADING = "Commands to approve";
-const FEEDBACK_TAG = "feedback-needed";
+export const COMMANDS_HEADING = "Commands to approve";
+export const FEEDBACK_TAG = "feedback-needed";
 
 const H2_RE = /^ {0,3}##\s+(.*?)\s*#*\s*$/;
 const H1_OR_H2_RE = /^ {0,3}#{1,2}\s/;
@@ -74,7 +74,7 @@ interface Props {
 }
 
 /** Add a comment exactly as the Comments tab does, so the unread markers know it is yours. */
-function usePostComment(path: string, panel: CardPanelState) {
+export function usePostComment(path: string, panel: CardPanelState) {
   const repo = useRepo();
   return async (text: string) => {
     const floor = panel.body?.comments.length ?? 0;

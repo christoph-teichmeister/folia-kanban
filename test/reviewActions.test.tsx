@@ -148,6 +148,21 @@ describe("PO review in the card panel", () => {
     expect(screen.queryByRole("button", { name: "Send & next" })).toBeNull();
   });
 
+  it("answers a question from the Feedback needed box and drops the tag", async () => {
+    repo = new FakeRepo(config, {
+      "Tasks/Ask me.md": {
+        fm: { status: "doing", owner: "claude", tags: ["setup", "feedback-needed"] },
+        body: "\n# Ask me\n\n## Subtasks\n\n## Comments\n- _2026-06-12 09:00 @claude:_ Shall I delete the old copy?\n",
+      },
+    });
+    const detail = await open("Ask me");
+    const box = within(detail).getByRole("region", { name: "Feedback needed" });
+    await waitFor(() => expect(box).toHaveTextContent("Shall I delete the old copy?"));
+    await userEvent.click(within(box).getByRole("button", { name: "Yes" }));
+    await waitFor(() => expect(repo.files.get("Tasks/Ask me.md")!.fm["tags"]).toEqual(["setup"]));
+    expect(repo.files.get("Tasks/Ask me.md")!.body).toMatch(/_ Yes\.\n?/);
+  });
+
   it("approves commands with an ok comment and drops feedback-needed", async () => {
     repo = makeRepo();
     const detail = await open("Run it");

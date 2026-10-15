@@ -12,6 +12,7 @@ import { DetailDialogContext } from "./detailDialog";
 import { CardHeaderActions, DetailFrame, DetailScroll } from "./DetailFrame";
 import { HostButton } from "./hostControls";
 import { Markdown } from "./Markdown";
+import { FeedbackBox } from "./FeedbackBox";
 import { CommandsApproval, ReviewBox, reviewedDescription } from "./ReviewActions";
 import { CardSubtasks } from "./SubtaskList";
 import { CardTitleFields } from "./TitleFields";
@@ -247,6 +248,7 @@ function OverviewPane({
   return (
     <>
       <ReviewBox path={path} board={board} card={card} panel={panel} />
+      <FeedbackBox path={path} card={card} panel={panel} />
       <DescriptionSection
         body={body}
         path={path}
