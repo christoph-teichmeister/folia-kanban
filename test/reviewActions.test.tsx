@@ -94,6 +94,25 @@ describe("PO review in the card panel", () => {
     expect(repo.files.get("Tasks/Review me.md")!.body).toContain("Log is missing");
   });
 
+  it("opens the next card in review after approving or sending back", async () => {
+    repo = new FakeRepo(config, {
+      "Tasks/Review me.md": { fm: { status: "po-review", order: 1 }, body: REVIEW_BODY },
+      "Tasks/Review too.md": {
+        fm: { status: "po-review", order: 2 },
+        body: "\n# Review too\n\n## For PO Review\nSecond one.\n\n## Subtasks\n",
+      },
+    });
+    const detail = await open("Review me");
+    await userEvent.click(within(detail).getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(repo.files.get("Tasks/Review me.md")!.fm.status).toBe("done"));
+    const next = await screen.findByTestId("card-detail");
+    await waitFor(() => expect(next).toHaveTextContent("Second one."));
+    // Last card in the column: nothing left to open, the panel stays on it.
+    await userEvent.type(within(next).getByLabelText("Review note"), "Redo");
+    await userEvent.click(within(next).getByRole("button", { name: "Send back" }));
+    await waitFor(() => expect(repo.files.get("Tasks/Review too.md")!.fm.status).toBe("doing"));
+  });
+
   it("approves commands with an ok comment and drops feedback-needed", async () => {
     repo = makeRepo();
     const detail = await open("Run it");
