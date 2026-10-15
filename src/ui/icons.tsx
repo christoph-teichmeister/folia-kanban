@@ -14,6 +14,7 @@ export type IconName =
   | "inbox"
   | "ban"
   | "circle-help"
+  | "list-checks"
   | "octagon-alert"
   | "link"
   | "user"

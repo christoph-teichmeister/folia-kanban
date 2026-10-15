@@ -12,14 +12,15 @@ import { HostButton } from "./hostControls";
 
 import { hasToken, toggleToken, type FilterKey } from "../model/filter";
 import type { SearchField, Suggestion } from "../model/repo";
+import type { ReviewQueue } from "./ReviewQueue";
 import { FEEDBACK_TAG } from "./useBoardView";
 
 interface Props {
   /** The single source of truth: the raw search query string (#9). */
   query: string;
   onChange: (query: string) => void;
-  matchCount: number;
-  totalCount: number;
+  /** "N of M" for the search, and (fork) how many cards carry the `feedback-needed` tag. */
+  counts: { match: number; total: number; feedback: number };
   /**
    * Whether the **Your name** setting holds a name. The "Mine" quick filter is `assignee:me`, and
    * with no name to be, it would be a button that quietly empties the board — so it is not offered
@@ -27,8 +28,8 @@ interface Props {
    * component is presentational, and everything else it draws arrives the same way.
    */
   canFilterMine: boolean;
-  /** Fork: how many cards carry the `feedback-needed` tag, for its quick filter. */
-  feedbackCount: number;
+  /** Fork: how many cards wait on the user (in review, or a question), and the button that walks them. */
+  queue: ReviewQueue;
 }
 
 /** The §1 keys, with a one-line hint each, offered as suggestions. */
@@ -153,7 +154,7 @@ function useSearchField(
 }
 
 export const Toolbar = forwardRef<Pick<HTMLElement, "focus">, Props>(function Toolbar(
-  { query, onChange, matchCount, totalCount, canFilterMine, feedbackCount },
+  { query, onChange, counts, canFilterMine, queue },
   ref,
 ) {
   const box = useRef<HTMLDivElement>(null);
@@ -199,14 +200,20 @@ export const Toolbar = forwardRef<Pick<HTMLElement, "focus">, Props>(function To
         {/* Fork: one click to the cards waiting on the user's answer. It is the ordinary `tag:`
             token, so it works in lanes like any search. Hidden while no card carries the tag,
             unless it is switched on (same reason as Mine above). */}
-        {(feedbackCount > 0 || hasToken(query, "tag", FEEDBACK_TAG)) &&
-          chip("tag", FEEDBACK_TAG, "circle-help", `Feedback needed (${feedbackCount})`)}
+        {(counts.feedback > 0 || hasToken(query, "tag", FEEDBACK_TAG)) &&
+          chip("tag", FEEDBACK_TAG, "circle-help", `Feedback needed (${counts.feedback})`)}
+        {queue.count > 0 && (
+          <button className="folia-filter-chip" onClick={queue.start}>
+            <Icon name="list-checks" />
+            {`Review queue (${queue.count})`}
+          </button>
+        )}
       </div>
 
       {active && (
         <div className="folia-toolbar-status" aria-live="polite">
           <span>
-            {matchCount} of {totalCount}
+            {counts.match} of {counts.total}
           </span>
           <HostButton className="folia-btn" text="Clear" onClick={() => onChange("")} />
         </div>
