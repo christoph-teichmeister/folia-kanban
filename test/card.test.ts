@@ -402,12 +402,31 @@ describe("updateTimestampedLine / removeTimestampedLine — byte-stable on Comme
     expect(parseBody(out).comments.map((c) => c.text)).toEqual(["one", "edited bare", "three"]);
   });
 
-  it("updateTimestampedLine collapses an embedded newline so the index walk can't desync", () => {
+  it("updateTimestampedLine keeps an embedded newline as an indented line of the same entry", () => {
     const out = updateTimestampedLine(withThreeComments, SECTION.comments, 1, "line1\nline2");
     expect(out).toBe(
-      withThreeComments.replace("- _2026-06-13 11:00:_ two", "- _2026-06-13 11:00:_ line1 line2"),
+      withThreeComments.replace(
+        "- _2026-06-13 11:00:_ two",
+        "- _2026-06-13 11:00:_ line1\n  line2",
+      ),
     );
-    expect(parseBody(out).comments.map((c) => c.text)).toEqual(["one", "line1 line2", "three"]);
+    expect(parseBody(out).comments.map((c) => c.text)).toEqual(["one", "line1\n  line2", "three"]);
+  });
+
+  it("a comment with paragraphs and a list stays one comment", () => {
+    const out = appendComment(
+      "# C\n\n## Comments\n",
+      "1. first\n\n2. second\n\n- item\n\nlast",
+      "2026-06-13 10:00",
+      "chris",
+    );
+    const comments = parseBody(out).comments;
+    expect(comments).toHaveLength(1);
+    expect(comments[0]!.text).toContain("last");
+    expect(appendComment(out, "next", "2026-06-13 10:01", "chris")).toContain(
+      "\n- _2026-06-13 10:01 @chris:_ next",
+    );
+    expect(parseBody(appendComment(out, "next", "2026-06-13 10:01")).comments).toHaveLength(2);
   });
 });
 

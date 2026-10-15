@@ -216,7 +216,7 @@ describe("fork: quick reply on the Comments tab", () => {
     await user.type(input, "{Control>}{Enter}{/Control}");
     await waitFor(() =>
       expect(repo.files.get("Tasks/Alpha.md")!.body).toContain(
-        "- _2026-06-13 12:00 @chris:_ first line\nsecond line",
+        "- _2026-06-13 12:00 @chris:_ first line\n  second line",
       ),
     );
     await waitFor(() => expect(input).toHaveValue(""));
