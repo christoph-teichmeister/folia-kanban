@@ -1148,6 +1148,22 @@
 .folia-detail-main .folia-review .folia-add-inline textarea {
   min-height: 3rem;
 }
+.folia-feedback-ask {
+  margin: 0;
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  color: var(--text-normal);
+}
+.folia-feedback-full > summary {
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+/* A long question scrolls inside the box instead of pushing the answer buttons down the page. */
+.folia-feedback .folia-review-text {
+  max-height: 9rem;
+  overflow-y: auto;
+}
 .folia-commands-approval {
   margin-top: var(--size-4-2);
   align-items: center;

@@ -12,7 +12,14 @@ import { DetailDialogContext } from "./detailDialog";
 import { CardHeaderActions, DetailFrame, DetailScroll } from "./DetailFrame";
 import { HostButton } from "./hostControls";
 import { Markdown } from "./Markdown";
-import { CommandsApproval, ReviewBox, reviewedDescription } from "./ReviewActions";
+import { FeedbackBox } from "./FeedbackBox";
+import {
+  CommandsApproval,
+  FEEDBACK_TAG,
+  ReviewBox,
+  reviewedDescription,
+  withoutTag,
+} from "./ReviewActions";
 import { CardSubtasks } from "./SubtaskList";
 import { CardTitleFields } from "./TitleFields";
 import { useCardPanel, type CardPanelState } from "./useCardPanel";
@@ -247,6 +254,7 @@ function OverviewPane({
   return (
     <>
       <ReviewBox path={path} board={board} card={card} panel={panel} />
+      <FeedbackBox path={path} card={card} panel={panel} />
       <DescriptionSection
         body={body}
         path={path}
@@ -255,7 +263,10 @@ function OverviewPane({
         stillHere={stillHere}
         shown={reviewedDescription(card, body)}
       />
-      <CommandsApproval path={path} card={card} panel={panel} />
+      {/* The Feedback needed box hosts it while the card carries the tag. */}
+      {withoutTag(card.frontmatter["tags"], FEEDBACK_TAG) === null && (
+        <CommandsApproval path={path} card={card} panel={panel} />
+      )}
       <CardSubtasks
         board={board}
         path={path}
