@@ -7,6 +7,7 @@ import { useContext, useState } from "react";
 import type { Board, Card, CardBody } from "../model/types";
 import { fencedLines } from "../model/fences";
 import { writeStatus } from "./CardFields";
+import { ColumnOrderContext, columnNeighbours } from "./CardStepper";
 import { useBoardActions, useRepo } from "./context";
 import { DetailDialogContext } from "./detailDialog";
 import { HostButton } from "./hostControls";
@@ -93,14 +94,24 @@ function ReviewForm({ path, board, card, panel, section }: Props & { section: st
   const actions = useBoardActions();
   const dialog = useContext(DetailDialogContext);
   const post = usePostComment(path, panel);
+  const order = useContext(ColumnOrderContext);
   const [note, setNote] = useState("");
-  const decide = (status: string, text: string) =>
+  // Review flow: the answer moves the card out of the column, so the next card to review (the one
+  // below, else the one above) is picked first and opened once the answer is written.
+  const decide = (status: string, text: string) => {
+    const { prev, next } = columnNeighbours(order, card);
+    const target = next ?? prev;
     void panel
       .mutate(async () => {
         if (!(await writeStatus({ repo, actions, board, card, path }, status))) return;
         await post(text);
       })
-      .then((ok) => ok && panel.stillHere() && setNote(""));
+      .then((ok) => {
+        if (!ok) return;
+        if (panel.stillHere()) setNote("");
+        if (target) actions.open(target, panel.tab);
+      });
+  };
   return (
     <section className="folia-review" aria-label="PO review">
       <h3>For PO review</h3>
