@@ -1,7 +1,7 @@
 // Fork addition: the top of a card Claude has asked a question on (tag `feedback-needed`): the
 // question, then a way to answer it. An answer is an ordinary comment, and it drops the tag, the way
 // "Approve commands" does. In a running review queue it moves on to the next card. A card with a
-// `## Commands to approve` section is answered there instead, so no box here.
+// `## Commands to approve` section is answered there instead: the box shows the question only.
 import { useContext, useState } from "react";
 import type { Card } from "../model/types";
 import { useBoardActions, useRepo } from "./context";
@@ -28,15 +28,21 @@ export function FeedbackBox(props: Props) {
   const { card, panel } = props;
   const body = panel.body;
   if (!body || withoutTag(card.frontmatter["tags"], FEEDBACK_TAG) === null) return null;
-  if (splitSection(body.description, COMMANDS_HEADING)) return null;
+  const commands = splitSection(body.description, COMMANDS_HEADING) !== null;
   // The question is Claude's latest comment; a card with none yet shows the box without it.
   const asked =
     [...body.comments].reverse().find((c) => c.author?.toLowerCase() === "claude") ??
     body.comments[body.comments.length - 1];
-  return <FeedbackForm {...props} question={asked?.text ?? ""} />;
+  return <FeedbackForm {...props} question={asked?.text ?? ""} commands={commands} />;
 }
 
-function FeedbackForm({ path, card, panel, question }: Props & { question: string }) {
+function FeedbackForm({
+  path,
+  card,
+  panel,
+  question,
+  commands,
+}: Props & { question: string; commands: boolean }) {
   const repo = useRepo();
   const actions = useBoardActions();
   const queue = useContext(ReviewQueueContext);
@@ -68,6 +74,26 @@ function FeedbackForm({ path, card, panel, question }: Props & { question: strin
           onFollowLink={() => dialog?.close()}
         />
       )}
+      {commands ? (
+        <p className="folia-muted">Commands to approve are listed below the description.</p>
+      ) : (
+        <FeedbackControls note={note} setNote={setNote} answer={answer} />
+      )}
+    </section>
+  );
+}
+
+function FeedbackControls({
+  note,
+  setNote,
+  answer,
+}: {
+  note: string;
+  setNote: (v: string) => void;
+  answer: (text: string) => void;
+}) {
+  return (
+    <>
       <div className="folia-add-inline">
         <textarea
           value={note}
@@ -87,6 +113,6 @@ function FeedbackForm({ path, card, panel, question }: Props & { question: strin
         <HostButton className="folia-btn" text="Yes" onClick={() => answer("Yes.")} />
         <HostButton className="folia-btn" text="No" onClick={() => answer("No.")} />
       </div>
-    </section>
+    </>
   );
 }
