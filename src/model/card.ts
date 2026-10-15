@@ -9,6 +9,7 @@
 // All functions take and return the FULL file text so callers can pipe them through
 // vault.process(file, text => ...).
 
+import { continuesEntry, entryText } from "./commentLines";
 import type { CardBody, CardStats, LineDrift, LineRef, SubItem, SubtaskRef } from "./types";
 import { fencedLines, unclosedFence } from "./fences";
 import { FrontmatterSchema, decode } from "./schemas";
@@ -254,7 +255,8 @@ function timestampedEntries(lines: string[], name: string): Entry[] {
     if (line.trim() === "") continue;
     const bullet = BULLET_RE.test(line);
     const last = entries[entries.length - 1];
-    if (!bullet && last && last.to === i) last.to = i + 1;
+    if (last && continuesEntry(lines, i, last)) last.to = i + 1;
+    else if (!bullet && last && last.to === i) last.to = i + 1;
     else entries.push({ from: i, to: i + 1, bullet });
   }
   return entries;
@@ -448,7 +450,7 @@ export function appendComment(
   const signature = author ? normalizeAuthor(author) : "";
   const prefix = signature ? `${timestamp} @${signature}` : timestamp;
   return withBody(text, (b) =>
-    appendToSection(b, SECTION.comments, `- _${prefix}:_ ${comment}`, text),
+    appendToSection(b, SECTION.comments, `- _${prefix}:_ ${entryText(comment)}`, text),
   );
 }
 
@@ -615,8 +617,8 @@ export function updateTimestampedLine(
   index: number,
   newText: string,
 ): string {
-  // Entries are written single-line; collapse any embedded newline so the entry stays one entry.
-  const safeText = newText.replace(/[\r\n]+/g, " ");
+  // Fork: newlines stay, indented so the entry stays one entry.
+  const safeText = entryText(newText);
   return withBody(text, (body) => {
     const lines = body.split("\n");
     const entry = timestampedEntries(lines, section)[index];
