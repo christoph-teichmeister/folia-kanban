@@ -113,6 +113,41 @@ describe("PO review in the card panel", () => {
     await waitFor(() => expect(repo.files.get("Tasks/Review too.md")!.fm.status).toBe("doing"));
   });
 
+  it("walks the review queue: skip with next, answer with Send & next", async () => {
+    const asked = (t: string) => ({
+      fm: { status: "doing", owner: "claude", tags: ["setup", "feedback-needed"] },
+      body: `\n# ${t}\n\nQuestion?\n\n## Subtasks\n`,
+    });
+    repo = new FakeRepo(config, {
+      "Tasks/Review me.md": { fm: { status: "po-review" }, body: REVIEW_BODY },
+      "Tasks/Ask one.md": asked("Ask one"),
+      "Tasks/Ask two.md": asked("Ask two"),
+    });
+    render(
+      <App
+        repo={repo}
+        settings={DEFAULT_SETTINGS}
+        onUpdateSettings={() => {}}
+        today="2026-06-13"
+        host={testHost()}
+      />,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /Review queue \(3\)/ }));
+    let detail = await screen.findByTestId("card-detail");
+    await waitFor(() => expect(detail).toHaveTextContent("Check the build log."));
+    // Skipping a card changes nothing and lands on the next one, on its Comments tab.
+    await userEvent.click(within(detail).getByRole("button", { name: /Next in review queue/ }));
+    await waitFor(() => expect(screen.getByTestId("card-detail")).toHaveTextContent("Ask one"));
+    expect(repo.files.get("Tasks/Review me.md")!.fm.status).toBe("po-review");
+    detail = screen.getByTestId("card-detail");
+    await userEvent.type(await within(detail).findByLabelText("Write a comment"), "Yes, go");
+    await userEvent.click(within(detail).getByRole("button", { name: "Send & next" }));
+    await waitFor(() => expect(repo.files.get("Tasks/Ask one.md")!.body).toContain("Yes, go"));
+    await waitFor(() => expect(screen.getByTestId("card-detail")).toHaveTextContent("Ask two"));
+    // The last card of the queue has nothing to move on to.
+    expect(screen.queryByRole("button", { name: "Send & next" })).toBeNull();
+  });
+
   it("approves commands with an ok comment and drops feedback-needed", async () => {
     repo = makeRepo();
     const detail = await open("Run it");

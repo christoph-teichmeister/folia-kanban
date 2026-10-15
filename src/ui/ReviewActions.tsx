@@ -12,6 +12,7 @@ import { useBoardActions, useRepo } from "./context";
 import { DetailDialogContext } from "./detailDialog";
 import { HostButton } from "./hostControls";
 import { Markdown } from "./Markdown";
+import { queueNeighbours, ReviewQueueContext } from "./ReviewQueue";
 import type { CardPanelState } from "./useCardPanel";
 
 const REVIEW_STATUS = "po-review";
@@ -95,12 +96,15 @@ function ReviewForm({ path, board, card, panel, section }: Props & { section: st
   const dialog = useContext(DetailDialogContext);
   const post = usePostComment(path, panel);
   const order = useContext(ColumnOrderContext);
+  const queue = useContext(ReviewQueueContext);
   const [note, setNote] = useState("");
-  // Review flow: the answer moves the card out of the column, so the next card to review (the one
-  // below, else the one above) is picked first and opened once the answer is written.
+  // Review flow: the answer moves the card out of the column, so the next card to review is picked
+  // first and opened once the answer is written: the next one of a running review queue, else the
+  // card below in the column, else the one above.
   const decide = (status: string, text: string) => {
+    const queued = queueNeighbours(queue, path);
     const { prev, next } = columnNeighbours(order, card);
-    const target = next ?? prev;
+    const target = queued ? queued.next : (next ?? prev);
     void panel
       .mutate(async () => {
         if (!(await writeStatus({ repo, actions, board, card, path }, status))) return;
@@ -109,7 +113,7 @@ function ReviewForm({ path, board, card, panel, section }: Props & { section: st
       .then((ok) => {
         if (!ok) return;
         if (panel.stillHere()) setNote("");
-        if (target) actions.open(target, panel.tab);
+        if (target) actions.open(target, queued && queue ? queue.tabOf(target) : panel.tab);
       });
   };
   return (
@@ -157,6 +161,8 @@ export function CommandsApproval(props: Omit<Props, "board">) {
 
 function CommandsForm({ path, card, panel }: Omit<Props, "board">) {
   const repo = useRepo();
+  const actions = useBoardActions();
+  const queue = useContext(ReviewQueueContext);
   const post = usePostComment(path, panel);
   const [except, setExcept] = useState("");
   const commands = splitSection(panel.body?.description ?? "", COMMANDS_HEADING)?.section ?? "";
@@ -180,7 +186,12 @@ function CommandsForm({ path, card, panel }: Omit<Props, "board">) {
         const tags = withoutTag(card.frontmatter["tags"], FEEDBACK_TAG);
         if (tags) await repo.setFrontmatter(path, { tags });
       })
-      .then((ok) => ok && panel.stillHere() && setExcept(""));
+      .then((ok) => {
+        if (!ok) return;
+        if (panel.stillHere()) setExcept("");
+        const next = queueNeighbours(queue, path)?.next;
+        if (next && queue) actions.open(next, queue.tabOf(next));
+      });
   };
   return (
     <div className="folia-commands-approval folia-add-inline folia-row-actions">

@@ -1,9 +1,10 @@
 import { useContext, useLayoutEffect, useRef, useState, type Ref } from "react";
 import type { CardBody } from "../model/types";
-import { useRepo, useSettings } from "./context";
+import { useBoardActions, useRepo, useSettings } from "./context";
 import { DetailDialogContext } from "./detailDialog";
 import { HostButton, HostIconButton } from "./hostControls";
 import { Markdown } from "./Markdown";
+import { queueNeighbours, ReviewQueueContext } from "./ReviewQueue";
 import type { CommentReadState } from "./useCommentReadState";
 import type { InlineDraft } from "./useInlineDraft";
 
@@ -220,16 +221,23 @@ function CommentComposer({
   inputRef,
 }: CommentsProps) {
   const repo = useRepo();
-  const send = () => {
+  const actions = useBoardActions();
+  const queue = useContext(ReviewQueueContext);
+  const nextInQueue = queueNeighbours(queue, path)?.next ?? null;
+  // `andNext`: in the review queue, a reply moves on to the next card once it is written.
+  const send = (andNext = false) => {
     const text = draft.value.trim();
     if (!text) return;
     const floor = body?.comments.length ?? 0;
-    draft.send(text, () =>
-      mutate(async () => {
+    draft.send(text, async () => {
+      const ok = await mutate(async () => {
         await repo.addComment(path, text);
         if (stillHere()) readState.posted({ floor, text });
-      }),
-    );
+      });
+      if (ok && andNext && nextInQueue && queue)
+        actions.open(nextInQueue, queue.tabOf(nextInQueue));
+      return ok;
+    });
   };
   return (
     <div className="folia-add-inline">
@@ -252,10 +260,19 @@ function CommentComposer({
         <HostButton
           className="folia-btn"
           text="Send"
-          cta
+          cta={!nextInQueue}
           disabled={!draft.value.trim()}
-          onClick={send}
+          onClick={() => send()}
         />
+        {nextInQueue && (
+          <HostButton
+            className="folia-btn"
+            text="Send & next"
+            cta
+            disabled={!draft.value.trim()}
+            onClick={() => send(true)}
+          />
+        )}
       </div>
     </div>
   );

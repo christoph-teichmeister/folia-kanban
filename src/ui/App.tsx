@@ -28,6 +28,7 @@ import { Board } from "./Board";
 import { ColumnOrderContext } from "./CardStepper";
 import { DetailDialogContext } from "./detailDialog";
 import { Toolbar } from "./Toolbar";
+import { ReviewQueueContext, useReviewQueue, type ReviewQueue } from "./ReviewQueue";
 import { useToday } from "./useToday";
 import { Swimlanes } from "./Swimlanes";
 import { useBoardLoad } from "./useBoardLoad";
@@ -164,6 +165,7 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
   // or a search box. A boolean rather than the board object so a reload, which builds a new board
   // every time, does not churn everything keyed on this.
   useSearchShortcut(host, board !== null && error === null, searchRef);
+  const queue = useReviewQueue(board, panel.selected, (p, tab) => writes.actions.open(p, tab));
 
   if (error) return <div className="folia-error">Couldn’t load the board: {error}</div>;
   if (!board) return <div className="folia-loading">Loading board…</div>;
@@ -174,6 +176,7 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
       settings={settingsValue}
       repo={repo}
       actions={writes.actions}
+      queue={queue}
       contexts={view.contexts}
       relations={view.relations}
       matchCtx={view.matchCtx}
@@ -184,9 +187,8 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
           ref={searchRef}
           query={query}
           onChange={setQuery}
-          matchCount={view.counts.match}
-          totalCount={view.counts.total}
-          feedbackCount={view.counts.feedback}
+          counts={view.counts}
+          queue={queue}
           canFilterMine={settings.userName.trim() !== ""}
         />
         {board.cardFolderWarning && (
@@ -221,6 +223,7 @@ function BoardContexts({
   settings,
   repo,
   actions,
+  queue,
   contexts,
   relations,
   matchCtx,
@@ -230,6 +233,7 @@ function BoardContexts({
   settings: SettingsContextValue;
   repo: CardRepository;
   actions: BoardActions;
+  queue: ReviewQueue;
   contexts: Record<string, ContextConfig>;
   relations: Record<string, RelationCount[]>;
   matchCtx: MatchContext;
@@ -240,19 +244,21 @@ function BoardContexts({
     <SettingsContext.Provider value={settings}>
       <RepoContext.Provider value={repo}>
         <BoardActionsContext.Provider value={actions}>
-          <ContextsContext.Provider value={contexts}>
-            <RelationCountsContext.Provider value={relations}>
-              <MatchContextContext.Provider value={matchCtx}>
-                <BoardRootContext.Provider value={root}>
-                  {/* Fork: a fresh map per board render, filled by the columns, read by the
+          <ReviewQueueContext.Provider value={queue}>
+            <ContextsContext.Provider value={contexts}>
+              <RelationCountsContext.Provider value={relations}>
+                <MatchContextContext.Provider value={matchCtx}>
+                  <BoardRootContext.Provider value={root}>
+                    {/* Fork: a fresh map per board render, filled by the columns, read by the
                       panel's previous/next (see `CardStepper.tsx`). */}
-                  <ColumnOrderContext.Provider value={new Map()}>
-                    {children}
-                  </ColumnOrderContext.Provider>
-                </BoardRootContext.Provider>
-              </MatchContextContext.Provider>
-            </RelationCountsContext.Provider>
-          </ContextsContext.Provider>
+                    <ColumnOrderContext.Provider value={new Map()}>
+                      {children}
+                    </ColumnOrderContext.Provider>
+                  </BoardRootContext.Provider>
+                </MatchContextContext.Provider>
+              </RelationCountsContext.Provider>
+            </ContextsContext.Provider>
+          </ReviewQueueContext.Provider>
         </BoardActionsContext.Provider>
       </RepoContext.Provider>
     </SettingsContext.Provider>

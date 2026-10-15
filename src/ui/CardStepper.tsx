@@ -8,6 +8,7 @@ import { plainColumnId } from "../model/swimlanes";
 import type { Card } from "../model/types";
 import { useBoardActions } from "./context";
 import { HostIconButton } from "./hostControls";
+import { queueNeighbours, ReviewQueueContext } from "./ReviewQueue";
 import type { CardPanelState } from "./useCardPanel";
 
 /** Column id (lane-qualified on a board with lanes) to the paths it draws, top to bottom. */
@@ -56,9 +57,13 @@ export function columnNeighbours(
  */
 export function CardStepButtons({ card, panel }: { card: Card; panel: CardPanelState }) {
   const actions = useBoardActions();
-  const { prev, next } = columnNeighbours(useContext(ColumnOrderContext), card);
+  const queue = useContext(ReviewQueueContext);
+  const order = useContext(ColumnOrderContext);
+  const queued = queueNeighbours(queue, card.path);
+  const { prev, next } = queued ?? columnNeighbours(order, card);
+  // In the review queue each card opens on the tab its job is on; in a column the tab stays.
   const step = (to: string | null) => {
-    if (to !== null) actions.open(to, panel.tab);
+    if (to !== null) actions.open(to, queued && queue ? queue.tabOf(to) : panel.tab);
   };
   const latest = useRef({ prev, next, step });
   latest.current = { prev, next, step };
@@ -79,17 +84,22 @@ export function CardStepButtons({ card, panel }: { card: Card; panel: CardPanelS
   }, [panelRef]);
   return (
     <>
+      {queued && (
+        <span className="folia-muted" aria-label="Review queue">
+          {queued.index + 1}/{queued.total}
+        </span>
+      )}
       <HostIconButton
         className="folia-detail-icon folia-detail-action"
         icon="chevron-up"
-        label="Previous card in column (Alt+↑)"
+        label={queued ? "Previous in review queue (Alt+↑)" : "Previous card in column (Alt+↑)"}
         disabled={prev === null}
         onClick={() => step(prev)}
       />
       <HostIconButton
         className="folia-detail-icon folia-detail-action"
         icon="chevron-down"
-        label="Next card in column (Alt+↓)"
+        label={queued ? "Next in review queue (Alt+↓)" : "Next card in column (Alt+↓)"}
         disabled={next === null}
         onClick={() => step(next)}
       />
