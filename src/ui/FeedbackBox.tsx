@@ -34,16 +34,25 @@ export function FeedbackBox(props: Props) {
   const asked =
     [...body.comments].reverse().find((c) => c.author?.toLowerCase() === "claude") ??
     body.comments[body.comments.length - 1];
-  return <FeedbackForm {...props} question={asked?.text ?? ""} commands={commands} />;
+  const ask = card.frontmatter["ask"];
+  return (
+    <FeedbackForm
+      {...props}
+      ask={typeof ask === "string" ? ask.trim() : ""}
+      question={asked?.text ?? ""}
+      commands={commands}
+    />
+  );
 }
 
 function FeedbackForm({
   path,
   card,
   panel,
+  ask,
   question,
   commands,
-}: Props & { question: string; commands: boolean }) {
+}: Props & { ask: string; question: string; commands: boolean }) {
   const repo = useRepo();
   const actions = useBoardActions();
   const queue = useContext(ReviewQueueContext);
@@ -57,6 +66,7 @@ function FeedbackForm({
         await post(text);
         const tags = withoutTag(card.frontmatter["tags"], FEEDBACK_TAG);
         if (tags) await repo.setFrontmatter(path, { tags });
+        await repo.unsetFrontmatterKey(path, "ask");
       })
       .then((ok) => {
         if (!ok) return;
@@ -67,13 +77,19 @@ function FeedbackForm({
   return (
     <section className="folia-review folia-feedback" aria-label="Feedback needed">
       <h3>Feedback needed</h3>
+      {/* `ask` is Claude's one-or-two-sentence summary of what it needs; the comment behind it is
+          the full story, folded away while there is a summary. */}
+      {ask && <p className="folia-feedback-ask">{ask}</p>}
       {question && (
-        <Markdown
-          markdown={question}
-          sourcePath={path}
-          className="folia-review-text"
-          onFollowLink={() => dialog?.close()}
-        />
+        <details className="folia-feedback-full" open={!ask}>
+          {ask && <summary>Full comment</summary>}
+          <Markdown
+            markdown={question}
+            sourcePath={path}
+            className="folia-review-text"
+            onFollowLink={() => dialog?.close()}
+          />
+        </details>
       )}
       {commands ? (
         <CommandsApproval path={path} card={card} panel={panel} />

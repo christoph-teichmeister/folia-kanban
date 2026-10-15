@@ -151,15 +151,22 @@ describe("PO review in the card panel", () => {
   it("answers a question from the Feedback needed box and drops the tag", async () => {
     repo = new FakeRepo(config, {
       "Tasks/Ask me.md": {
-        fm: { status: "doing", owner: "claude", tags: ["setup", "feedback-needed"] },
+        fm: {
+          status: "doing",
+          owner: "claude",
+          ask: "Delete the old copy?",
+          tags: ["setup", "feedback-needed"],
+        },
         body: "\n# Ask me\n\n## Subtasks\n\n## Comments\n- _2026-06-12 09:00 @claude:_ Shall I delete the old copy?\n",
       },
     });
     const detail = await open("Ask me");
     const box = within(detail).getByRole("region", { name: "Feedback needed" });
-    await waitFor(() => expect(box).toHaveTextContent("Shall I delete the old copy?"));
+    await waitFor(() => expect(box).toHaveTextContent("Delete the old copy?"));
+    expect(box).toHaveTextContent("Full comment");
     await userEvent.click(within(box).getByRole("button", { name: "Yes" }));
     await waitFor(() => expect(repo.files.get("Tasks/Ask me.md")!.fm["tags"]).toEqual(["setup"]));
+    expect(repo.files.get("Tasks/Ask me.md")!.fm["ask"]).toBeUndefined();
     expect(repo.files.get("Tasks/Ask me.md")!.body).toMatch(/_ Yes\.\n?/);
   });
 

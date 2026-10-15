@@ -185,6 +185,7 @@ function CommandsForm({ path, card, panel }: Omit<Props, "board">) {
         await post(except.trim() ? `ok except ${except.trim()}` : "ok, approved all commands");
         const tags = withoutTag(card.frontmatter["tags"], FEEDBACK_TAG);
         if (tags) await repo.setFrontmatter(path, { tags });
+        await repo.unsetFrontmatterKey(path, "ask");
       })
       .then((ok) => {
         if (!ok) return;
