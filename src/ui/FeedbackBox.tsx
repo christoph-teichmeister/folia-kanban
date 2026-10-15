@@ -11,6 +11,7 @@ import { Markdown } from "./Markdown";
 import { queueNeighbours, ReviewQueueContext } from "./ReviewQueue";
 import {
   COMMANDS_HEADING,
+  CommandsApproval,
   FEEDBACK_TAG,
   splitSection,
   usePostComment,
@@ -66,6 +67,14 @@ function FeedbackForm({
   return (
     <section className="folia-review folia-feedback" aria-label="Feedback needed">
       <h3>Feedback needed</h3>
+      {commands ? (
+        <CommandsApproval path={path} card={card} panel={panel} />
+      ) : (
+        <div className="folia-row-actions">
+          <HostButton className="folia-btn" text="Yes" cta onClick={() => answer("Yes.")} />
+          <HostButton className="folia-btn" text="No" onClick={() => answer("No.")} />
+        </div>
+      )}
       {question && (
         <Markdown
           markdown={question}
@@ -74,45 +83,26 @@ function FeedbackForm({
           onFollowLink={() => dialog?.close()}
         />
       )}
-      {commands ? (
-        <p className="folia-muted">Commands to approve are listed below the description.</p>
-      ) : (
-        <FeedbackControls note={note} setNote={setNote} answer={answer} />
+      {!commands && (
+        <>
+          <div className="folia-add-inline">
+            <textarea
+              value={note}
+              placeholder="Or write an answer"
+              aria-label="Your answer"
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+          <div className="folia-row-actions">
+            <HostButton
+              className="folia-btn"
+              text="Send answer"
+              disabled={!note.trim()}
+              onClick={() => note.trim() && answer(note.trim())}
+            />
+          </div>
+        </>
       )}
     </section>
-  );
-}
-
-function FeedbackControls({
-  note,
-  setNote,
-  answer,
-}: {
-  note: string;
-  setNote: (v: string) => void;
-  answer: (text: string) => void;
-}) {
-  return (
-    <>
-      <div className="folia-add-inline">
-        <textarea
-          value={note}
-          placeholder="Your answer"
-          aria-label="Your answer"
-          onChange={(e) => setNote(e.target.value)}
-        />
-      </div>
-      <div className="folia-row-actions">
-        <HostButton
-          className="folia-btn"
-          text="Send answer"
-          cta
-          disabled={!note.trim()}
-          onClick={() => note.trim() && answer(note.trim())}
-        />
-        <HostButton className="folia-btn" text="Yes" onClick={() => answer("Yes.")} />
-        <HostButton className="folia-btn" text="No" onClick={() => answer("No.")} />
-      </div>
-    </>
   );
 }
