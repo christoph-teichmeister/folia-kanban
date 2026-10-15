@@ -67,14 +67,6 @@ function FeedbackForm({
   return (
     <section className="folia-review folia-feedback" aria-label="Feedback needed">
       <h3>Feedback needed</h3>
-      {commands ? (
-        <CommandsApproval path={path} card={card} panel={panel} />
-      ) : (
-        <div className="folia-row-actions">
-          <HostButton className="folia-btn" text="Yes" cta onClick={() => answer("Yes.")} />
-          <HostButton className="folia-btn" text="No" onClick={() => answer("No.")} />
-        </div>
-      )}
       {question && (
         <Markdown
           markdown={question}
@@ -83,12 +75,14 @@ function FeedbackForm({
           onFollowLink={() => dialog?.close()}
         />
       )}
-      {!commands && (
+      {commands ? (
+        <CommandsApproval path={path} card={card} panel={panel} />
+      ) : (
         <>
           <div className="folia-add-inline">
             <textarea
               value={note}
-              placeholder="Or write an answer"
+              placeholder="Your answer"
               aria-label="Your answer"
               onChange={(e) => setNote(e.target.value)}
             />
@@ -97,9 +91,12 @@ function FeedbackForm({
             <HostButton
               className="folia-btn"
               text="Send answer"
+              cta
               disabled={!note.trim()}
               onClick={() => note.trim() && answer(note.trim())}
             />
+            <HostButton className="folia-btn" text="Yes" onClick={() => answer("Yes.")} />
+            <HostButton className="folia-btn" text="No" onClick={() => answer("No.")} />
           </div>
         </>
       )}
