@@ -528,6 +528,15 @@ export class FakeRepo implements CardRepository {
     return true;
   }
 
+  /** Pasted images, by the name they were saved under. */
+  attachments = new Map<string, ArrayBuffer>();
+
+  saveAttachment(data: ArrayBuffer, extension: string): Promise<string> {
+    const name = `Pasted image ${this.attachments.size + 1}.${extension}`;
+    this.attachments.set(name, data);
+    return Promise.resolve(`![[${name}]]`);
+  }
+
   renderMarkdown(el: HTMLElement, markdown: string): () => void {
     el.textContent = markdown;
     return () => {

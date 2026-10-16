@@ -23,6 +23,7 @@ import {
 import { CardSubtasks } from "./SubtaskList";
 import { CardTitleFields } from "./TitleFields";
 import { useCardPanel, type CardPanelState } from "./useCardPanel";
+import { usePasteImage } from "./usePasteImage";
 import type { DescriptionEditor } from "./useDescriptionEditor";
 
 interface Props {
@@ -78,6 +79,7 @@ interface DescriptionProps {
 function DescriptionEditorFields({ body, path, desc, mutate, stillHere }: DescriptionProps) {
   const repo = useRepo();
   const { draft } = desc;
+  const onPaste = usePasteImage(path, draft.type);
   const save = () => {
     const refusal = descriptionRefusal(draft.draft);
     if (refusal !== null) {
@@ -109,6 +111,7 @@ function DescriptionEditorFields({ body, path, desc, mutate, stillHere }: Descri
           desc.preservedHeight != null ? { minHeight: `${desc.preservedHeight}px` } : undefined
         }
         onChange={(e) => draft.type(e.target.value)}
+        onPaste={onPaste}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();

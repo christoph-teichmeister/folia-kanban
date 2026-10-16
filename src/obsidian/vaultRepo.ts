@@ -85,6 +85,7 @@ import { cardFilesIn, readCard, readContexts } from "./cardNotes";
 import { NoteWriter } from "./noteWriter";
 import { followLink, linkTextTo, relationTargetPath, resolveLink } from "./vaultLinks";
 import { renderMarkdown } from "./markdownRender";
+import { saveAttachment as saveImage } from "./attachments";
 import { collectPropertyNames } from "./propertyNames";
 import { watchFileOps, watchVault } from "./vaultEvents";
 import { applyMove } from "./applyMove";
@@ -458,6 +459,9 @@ export class VaultRepository implements CardRepository {
   renderMarkdown(el: HTMLElement, markdown: string, sourcePath: string): () => void {
     return renderMarkdown(this.app, el, markdown, sourcePath);
   }
+
+  saveAttachment = (data: ArrayBuffer, ext: string, source: string): Promise<string> =>
+    saveImage(this.app, data, ext, source);
 
   async propertyNamesInUse(): Promise<PropertyNamesInUse> {
     this.propertyNames ??= collectPropertyNames(
