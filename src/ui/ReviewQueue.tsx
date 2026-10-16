@@ -1,5 +1,6 @@
 // Fork addition: the review queue. One click on the toolbar walks the user through every card that
-// waits on them: cards in `po-review`, and Claude's cards tagged `feedback-needed`. The list is a
+// waits on them: cards in `po-review`, and Claude's cards tagged `feedback-needed`. A card due on a
+// later day waits for that day; overdue cards stay in. The list is a
 // snapshot taken at the start, so answering a card does not reshuffle what is still ahead. The
 // panel's previous/next (and Approve, Send back, Approve commands, Send & next) step through it
 // until the panel closes.
@@ -26,12 +27,14 @@ export const ReviewQueueContext = createContext<ReviewQueue | null>(null);
 const hasFeedbackTag = (tags: unknown) =>
   tags === FEEDBACK_TAG || (Array.isArray(tags) && tags.includes(FEEDBACK_TAG));
 
-/** Cards in review first, then the questions, each group by path. */
-export function queueCandidates(board: Board): string[] {
+/** Cards in review first, then the questions, each group by path. Cards due later wait. */
+export function queueCandidates(board: Board, today: string): string[] {
   const review: string[] = [];
   const feedback: string[] = [];
   for (const c of Object.values(board.cards)) {
     const fm = c.frontmatter;
+    // YYYY-MM-DD strings compare in date order.
+    if (typeof fm.due === "string" && fm.due > today) continue;
     if (fm.status === REVIEW_STATUS) review.push(c.path);
     else if (fm["owner"] === "claude" && fm.status !== DONE_STATUS && hasFeedbackTag(fm["tags"]))
       feedback.push(c.path);
@@ -56,13 +59,14 @@ export function queueNeighbours(
 /** The queue's state for the app: the paths of a running walk, and the count a new one would hold. */
 export function useReviewQueue(
   board: Board | null,
+  today: string,
   selected: string | null,
   open: (path: string, tab: PanelTab) => void,
 ): ReviewQueue {
   const [paths, setPaths] = useState<readonly string[] | null>(null);
   // The walk ends with the panel: once no card is open, a closed panel has nothing to step from.
   if (paths && selected === null) setPaths(null);
-  const candidates = useMemo(() => (board ? queueCandidates(board) : []), [board]);
+  const candidates = useMemo(() => (board ? queueCandidates(board, today) : []), [board, today]);
   return {
     paths,
     count: candidates.length,
