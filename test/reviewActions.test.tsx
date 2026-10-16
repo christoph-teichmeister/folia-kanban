@@ -122,7 +122,7 @@ describe("PO review in the card panel", () => {
       "Tasks/Review me.md": { fm: { status: "po-review" }, body: REVIEW_BODY },
       "Tasks/Ask one.md": asked("Ask one"),
       "Tasks/Ask two.md": asked("Ask two"),
-      // Due on another day: left out until that day.
+      // Due on a later day: left out until that day.
       "Tasks/Later.md": { fm: { status: "po-review", due: "2026-06-20" }, body: REVIEW_BODY },
     });
     render(

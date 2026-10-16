@@ -176,7 +176,7 @@ export type PanelTab = "overview" | "comments" | "history";
 /** Card-level actions, provided by App so cards/columns don't prop-drill callbacks. */
 export interface BoardActions {
   /** Open the card's detail panel, on the given tab (fork) or the Overview. */
-  open(path: string, tab?: PanelTab): void;
+  open: (path: string, tab?: PanelTab) => void;
   /** Start the "create card" detail flow for a column (used by addCardFlow: 'detail'). */
   startCreate(columnId: string): void;
   /** Open the card's detail panel with its "Add a subcard" input focused, so the user types the title there. */

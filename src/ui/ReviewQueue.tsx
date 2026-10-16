@@ -1,6 +1,6 @@
 // Fork addition: the review queue. One click on the toolbar walks the user through every card that
-// waits on them: cards in `po-review`, and Claude's cards tagged `feedback-needed`. A card with a
-// `due` date joins only on that day. The list is a
+// waits on them: cards in `po-review`, and Claude's cards tagged `feedback-needed`. A card due on a
+// later day waits for that day; overdue cards stay in. The list is a
 // snapshot taken at the start, so answering a card does not reshuffle what is still ahead. The
 // panel's previous/next (and Approve, Send back, Approve commands, Send & next) step through it
 // until the panel closes.
@@ -27,13 +27,14 @@ export const ReviewQueueContext = createContext<ReviewQueue | null>(null);
 const hasFeedbackTag = (tags: unknown) =>
   tags === FEEDBACK_TAG || (Array.isArray(tags) && tags.includes(FEEDBACK_TAG));
 
-/** Cards in review first, then the questions, each group by path. Cards due on another day wait. */
+/** Cards in review first, then the questions, each group by path. Cards due later wait. */
 export function queueCandidates(board: Board, today: string): string[] {
   const review: string[] = [];
   const feedback: string[] = [];
   for (const c of Object.values(board.cards)) {
     const fm = c.frontmatter;
-    if (typeof fm.due === "string" && fm.due !== "" && fm.due !== today) continue;
+    // YYYY-MM-DD strings compare in date order.
+    if (typeof fm.due === "string" && fm.due > today) continue;
     if (fm.status === REVIEW_STATUS) review.push(c.path);
     else if (fm["owner"] === "claude" && fm.status !== DONE_STATUS && hasFeedbackTag(fm["tags"]))
       feedback.push(c.path);
