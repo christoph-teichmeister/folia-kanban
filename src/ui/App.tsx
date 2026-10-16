@@ -165,7 +165,9 @@ export function App({ repo, settings, onUpdateSettings, today, host }: Props) {
   // or a search box. A boolean rather than the board object so a reload, which builds a new board
   // every time, does not churn everything keyed on this.
   useSearchShortcut(host, board !== null && error === null, searchRef);
-  const queue = useReviewQueue(board, panel.selected, (p, tab) => writes.actions.open(p, tab));
+  const queue = useReviewQueue(board, todayValue, panel.selected, (p, tab) =>
+    writes.actions.open(p, tab),
+  );
 
   if (error) return <div className="folia-error">Couldn’t load the board: {error}</div>;
   if (!board) return <div className="folia-loading">Loading board…</div>;
