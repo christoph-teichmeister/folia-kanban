@@ -18,6 +18,7 @@ import {
   withoutTag,
 } from "./ReviewActions";
 import type { CardPanelState } from "./useCardPanel";
+import { usePasteImage } from "./usePasteImage";
 
 interface Props {
   path: string;
@@ -59,6 +60,7 @@ function FeedbackForm({
   const dialog = useContext(DetailDialogContext);
   const post = usePostComment(path, panel);
   const [note, setNote] = useState("");
+  const onPaste = usePasteImage(path, setNote);
   const answer = (text: string) => {
     const next = queueNeighbours(queue, path)?.next ?? null;
     void panel
@@ -101,6 +103,7 @@ function FeedbackForm({
               placeholder="Your answer"
               aria-label="Your answer"
               onChange={(e) => setNote(e.target.value)}
+              onPaste={onPaste}
             />
           </div>
           <div className="folia-row-actions">

@@ -14,6 +14,7 @@ import { HostButton } from "./hostControls";
 import { Markdown } from "./Markdown";
 import { queueNeighbours, ReviewQueueContext } from "./ReviewQueue";
 import type { CardPanelState } from "./useCardPanel";
+import { usePasteImage } from "./usePasteImage";
 
 const REVIEW_STATUS = "po-review";
 const REVIEW_HEADING = "For PO Review";
@@ -98,6 +99,7 @@ function ReviewForm({ path, board, card, panel, section }: Props & { section: st
   const order = useContext(ColumnOrderContext);
   const queue = useContext(ReviewQueueContext);
   const [note, setNote] = useState("");
+  const onPaste = usePasteImage(path, setNote);
   // Review flow: the answer moves the card out of the column, so the next card to review is picked
   // first and opened once the answer is written: the next one of a running review queue, else the
   // card below in the column, else the one above.
@@ -133,6 +135,7 @@ function ReviewForm({ path, board, card, panel, section }: Props & { section: st
           placeholder="Note (optional to approve, required to send back)"
           aria-label="Review note"
           onChange={(e) => setNote(e.target.value)}
+          onPaste={onPaste}
         />
       </div>
       <div className="folia-row-actions">

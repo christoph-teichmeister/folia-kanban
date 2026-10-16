@@ -7,6 +7,7 @@ import { Markdown } from "./Markdown";
 import { queueNeighbours, ReviewQueueContext } from "./ReviewQueue";
 import type { CommentReadState } from "./useCommentReadState";
 import type { InlineDraft } from "./useInlineDraft";
+import { usePasteImage } from "./usePasteImage";
 
 /** Fork: a comment longer than this starts clamped, with "Show more". ponytail: a length guess, not a measurement. */
 const CLAMP_OVER = 360;
@@ -105,6 +106,37 @@ function CommentHead({
 
 /** One comment with inline edit + delete. View mode renders the text as markdown; edit shows the
  *  raw textarea (commits on Enter/blur). Keeps the timestamp and the author signature untouched. */
+function CommentEditBox({
+  draft,
+  setDraft,
+  commit,
+  sourcePath,
+}: {
+  draft: string;
+  setDraft: (v: string) => void;
+  commit: () => void;
+  sourcePath: string;
+}) {
+  const onPaste = usePasteImage(sourcePath, setDraft);
+  return (
+    <textarea
+      className="folia-comment-edit"
+      value={draft}
+      autoFocus
+      aria-label="Edit comment"
+      onChange={(e) => setDraft(e.target.value)}
+      onPaste={onPaste}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          commit();
+        }
+      }}
+    />
+  );
+}
+
 function CommentItem({
   timestamp,
   author,
@@ -142,19 +174,11 @@ function CommentItem({
       <div className="folia-comment-card">
         <CommentHead author={author} timestamp={timestamp} unread={unread} />
         {editing ? (
-          <textarea
-            className="folia-comment-edit"
-            value={draft}
-            autoFocus
-            aria-label="Edit comment"
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                commit();
-              }
-            }}
+          <CommentEditBox
+            draft={draft}
+            setDraft={setDraft}
+            commit={commit}
+            sourcePath={sourcePath}
           />
         ) : (
           <div className="folia-comment-row">
@@ -224,6 +248,7 @@ function CommentComposer({
   const actions = useBoardActions();
   const queue = useContext(ReviewQueueContext);
   const nextInQueue = queueNeighbours(queue, path)?.next ?? null;
+  const onPaste = usePasteImage(path, draft.setValue);
   // `andNext`: in the review queue, a reply moves on to the next card once it is written.
   const send = (andNext = false) => {
     const text = draft.value.trim();
@@ -247,6 +272,7 @@ function CommentComposer({
         placeholder="Write a comment…"
         aria-label="Write a comment"
         onChange={(e) => draft.setValue(e.target.value)}
+        onPaste={onPaste}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();

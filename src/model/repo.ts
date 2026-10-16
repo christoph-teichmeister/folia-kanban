@@ -341,6 +341,13 @@ export interface CardRepository {
   renderMarkdown(el: HTMLElement, markdown: string, sourcePath: string): () => void;
 
   /**
+   * Fork: store a pasted image as an attachment of the note at `sourcePath` (the vault's attachment
+   * folder setting decides where) and return the markdown that embeds it, e.g. `![[Pasted image
+   * 20261016100800.png]]`.
+   */
+  saveAttachment(data: ArrayBuffer, extension: string, sourcePath: string): Promise<string>;
+
+  /**
    * Follow a click on a link that {@link renderMarkdown} rendered, the way a click on a link
    * anywhere else in the app is followed: the note opens where the click's modifiers ask, as in
    * {@link openCard}. Only a link to a note is followed (see `vaultLinktext`); anything else keeps
