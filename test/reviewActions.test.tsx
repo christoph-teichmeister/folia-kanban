@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../src/ui/App";
 import { splitSection, withoutTag } from "../src/ui/ReviewActions";
+import { dateOnly, nextDay } from "../src/model/dates";
 import { FakeRepo } from "./fakeRepo";
 import { testHost } from "./fakeHost";
 import type { BoardConfig } from "../src/model/types";
@@ -170,6 +171,28 @@ describe("PO review in the card panel", () => {
     await waitFor(() => expect(repo.files.get("Tasks/Ask me.md")!.fm["tags"]).toEqual(["setup"]));
     expect(repo.files.get("Tasks/Ask me.md")!.fm["ask"]).toBeUndefined();
     expect(repo.files.get("Tasks/Ask me.md")!.body).toMatch(/_ Yes\.\n?/);
+  });
+
+  it("sends an unclear question back, or snoozes it to tomorrow", async () => {
+    repo = new FakeRepo(config, {
+      "Tasks/Ask me.md": {
+        fm: { status: "doing", owner: "claude", tags: ["setup", "feedback-needed"] },
+        body: "\n# Ask me\n\n## Subtasks\n\n## Comments\n- _2026-06-12 09:00 @claude:_ Run the two commands?\n",
+      },
+    });
+    const detail = await open("Ask me");
+    const box = within(detail).getByRole("region", { name: "Feedback needed" });
+    await userEvent.click(within(box).getByRole("button", { name: "Snooze until tomorrow" }));
+    await waitFor(() =>
+      expect(repo.files.get("Tasks/Ask me.md")!.fm["snoozed-until"]).toBe(nextDay(dateOnly())),
+    );
+    expect(repo.files.get("Tasks/Ask me.md")!.fm["tags"]).toContain("feedback-needed");
+    await userEvent.type(within(box).getByLabelText("Your answer"), "Which commands?");
+    await userEvent.click(within(box).getByRole("button", { name: "Send back" }));
+    await waitFor(() => expect(repo.files.get("Tasks/Ask me.md")!.fm["tags"]).toEqual(["setup"]));
+    expect(repo.files.get("Tasks/Ask me.md")!.body).toMatch(
+      /_ Sent back, unclear: Which commands\?/,
+    );
   });
 
   it("approves commands with an ok comment and drops feedback-needed", async () => {

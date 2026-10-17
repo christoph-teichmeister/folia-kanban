@@ -23,6 +23,7 @@ describe("the keys Folia Kanban knows", () => {
         "status",
         "order",
         "priority",
+        "snoozed-until",
         "area",
         "due",
         "assignee",
@@ -48,6 +49,7 @@ describe("the keys Folia Kanban knows", () => {
         "created",
         "title",
         "waiting-for",
+        "snoozed-until",
       ].sort(),
     );
   });

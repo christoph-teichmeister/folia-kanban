@@ -88,6 +88,9 @@ const FOLIA_PROPERTIES = [
   { key: "type", scope: "card", panelField: true },
   // Fork addition: who or what a card in the Waiting column waits for. Plain text.
   { key: "waiting-for", scope: "card", panelField: true },
+  // Fork addition: a card put off until this day (YYYY-MM-DD): dimmed on the board and left out of
+  // the review queue before it.
+  { key: "snoozed-until", scope: "card", panelField: true },
   { key: "created", scope: "card", panelField: true },
   {
     key: "area",
@@ -254,4 +257,11 @@ export function editScalar(previous: ScalarValue, text: string): ScalarEdit {
 export function waitingFor(fm: Record<string, unknown>): string {
   const v = fm["waiting-for"];
   return typeof v === "string" ? v.trim() : "";
+}
+
+/** The card's `snoozed-until` day while it lies after `today`, else null (the snooze is over). */
+export function snoozedUntil(fm: Record<string, unknown>, today: string): string | null {
+  const v = fm["snoozed-until"];
+  // YYYY-MM-DD strings compare in date order.
+  return typeof v === "string" && v > today ? v : null;
 }

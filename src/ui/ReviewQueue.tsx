@@ -1,10 +1,11 @@
 // Fork addition: the review queue. One click on the toolbar walks the user through every card that
 // waits on them: cards in `po-review`, and Claude's cards tagged `feedback-needed`. A card due on a
-// later day waits for that day; overdue cards stay in. The list is a
+// later day, or snoozed until one, waits for that day; overdue cards stay in. The list is a
 // snapshot taken at the start, so answering a card does not reshuffle what is still ahead. The
 // panel's previous/next (and Approve, Send back, Approve commands, Send & next) step through it
 // until the panel closes.
 import { createContext, useMemo, useState } from "react";
+import { snoozedUntil } from "../model/properties";
 import type { Board, Card } from "../model/types";
 import type { PanelTab } from "./context";
 
@@ -35,6 +36,7 @@ export function queueCandidates(board: Board, today: string): string[] {
     const fm = c.frontmatter;
     // YYYY-MM-DD strings compare in date order.
     if (typeof fm.due === "string" && fm.due > today) continue;
+    if (snoozedUntil(fm, today)) continue;
     if (fm.status === REVIEW_STATUS) review.push(c.path);
     else if (fm["owner"] === "claude" && fm.status !== DONE_STATUS && hasFeedbackTag(fm["tags"]))
       feedback.push(c.path);
