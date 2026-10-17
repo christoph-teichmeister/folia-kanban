@@ -20,4 +20,12 @@ describe("queueCandidates", () => {
     });
     expect(queueCandidates(b, "2026-06-13")).toEqual(["a.md", "b.md", "c.md"]);
   });
+
+  it("leaves out cards snoozed until a later day", () => {
+    const b = board({
+      "a.md": { status: "po-review", "snoozed-until": "2026-06-13" },
+      "b.md": { status: "po-review", "snoozed-until": "2026-06-14" },
+    });
+    expect(queueCandidates(b, "2026-06-13")).toEqual(["a.md"]);
+  });
 });

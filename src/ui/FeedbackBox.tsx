@@ -1,7 +1,10 @@
 // Fork addition: the top of a card Claude has asked a question on (tag `feedback-needed`): the
 // question, then a way to answer it. An answer is an ordinary comment, and it drops the tag, the way
 // "Approve commands" does. In a running review queue it moves on to the next card. A card with a
-// `## Commands to approve` section is answered there instead: the box shows the question only.
+// `## Commands to approve` section is approved there instead of with Yes/No; a written answer
+// still goes. "Send back" is the way
+// out when the question itself is unclear: the note goes back marked as a counter-question, so
+// Claude asks again instead of acting on it.
 import { useContext, useState } from "react";
 import type { Card } from "../model/types";
 import { useBoardActions, useRepo } from "./context";
@@ -13,12 +16,16 @@ import {
   COMMANDS_HEADING,
   CommandsApproval,
   FEEDBACK_TAG,
+  SnoozeButton,
   splitSection,
   usePostComment,
   withoutTag,
 } from "./ReviewActions";
 import type { CardPanelState } from "./useCardPanel";
 import { usePasteImage } from "./usePasteImage";
+
+/** How a sent-back note starts, so Claude (and the board runner) read it as a counter-question. */
+const SENT_BACK = "Sent back, unclear:";
 
 interface Props {
   path: string;
@@ -93,32 +100,57 @@ function FeedbackForm({
           />
         </details>
       )}
-      {commands ? (
-        <CommandsApproval path={path} card={card} panel={panel} />
-      ) : (
+      {commands && <CommandsApproval path={path} card={card} panel={panel} />}
+      <div className="folia-add-inline">
+        <textarea
+          value={note}
+          placeholder="Your answer, or what is unclear"
+          aria-label="Your answer"
+          onChange={(e) => setNote(e.target.value)}
+          onPaste={onPaste}
+        />
+      </div>
+      <AnswerButtons path={path} panel={panel} note={note} commands={commands} answer={answer} />
+    </section>
+  );
+}
+
+/** Send answer / Yes / No, then Send back and Tomorrow. */
+function AnswerButtons({
+  path,
+  panel,
+  note,
+  commands,
+  answer,
+}: Pick<Props, "path" | "panel"> & {
+  note: string;
+  commands: boolean;
+  answer: (text: string) => void;
+}) {
+  return (
+    <div className="folia-row-actions">
+      <HostButton
+        className="folia-btn"
+        text="Send answer"
+        cta={!commands}
+        disabled={!note.trim()}
+        onClick={() => note.trim() && answer(note.trim())}
+      />
+      {/* With commands waiting, the runner reads a reply starting with "yes" as their approval,
+            so the one-click answers are left out there. */}
+      {!commands && (
         <>
-          <div className="folia-add-inline">
-            <textarea
-              value={note}
-              placeholder="Your answer"
-              aria-label="Your answer"
-              onChange={(e) => setNote(e.target.value)}
-              onPaste={onPaste}
-            />
-          </div>
-          <div className="folia-row-actions">
-            <HostButton
-              className="folia-btn"
-              text="Send answer"
-              cta
-              disabled={!note.trim()}
-              onClick={() => note.trim() && answer(note.trim())}
-            />
-            <HostButton className="folia-btn" text="Yes" onClick={() => answer("Yes.")} />
-            <HostButton className="folia-btn" text="No" onClick={() => answer("No.")} />
-          </div>
+          <HostButton className="folia-btn" text="Yes" onClick={() => answer("Yes.")} />
+          <HostButton className="folia-btn" text="No" onClick={() => answer("No.")} />
         </>
       )}
-    </section>
+      <HostButton
+        className="folia-btn"
+        text="Send back"
+        disabled={!note.trim()}
+        onClick={() => note.trim() && answer(`${SENT_BACK} ${note.trim()}`)}
+      />
+      <SnoozeButton path={path} panel={panel} />
+    </div>
   );
 }

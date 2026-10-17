@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { dateOnly, dueInfo, stamp } from "../src/model/dates";
+import { dateOnly, dueInfo, nextDay, stamp } from "../src/model/dates";
 
 // Day boundaries are local time, so pin a zone with a DST change: central Europe goes to summer time on
 // 2026-03-29 and back on 2026-10-25, which is where a diff over milliseconds could round wrong.
@@ -8,6 +8,14 @@ process.env["TZ"] = "Europe/Berlin";
 afterAll(() => {
   if (originalTz === undefined) delete process.env["TZ"];
   else process.env["TZ"] = originalTz;
+});
+
+describe("nextDay", () => {
+  it("steps over month and year ends", () => {
+    expect(nextDay("2026-10-31")).toBe("2026-11-01");
+    expect(nextDay("2026-12-31")).toBe("2027-01-01");
+    expect(nextDay("2026-10-25")).toBe("2026-10-26");
+  });
 });
 
 describe("the zone these tests run in", () => {

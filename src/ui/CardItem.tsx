@@ -1,4 +1,4 @@
-import { waitingFor } from "../model/properties";
+import { snoozedUntil, waitingFor } from "../model/properties";
 import {
   memo,
   useEffect,
@@ -189,7 +189,19 @@ function useTileView(card: Card, today: string, hasSubcardChildren: boolean) {
     hasNestedSubitems,
     subitemsCollapsed: hasNestedSubitems && subitems.isCollapsed(card.path),
     canComplete: isCompletable(card, actions.doneColumnId),
+    snoozed: snoozedUntil(card.frontmatter, today),
   };
+}
+
+/** Fork: the lines under the title: what a waiting card waits for, and until when it is snoozed. */
+function TileNotes({ card, snoozed }: { card: Card; snoozed: string | null }) {
+  const waiting = card.frontmatter.status === "waiting" ? waitingFor(card.frontmatter) : "";
+  return (
+    <>
+      {waiting && <div className="folia-card-waiting">⏳ {waiting}</div>}
+      {snoozed && <div className="folia-card-snoozed">💤 until {snoozed}</div>}
+    </>
+  );
 }
 
 /** The tile's focusable face: the title (or its rename input) and what the card carries. */
@@ -255,9 +267,7 @@ function CardFace({
           {card.title}
         </div>
       )}
-      {card.frontmatter.status === "waiting" && waitingFor(card.frontmatter) && (
-        <div className="folia-card-waiting">⏳ {waitingFor(card.frontmatter)}</div>
-      )}
+      <TileNotes card={card} snoozed={view.snoozed} />
       <CardChips card={card} ctx={view.ctx} chips={view.chips} />
       <CardProgress stats={card.stats} />
       {!view.subitemsCollapsed && view.hasNextTodosPreview && (
@@ -378,6 +388,7 @@ function tileData(
         : undefined,
     "data-context": card.context ?? undefined,
     "data-urgency": cardUrgency(card, today, actions.doneColumnId) ?? undefined,
+    "data-snoozed": snoozedUntil(card.frontmatter, today) ? "true" : undefined,
   };
 }
 

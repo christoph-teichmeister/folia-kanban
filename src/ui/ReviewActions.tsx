@@ -5,6 +5,7 @@
 // the comments, not the buttons.
 import { useContext, useState } from "react";
 import type { Board, Card, CardBody } from "../model/types";
+import { dateOnly, nextDay } from "../model/dates";
 import { fencedLines } from "../model/fences";
 import { writeStatus } from "./CardFields";
 import { ColumnOrderContext, columnNeighbours } from "./CardStepper";
@@ -151,6 +152,7 @@ function ReviewForm({ path, board, card, panel, section }: Props & { section: st
           disabled={!note.trim()}
           onClick={() => note.trim() && decide("doing", note.trim())}
         />
+        <SnoozeButton path={path} panel={panel} />
       </div>
     </section>
   );
@@ -212,5 +214,32 @@ function CommandsForm({ path, card, panel }: Omit<Props, "board">) {
         onClick={() => void approve()}
       />
     </div>
+  );
+}
+
+/**
+ * Fork: "Tomorrow" puts the card off a day (`snoozed-until`), so the board dims it and the review
+ * queue leaves it out until then. No comment: the board runner would read one as an answer. In a
+ * running review queue it moves on to the next card.
+ */
+export function SnoozeButton({ path, panel }: { path: string; panel: CardPanelState }) {
+  const repo = useRepo();
+  const actions = useBoardActions();
+  const queue = useContext(ReviewQueueContext);
+  const snooze = () => {
+    const next = queueNeighbours(queue, path)?.next ?? null;
+    void panel
+      .mutate(() => repo.setFrontmatter(path, { "snoozed-until": nextDay(dateOnly()) }))
+      .then((ok) => {
+        if (ok && next && queue) actions.open(next, queue.tabOf(next));
+      });
+  };
+  return (
+    <HostButton
+      className="folia-btn"
+      text="Tomorrow"
+      aria-label="Snooze until tomorrow"
+      onClick={snooze}
+    />
   );
 }

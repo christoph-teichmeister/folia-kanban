@@ -8,6 +8,13 @@ export function dateOnly(d = new Date()): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** The day after `today` (YYYY-MM-DD), by the calendar, so a DST switch cannot skip or repeat it. */
+export function nextDay(today: string): string {
+  const d = new Date(today + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  return dateOnly(d);
+}
+
 export function stamp(d = new Date()): string {
   return `${dateOnly(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

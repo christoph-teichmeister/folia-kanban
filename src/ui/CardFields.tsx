@@ -185,6 +185,37 @@ function WaitingForField({
   );
 }
 
+/** The SNOOZED UNTIL field (fork addition): a day; emptying it ends the snooze. */
+function SnoozeField({
+  card,
+  path,
+  mutate,
+}: {
+  card: Card;
+  path: string;
+  mutate: (fn: () => Promise<unknown>) => Promise<boolean>;
+}) {
+  const repo = useRepo();
+  const value = card.frontmatter["snoozed-until"];
+  return (
+    <label>
+      <span className="folia-prop-key">Snoozed until</span>
+      <input
+        className="folia-prop-input"
+        type="date"
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) =>
+          void mutate(() =>
+            e.target.value
+              ? repo.setFrontmatter(path, { "snoozed-until": e.target.value })
+              : repo.unsetFrontmatterKey(path, "snoozed-until"),
+          )
+        }
+      />
+    </label>
+  );
+}
+
 /**
  * Fork: the panel's column change, shared by the Status field and the review buttons. False when
  * a lane refuses it.
@@ -269,6 +300,7 @@ export function CardFields({
         />
       </label>
       <WaitingForField card={card} path={path} mutate={mutate} />
+      <SnoozeField card={card} path={path} mutate={mutate} />
       {/* Both of these go through the shared action rather than `mutate`, for the reason the
         priority field does: the context menu writes this key too, and one copy of "an empty
         value removes the key" is the only way the two surfaces cannot drift apart. The action

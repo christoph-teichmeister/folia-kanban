@@ -153,6 +153,18 @@
   margin-top: var(--size-2-1);
 }
 
+/* Fork addition: a card snoozed until a later day steps back until then. */
+.folia-card[data-snoozed] {
+  opacity: 0.55;
+}
+
+.folia-card-snoozed {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  line-height: var(--line-height-tight);
+  margin-top: var(--size-2-1);
+}
+
 /* Fork addition: text for screen readers only (the tile's accessible name, `CardItem.tsx`). */
 .folia-sr-only {
   position: absolute;
